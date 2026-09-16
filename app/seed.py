@@ -130,7 +130,7 @@ def seed() -> None:
             "role": "security_head",
             "staffId": None,
             "gateIds": None,
-            "displayName": "Security Head",
+            "displayName": "Meera — Security Head",
             "phone": "9000000098",
             "email": "security@demo.school",
             "active": True,
@@ -1023,14 +1023,120 @@ def _seed_pickup(ts: str) -> None:
     denormalize_blocked_by_custody("STU-KABIR", SCHOOL_ID)
 
 
-def _seed_emergency_blast(ts: str) -> None:
-    """E3 demo — Security Head live-board story, separate from Priya walkthrough.
+def _seed_blast_inside(visit: dict) -> None:
+    """Blast-demo inside visitor — not part of the Priya gate walkthrough."""
+    from app.util import gen_qr_token
 
-    Uses the existing inside seed (Priya / Arjun / Neha) so preview count > 0.
-    Does not add extra inside visits or change visit status.
+    token = visit.pop("qrToken", None) or gen_qr_token()
+    visit.setdefault("schoolId", SCHOOL_ID)
+    visit.setdefault("livePhotoKey", "media/live_photo/priya")
+    visit.setdefault("idImageKey", None)
+    visit.setdefault("vehicleNumber", None)
+    visit.setdefault("accompanyingCount", 0)
+    visit.setdefault("notes", "Emergency blast demo — currently inside")
+    visit.setdefault("signatureKey", None)
+    visit.setdefault("registeredByUserId", "U-GATE")
+    visit.setdefault("status", "inside")
+    visit.setdefault("rejectReason", None)
+    visit.setdefault("gateOutId", None)
+    visit.setdefault("checkoutType", None)
+    visit.setdefault("forceCheckoutReason", None)
+    visit.setdefault("forceCheckoutByUserId", None)
+    visit.setdefault("blacklistHit", False)
+    visit.setdefault("blacklistId", None)
+    visit.setdefault("blacklistOverrideByUserId", None)
+    visit.setdefault("meetingDoneAt", None)
+    visit["qrToken"] = token
+    store.put_visit(visit)
+    if visit.get("passId"):
+        store.put_pass(
+            {
+                "passId": visit["passId"],
+                "token": token,
+                "visitId": visit["id"],
+                "schoolId": SCHOOL_ID,
+                "issuedAt": visit.get("decidedAt") or visit.get("timeIn"),
+                "expiresAt": None,
+                "revoked": False,
+            }
+        )
+
+
+def _seed_emergency_blast(ts: str) -> None:
+    """E3 demo — Meera SH on the live board, separate from Priya walkthrough.
+
+    Existing inside (Priya / Arjun / Neha) plus three blast-only visitors so
+    preview count is 6 and matches GET /v1/visits/inside. Seed blast B-20260916-03.
     """
     from app.inside import list_inside_visits
     from app.util import mask_mobile
+
+    _seed_blast_inside(
+        {
+            "id": "V-BL-LEELA",
+            "visitorName": "Leela Iyer",
+            "mobile": "9822098809",
+            "visitorType": "Parent",
+            "purpose": "Evening notebook pickup — blast demo",
+            "hostId": "H03",
+            "idType": "Aadhaar",
+            "idNumber": "880088008800",
+            "gateId": "G-MAIN",
+            "decidedAt": "2026-09-16T19:05:00+05:30",
+            "decidedByUserId": "U-SH",
+            "passId": "P-BL01",
+            "timeIn": "2026-09-16T19:08:00+05:30",
+            "timeOut": None,
+            "gateInId": "G-MAIN",
+            "afterHours": True,
+            "policyTrigger": "outside_hours",
+            "afterHoursEvaluatedAt": "2026-09-16T19:00:00+05:30",
+            "createdAt": "2026-09-16T19:00:00+05:30",
+            "updatedAt": "2026-09-16T19:08:00+05:30",
+        }
+    )
+    _seed_blast_inside(
+        {
+            "id": "V-BL-FARHAN",
+            "visitorName": "Farhan Qureshi",
+            "mobile": "9822098810",
+            "visitorType": "Guest",
+            "purpose": "PTA volunteer — blast demo",
+            "hostId": "H02",
+            "idType": "Voter",
+            "idNumber": "MH/88/0000888",
+            "gateId": "G-PED",
+            "decidedAt": "2026-09-16T11:20:00+05:30",
+            "decidedByUserId": "U-HOST-H02",
+            "passId": "P-BL02",
+            "timeIn": "2026-09-16T11:25:00+05:30",
+            "timeOut": None,
+            "gateInId": "G-PED",
+            "createdAt": "2026-09-16T11:15:00+05:30",
+            "updatedAt": "2026-09-16T11:25:00+05:30",
+        }
+    )
+    _seed_blast_inside(
+        {
+            "id": "V-BL-SONAL",
+            "visitorName": "Sonal Banerjee",
+            "mobile": "9822098811",
+            "visitorType": "Official",
+            "purpose": "Block education office — blast demo",
+            "hostId": "H01",
+            "idType": "Other",
+            "idNumber": "EDU-8811",
+            "gateId": "G-MAIN",
+            "decidedAt": "2026-09-16T12:10:00+05:30",
+            "decidedByUserId": "U-ADMIN",
+            "passId": "P-BL03",
+            "timeIn": "2026-09-16T12:15:00+05:30",
+            "timeOut": None,
+            "gateInId": "G-MAIN",
+            "createdAt": "2026-09-16T12:05:00+05:30",
+            "updatedAt": "2026-09-16T12:15:00+05:30",
+        }
+    )
 
     store.put_blast_template(
         {

@@ -19,6 +19,10 @@ def _confirm(client, token, template_id="T-EVAC-01", instruction=None, confirm=T
 
 def test_seed_blast_enabled_template_and_inside_count(client):
     token = login(client, "security", "sh123")
+    me = client.get("/v1/auth/me", headers=auth(token))
+    assert me.json()["displayName"].startswith("Meera")
+    assert me.json()["role"] == "security_head"
+
     cfg = client.get("/v1/schools/me/blast-config", headers=auth(token))
     assert cfg.status_code == 200
     assert cfg.json()["emergencyBlastEnabled"] is True
@@ -35,16 +39,20 @@ def test_seed_blast_enabled_template_and_inside_count(client):
 
     preview = client.get("/v1/emergency/blasts/preview", headers=auth(token))
     assert preview.status_code == 200
-    assert preview.json()["insideCount"] > 0
     inside = _inside_ids(client, token)
-    assert preview.json()["insideCount"] == len(inside)
+    assert preview.json()["insideCount"] == len(inside) == 6
     assert "V-20260916-014" in inside  # existing Priya inside seed
+    assert "V-BL-LEELA" in inside  # after-hours visitor stays in (B1)
+    assert "V-BL-FARHAN" in inside
+    assert "V-BL-SONAL" in inside
 
     seeded = client.get("/v1/emergency/blasts/B-20260916-03", headers=auth(token))
     assert seeded.status_code == 200
     assert seeded.json()["triggeredByUserId"] == "U-SH"
     assert seeded.json()["templateId"] == "T-EVAC-01"
-    assert seeded.json()["insideCount"] == len(inside)
+    assert seeded.json()["insideCount"] == 6
+    rec_ids = {r["visitId"] for r in seeded.json()["recipients"]}
+    assert rec_ids == set(inside)
 
 
 def test_preview_matches_inside_and_excludes_escort_staff(client):

@@ -45,7 +45,7 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 | `host`     | `host123` | host           | Anita Joshi (H03)              |
 | `rahul`    | `host123` | host           | Rahul Deshpande (H02)          |
 | `admin`    | `admin123`| admin          | Office Admin                   |
-| `security` | `sh123`   | security_head  | Blacklist write + force + Block override create |
+| `security` | `sh123`   | security_head  | **Meera — Security Head**; blacklist + force + blast |
 
 ### Seed highlights
 
@@ -60,7 +60,7 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 - **After-hours demos (separate from Priya):** evening Vendor **Ravi Deshmukh** `V-AH-VENDOR` pending SH (host Anita / H03); holiday Parent **Deepak Nair** → **Meera Kulkarni** (H01) → pass **`P-7K88`** (`V-AH-HOLIDAY`)
 - **Escort / zones (B4):** Vendor default `escortRequired=true` zones `reception`+`admin`; Parent/Guest/Alumni reception only (no escort); Official reception+admin (no escort). **Ravi** is assignable to **Vikram More** (`E01`). P-7K88 / Meera and Priya MVP unchanged.
 - **Pickup (P6, separate from Priya):** student **Aarav Mehta · 5-B** (`STU-AARAV`) with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** (`STU-KABIR`) `court_order` blocking **Rajesh Singh**, allow-list **Sunita Singh**
-- **Emergency blast (E3, separate from Priya walkthrough):** `emergencyBlastEnabled=true` on **SCH-DEMO-01** only; template **Evacuation — assembly ground** (`T-EVAC-01`); seed blast **`B-20260916-03`** (Security Head) against the existing inside set (Priya / Arjun / Neha). Preview count > 0. Staff lane default OFF. WhatsApp HOLD.
+- **Emergency blast (E3, Meera SH story — not Priya walkthrough):** `emergencyBlastEnabled=true` on **SCH-DEMO-01** only; template **Evacuation — assembly ground** (`T-EVAC-01`); seed blast **`B-20260916-03`**. Inside set = existing Priya / Arjun / Neha **plus** blast-only **Leela Iyer** (after-hours), **Farhan Qureshi**, **Sonal Banerjee** — preview count **6**, same as `GET /v1/visits/inside`. Staff lane default OFF. WhatsApp HOLD.
 
 ## Visit lifecycle (contract §2)
 
