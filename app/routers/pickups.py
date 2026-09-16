@@ -14,6 +14,7 @@ from app.errors import AppError
 from app.models import (
     PickupConsentBody,
     PickupCreate,
+    PickupOut,
     PickupReleaseBody,
     ReasonBody,
     Role,
@@ -213,7 +214,7 @@ def _try_link_visit(pickup: dict, user: dict) -> None:
     pickup["visitLinkFailed"] = False
 
 
-@router.post("")
+@router.post("", response_model=PickupOut)
 def start_pickup(
     body: PickupCreate,
     user: dict = Depends(require_roles(Role.gate)),
@@ -255,6 +256,7 @@ def start_pickup(
         "collectorPickupPersonId": person["id"] if person else None,
         "collectorName": collector_name,
         "collectorMobile": collector_mobile,
+        "collectorRelation": person.get("relation") if person else None,
         "matchMethod": method or "none",
         "pickupReason": body.pickupReason.value,
         "reasonOther": (body.reasonOther or "").strip() or None,
@@ -279,7 +281,7 @@ def start_pickup(
     return _meta(row)
 
 
-@router.post("/{pickup_id}/consent")
+@router.post("/{pickup_id}/consent", response_model=PickupOut)
 def record_consent(
     pickup_id: str,
     body: PickupConsentBody,
@@ -295,7 +297,7 @@ def record_consent(
     return _meta(pickup)
 
 
-@router.post("/{pickup_id}/release")
+@router.post("/{pickup_id}/release", response_model=PickupOut)
 def release_pickup(
     pickup_id: str,
     body: PickupReleaseBody,
@@ -337,6 +339,7 @@ def release_pickup(
     )
     if person:
         pickup["collectorPickupPersonId"] = person["id"]
+        pickup["collectorRelation"] = person.get("relation")
         pickup["matchMethod"] = pickup.get("matchMethod") if pickup.get("matchMethod") != "none" else method
         if not pickup.get("collectorName"):
             pickup["collectorName"] = person["name"]
@@ -361,7 +364,7 @@ def release_pickup(
     return _meta(pickup)
 
 
-@router.post("/{pickup_id}/request-override")
+@router.post("/{pickup_id}/request-override", response_model=PickupOut)
 def request_override(
     pickup_id: str,
     user: dict = Depends(require_roles(Role.gate)),
@@ -380,7 +383,7 @@ def request_override(
     return _meta(pickup, extra={"overrideRequested": True})
 
 
-@router.post("/{pickup_id}/override")
+@router.post("/{pickup_id}/override", response_model=PickupOut)
 def override_pickup(
     pickup_id: str,
     body: ReasonBody,
@@ -464,6 +467,7 @@ def list_pickups(
                     p.get("id") or "",
                     p.get("collectorName") or "",
                     p.get("collectorMobile") or "",
+                    p.get("collectorRelation") or "",
                     student["name"] if student else "",
                     p.get("studentId") or "",
                 ]
@@ -475,7 +479,7 @@ def list_pickups(
     return {"data": rows, "meta": {"watermark": WATERMARK}}
 
 
-@router.get("/{pickup_id}")
+@router.get("/{pickup_id}", response_model=PickupOut)
 def get_pickup(
     pickup_id: str,
     user: dict = Depends(require_roles(Role.gate, Role.admin, Role.security_head)),

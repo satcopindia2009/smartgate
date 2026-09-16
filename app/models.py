@@ -575,6 +575,7 @@ class PickupOut(BaseModel):
     collectorPickupPersonId: Optional[str] = None
     collectorName: str
     collectorMobile: str
+    collectorRelation: Optional[str] = None
     matchMethod: Optional[str] = None
     pickupReason: str
     reasonOther: Optional[str] = None

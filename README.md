@@ -114,7 +114,7 @@ Matching → Released
 | `POST /pickups/{id}/override` | SH | `{ "reason" }` required → `ReleasedWithOverride` |
 | `GET /pickups` | Admin/SH; Gate = own attempts | Filters: dateFrom/dateTo, studentId, gateId, status, override, q |
 
-**Decision rules (server):** active + in-date list; match **mobile OR** (`idType` + idNumber/last4); **name-only never auto-matches**. `none` → allow matched person. `restricted`/`court_order` + `blockedPersonIds` → `BlockedCustody`. Optional `allowedPersonIds` (**H1**) is a machine allow-list when present. `court_order` with empty `gateInstruction` **fail-closed** (block all). Gate cannot self-override.
+**Decision rules (server):** active + in-date list; match **mobile OR** (`idType` + idNumber/last4); **name-only never auto-matches**. `none` → allow matched person. `restricted`/`court_order` + `blockedPersonIds` → `BlockedCustody`. Optional `allowedPersonIds` (**H1**) is a machine allow-list when present. `court_order` with empty `gateInstruction` **fail-closed** (write rejected + all releases blocked). Gate cannot self-override. Expired `effectiveTo` = not on list (F3).
 
 **Media kinds (additive):** `collector_live_photo` (90d retention stamp), `pickup_list_photo`.
 
@@ -247,6 +247,7 @@ bash scripts/smoke.sh
 - `tests/test_smoke.py` — health, seed pass, full lifecycle, staff write
 - `tests/test_contract.py` — host-scope approve, force-checkout without reason, blacklist Block/Alert, invalid pass scan, gateIds, media kinds, state machine negatives
 - `tests/test_pickup.py` — Aarav/Neha release, Rohan relative, Kabir BlockedCustody, not-authorized, override, H1 allow-list, no Visit subtype coupling
+- `tests/test_pickup_acceptance.py` — AC-D1 / AC-D2 / AC-D3 / F3 / F6 explicit
 
 ## Remaining thin stubs / out of scope
 

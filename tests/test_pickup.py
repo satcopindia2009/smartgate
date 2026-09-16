@@ -61,6 +61,8 @@ def test_seed_p6_aarav_kabir_separate_from_priya(client):
     assert names["Neha Mehta"]["relation"] == "parent"
     assert names["Rohan Mehta"]["relation"] == "relative"
     assert names["Neha Mehta"]["mobile"] == "9822011001"
+    assert "Priya Singh" not in names
+    assert names["Neha Mehta"]["name"] != "Priya Singh"
 
     kabir = client.get("/v1/students/STU-KABIR/custody-flag", headers=headers)
     assert kabir.json()["flag"] == "court_order"
@@ -395,12 +397,19 @@ def test_court_order_empty_instruction_fail_closed(client):
         headers=auth(stoken),
         json={
             "flag": "court_order",
-            "gateInstruction": "",
+            "gateInstruction": "   ",
             "blockedPersonIds": ["APP-RAJESH"],
             "allowedPersonIds": ["APP-SUNITA"],
         },
     )
-    assert put.status_code == 200
+    assert put.status_code == 400
+    assert put.json()["error"]["code"] == "VALIDATION"
+    assert "gateInstruction" in put.json()["error"]["message"]
+
+    # Defense in depth: stored empty instruction still blocks all releases
+    flag = store.get_custody_flag("STU-KABIR")
+    flag["gateInstruction"] = ""
+    store.put_custody_flag(flag)
     start = client.post(
         "/v1/pickups",
         headers=auth(gtoken),

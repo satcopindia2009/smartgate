@@ -2077,7 +2077,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
               }
             }
           },
@@ -2278,7 +2280,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
               }
             }
           },
@@ -2333,7 +2337,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
               }
             }
           },
@@ -2378,7 +2384,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
               }
             }
           },
@@ -2433,7 +2441,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
               }
             }
           },
@@ -2478,7 +2488,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
               }
             }
           },
@@ -3681,6 +3693,228 @@
           "pickupReason"
         ],
         "title": "PickupCreate"
+      },
+      "PickupOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "schoolId": {
+            "type": "string",
+            "title": "Schoolid"
+          },
+          "gateId": {
+            "type": "string",
+            "title": "Gateid"
+          },
+          "studentId": {
+            "type": "string",
+            "title": "Studentid"
+          },
+          "collectorPickupPersonId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectorpickuppersonid"
+          },
+          "collectorName": {
+            "type": "string",
+            "title": "Collectorname"
+          },
+          "collectorMobile": {
+            "type": "string",
+            "title": "Collectormobile"
+          },
+          "collectorRelation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectorrelation"
+          },
+          "matchMethod": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchmethod"
+          },
+          "pickupReason": {
+            "type": "string",
+            "title": "Pickupreason"
+          },
+          "reasonOther": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasonother"
+          },
+          "collectorLivePhotoRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectorlivephotoref"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "custodyFlagSnapshot": {
+            "type": "string",
+            "title": "Custodyflagsnapshot"
+          },
+          "override": {
+            "type": "boolean",
+            "title": "Override",
+            "default": false
+          },
+          "overrideByUserId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overridebyuserid"
+          },
+          "overrideReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overridereason"
+          },
+          "linkedVisitId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedvisitid"
+          },
+          "visitLinkFailed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visitlinkfailed"
+          },
+          "releasedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Releasedat"
+          },
+          "attemptedAt": {
+            "type": "string",
+            "title": "Attemptedat"
+          },
+          "gateUserId": {
+            "type": "string",
+            "title": "Gateuserid"
+          },
+          "pickupConsentAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupconsentat"
+          },
+          "pickupConsentVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupconsentversion"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "title": "Updatedat"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "schoolId",
+          "gateId",
+          "studentId",
+          "collectorName",
+          "collectorMobile",
+          "pickupReason",
+          "status",
+          "custodyFlagSnapshot",
+          "attemptedAt",
+          "gateUserId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "PickupOut"
       },
       "PickupReason": {
         "type": "string",

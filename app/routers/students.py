@@ -288,6 +288,12 @@ def put_custody_flag(
             "court_order custody flag write requires security_head",
             403,
         )
+    if body.flag.value == "court_order" and not body.gateInstruction:
+        raise AppError(
+            "VALIDATION",
+            "court_order requires a non-empty gateInstruction (F6 fail-closed)",
+            400,
+        )
     existing = store.get_custody_flag(student_id)
     if (
         existing
