@@ -126,7 +126,11 @@
       "flags": [
         "overdue"
       ],
-      "blacklistHit": false
+      "blacklistHit": false,
+      "afterHours": false,
+      "escortRequired": true,
+      "allowedZones": ["reception", "admin"],
+      "escortName": null
     },
     {
       "visitId": "V-20260916-033",
@@ -147,7 +151,11 @@
       "blacklistHit": true,
       "blacklistId": "BL-02",
       "overrideBy": null,
-      "gateAcknowledgedBy": "Gate — Ramesh"
+      "gateAcknowledgedBy": "Gate — Ramesh",
+      "afterHours": false,
+      "escortRequired": true,
+      "allowedZones": ["reception", "admin"],
+      "escortName": null
     }
   ],
   "history": [
@@ -304,7 +312,9 @@
       "createdAt": "2026-09-16T19:30:00+05:30",
       "afterHours": true,
       "policyTrigger": "outside_hours",
-      "afterHoursEvaluatedAt": "2026-09-16T19:30:00+05:30"
+      "afterHoursEvaluatedAt": "2026-09-16T19:30:00+05:30",
+      "escortRequired": true,
+      "allowedZones": ["reception", "admin"]
     },
     {
       "visitId": "V-AH-HOLIDAY",
