@@ -29,6 +29,7 @@ export const FIXTURE_STATE_KEY = "satcop-admin-fixture-state";
 export const PICKUP_FIXTURE_STATE_KEY = "satcop-admin-pickup-fixture-state";
 export const AFTER_HOURS_FIXTURE_STATE_KEY = "satcop-admin-afterhours-fixture-state";
 export const BLAST_FIXTURE_STATE_KEY = "satcop-admin-blast-fixture-state";
+export const LAST_BLAST_ID_KEY = "satcop-admin-last-blast-id";
 export const PICKUP_CONSENT_VERSION = "pickup_notice_en_hi_v1";
 export const BLAST_INSTRUCTION_MAX = 160;
 export const SEED_BLAST_ID = "B-20260916-03";

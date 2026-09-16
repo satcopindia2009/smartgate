@@ -1,4 +1,4 @@
-import { BLAST_FIXTURE_STATE_KEY, SEED_BLAST_ID } from "./constants";
+import { BLAST_FIXTURE_STATE_KEY, LAST_BLAST_ID_KEY, SEED_BLAST_ID } from "./constants";
 import type {
   BlastPreview,
   BlastRecipient,
@@ -51,6 +51,24 @@ export function seedBlastConfig(): SchoolBlastConfig {
 
 export function blastIdOf(blast?: Pick<EmergencyBlast, "blastId" | "blast_id"> | null): string {
   return blast?.blastId || blast?.blast_id || "";
+}
+
+export function rememberLastBlastId(id?: string | null): void {
+  const value = String(id || "").trim();
+  if (!value) return;
+  try {
+    sessionStorage.setItem(LAST_BLAST_ID_KEY, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function rememberedLastBlastId(): string {
+  try {
+    return sessionStorage.getItem(LAST_BLAST_ID_KEY) || SEED_BLAST_ID;
+  } catch {
+    return SEED_BLAST_ID;
+  }
 }
 
 export function maskBlastMobile(mobile?: string | null): string {
@@ -319,6 +337,7 @@ export function confirmBlastLocal(
   };
   sess.blasts = [blast, ...sess.blasts];
   persistBlastFixtures();
+  rememberLastBlastId(blastId);
   return clone(blast);
 }
 
@@ -340,5 +359,6 @@ export function retryFailedLocal(blastId: string): EmergencyBlast | null {
   blast.counts = countsFor(blast.recipients);
   blast.status = deriveStatus(blast.recipients);
   persistBlastFixtures();
+  rememberLastBlastId(blastId);
   return clone(blast);
 }

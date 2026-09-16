@@ -33,6 +33,8 @@ import {
   latestBlastLocal,
   listActiveTemplates,
   previewFromInside,
+  rememberLastBlastId,
+  rememberedLastBlastId,
   retryFailedLocal,
   seedBlastConfig,
   SEED_TEMPLATES,
@@ -125,7 +127,7 @@ export function LivePage() {
       setReports(fixtureReports(fx));
       setUsingFixtures(true);
       setBlastEnabled(seedBlastConfig().emergencyBlastEnabled);
-      setLastBlast((prev) => prev ?? latestBlastLocal());
+      setLastBlast(getBlastLocal(rememberedLastBlastId()) || latestBlastLocal());
       setLoading(false);
       return;
     }
@@ -152,10 +154,16 @@ export function LivePage() {
         const cfg = await getBlastConfig(token);
         setBlastEnabled(Boolean(cfg.emergencyBlastEnabled));
         if (cfg.emergencyBlastEnabled) {
-          const seeded = await getBlast(token, SEED_BLAST_ID).catch(() => null);
-          setLastBlast((prev) => prev ?? seeded);
+          const wanted = rememberedLastBlastId();
+          const latest =
+            (await getBlast(token, wanted).catch(() => null)) ||
+            (wanted !== SEED_BLAST_ID
+              ? await getBlast(token, SEED_BLAST_ID).catch(() => null)
+              : null);
+          if (latest) rememberLastBlastId(blastIdOf(latest));
+          setLastBlast(latest);
         } else {
-          setLastBlast((prev) => prev ?? null);
+          setLastBlast(null);
         }
       } catch {
         setBlastEnabled(seedBlastConfig().emergencyBlastEnabled);
@@ -170,7 +178,7 @@ export function LivePage() {
       setReports(fixtureReports(fx));
       setUsingFixtures(true);
       setBlastEnabled(seedBlastConfig().emergencyBlastEnabled);
-      setLastBlast((prev) => prev ?? latestBlastLocal());
+      setLastBlast(getBlastLocal(rememberedLastBlastId()) || latestBlastLocal());
       if (isNetworkError(err)) {
         /* silent fallback */
       }
@@ -320,6 +328,7 @@ export function LivePage() {
   }
 
   function openBlastResults(blast: EmergencyBlast) {
+    rememberLastBlastId(blastIdOf(blast));
     setResultBlast(blast);
     setLastBlast(blast);
     setBlastStage("results");
@@ -370,6 +379,7 @@ export function LivePage() {
           user?.id || "U-ADMIN",
         );
       }
+      rememberLastBlastId(blastIdOf(confirmed));
       setResultBlast(confirmed);
       setLastBlast(confirmed);
       setBlastStage("results");
@@ -388,6 +398,7 @@ export function LivePage() {
           });
           const confirmed = fallback as EmergencyBlast;
           if (blastIdOf(confirmed)) {
+            rememberLastBlastId(blastIdOf(confirmed));
             setResultBlast(confirmed);
             setLastBlast(confirmed);
             setBlastStage("results");
@@ -405,6 +416,7 @@ export function LivePage() {
         instruction || template.instruction,
         user?.id || "U-ADMIN",
       );
+      rememberLastBlastId(blastIdOf(local));
       setResultBlast(local);
       setLastBlast(local);
       setBlastStage("results");
@@ -425,12 +437,14 @@ export function LivePage() {
     try {
       if (!useLocalBlast && token && !token.startsWith("fixture:")) {
         const updated = await retryFailedBlast(token, id);
+        rememberLastBlastId(blastIdOf(updated));
         setResultBlast(updated);
         setLastBlast(updated);
         showToast(`Retry failed · ${countsLabel(updated)}`, "success");
       } else {
         const updated = retryFailedLocal(id) || getBlastLocal(id);
         if (updated) {
+          rememberLastBlastId(blastIdOf(updated));
           setResultBlast(updated);
           setLastBlast(updated);
           showToast(`Retry failed · ${countsLabel(updated)}`, "success");
@@ -439,6 +453,7 @@ export function LivePage() {
     } catch (err) {
       const updated = retryFailedLocal(id) || getBlastLocal(id);
       if (updated) {
+        rememberLastBlastId(blastIdOf(updated));
         setResultBlast(updated);
         setLastBlast(updated);
         showToast("Retry saved in fixtures fallback", "warning");
