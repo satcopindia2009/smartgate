@@ -47,6 +47,12 @@ Point `local.properties` at your SDK (`sdk.dir=...`). Gitignored.
 
 Unchanged: `schoolId`, `hostId`, `gateId`, `livePhotoKey`, `idImageKey`, `idType`, `idNumber`, `passId`, `qrToken`, visit `status`. Scan body: `passId` or `token`, `action`, `gateId`.
 
+## Pickup mode (P2 entry)
+
+Header **Visitor | Pickup**, plus a **Student pickup** card on step 1. This is an entry point only — the wired Day-1 gate flow is `../pickup-gate/` (`python3 -m http.server 8769`). Visitor steps 1–4 are unchanged.
+
+P6 story: Aarav Mehta 5-B · Neha Mehta (Mother) + Rohan Mehta (Uncle); Kabir Singh `court_order`. Mother is not Priya.
+
 ## Out of scope
 
-Host-approve web (`../host-web/`), visitor QR (`../visitor-qr/`), guard patrol, production/school deploy, real PII/Aadhaar, P2 pickup.
+Host-approve web (`../host-web/`), visitor QR (`../visitor-qr/`), guard patrol, production/school deploy, real PII/Aadhaar. Admin pickup CRUD/history is the Admin desk.

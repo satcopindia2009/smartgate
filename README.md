@@ -13,8 +13,11 @@ Shared story: **Priya Sharma** (Parent, `+91 98220 11122`) → **Anita Joshi** (
 | 1 | **Gate kiosk** (Android tablet landscape) | Android Studio → **File → Open** `kiosk/` → Run `app` (CAMERA + INTERNET). Tablet AVD ~1280×800 if you have one. |
 | 2 | **Host approve** (phone ~390) | `cd host-web && python3 -m http.server 8767` → http://127.0.0.1:8767/ |
 | 3 | **Visitor QR** (read-only badge) | `cd visitor-qr && python3 -m http.server 8768` → http://127.0.0.1:8768/?passId=P-4F21 |
+| 4 | **Gate pickup** (Priority P2 · PickupEvent) | `cd pickup-gate && python3 -m http.server 8769` → http://127.0.0.1:8769/ · kiosk header **Pickup** is an entry only |
 
 Pills: cyan **LIVE mock** when the tunnel answers; amber **FIXTURES** when it does not. Demo still works offline.
+
+P2 pickup is a separate surface from Priya’s visitor walk. Story: **Aarav Mehta 5-B** → **Neha Mehta (Mother)** / **Rohan Mehta (Uncle)**; **Kabir Singh** `court_order` block. See `pickup-gate/README.md`.
 
 ## Mock URL + seed logins
 
@@ -28,7 +31,8 @@ School: **Demo International School** · `SCH-DEMO-01` · TZ `Asia/Calcutta`
 |----------|----------|------|-----|
 | `gate` | `gate123` | gate | Gate — Ramesh (all 4 gates) |
 | `host` | `host123` | host | Anita Joshi (`H03`) |
-| `admin` | `admin123` | admin | Office Admin (not needed for this demo) |
+| `admin` | `admin123` | admin | Office Admin (visitor + Admin desk; not needed for Priya walk) |
+| `security` | `sh123` | security_head | Pickup override only (P2 gate) |
 
 Blacklist samples on the kiosk: **Block** Vikram More `9876500001` · **Alert** Neha Salunkhe `9876500002`.
 
@@ -49,4 +53,4 @@ cd kiosk
 
 ## Out of scope
 
-P2 pickup / access / blast, guard patrol, production or school SSO, inventing Aadhaar / real PII. Local FastAPI stub (`uvicorn app.main:app`) is the backend desk — Mobile does not change `app/`.
+Access / blast, guard patrol, production or school SSO, inventing Aadhaar / real PII. Admin pickup CRUD/history is the Admin desk (stub link only on the gate). Local FastAPI stub (`uvicorn app.main:app`) is the backend desk — Mobile does not change `app/` (pickup API is Backend PR #4).

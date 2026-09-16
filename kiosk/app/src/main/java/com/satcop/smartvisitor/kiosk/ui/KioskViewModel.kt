@@ -32,7 +32,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class KioskMode { VISITOR, PICKUP }
+
 data class KioskUiState(
+    val mode: KioskMode = KioskMode.VISITOR,
     val step: Int = 1,
     val schoolName: String = DemoFixtures.school.name,
     val timezone: String = DemoFixtures.SCHOOL_TZ,
@@ -134,6 +137,29 @@ class KioskViewModel(
 
     fun selectVisitorType(apiValue: String) {
         _state.update { it.copy(draft = it.draft.copy(visitorType = apiValue)) }
+    }
+
+    fun openPickupMode() {
+        _state.update {
+            it.copy(
+                mode = KioskMode.PICKUP,
+                toast = "Pickup mode · Day-1 wired UI is pickup-gate web :${com.satcop.smartvisitor.kiosk.data.fixture.PickupStory.WEB_PORT}",
+                toastKind = ToastKind.INFO,
+            )
+        }
+    }
+
+    fun openVisitorMode() {
+        _state.update { it.copy(mode = KioskMode.VISITOR, step = 1, toast = null) }
+    }
+
+    fun showPickupWebHint() {
+        _state.update {
+            it.copy(
+                toast = com.satcop.smartvisitor.kiosk.data.fixture.PickupStory.WEB_HINT,
+                toastKind = ToastKind.INFO,
+            )
+        }
     }
 
     fun selectGate(gateId: String) {

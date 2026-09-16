@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gate · Student Pickup — Satcop Smart Visitor P2</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    body.gate-page {
+      background: var(--bg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .story-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 28px;
+      background: var(--sidebar);
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .story-strip .label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-right: 4px;
+    }
+    .story-btn {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+      min-height: 36px;
+      transition: all 0.15s;
+    }
+    .story-btn:hover { border-color: var(--cyan); color: var(--text); }
+    .story-btn.active {
+      background: var(--cyan-dim);
+      border-color: var(--cyan);
+      color: var(--cyan-bright);
+    }
+    .gate-shell {
+      max-width: 1180px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 20px 28px 40px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .gate-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .gate-brand { display: flex; align-items: center; gap: 12px; }
+    .gate-brand-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .gate-brand-mark svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+    .gate-brand h1 { font-size: 18px; font-weight: 600; }
+    .gate-brand span { display: block; font-size: 12px; color: var(--text-muted); font-weight: 400; }
+    .gate-meta { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 13px; flex-wrap: wrap; }
+    .gate-pill {
+      background: var(--cyan-dim); color: var(--cyan-bright);
+      padding: 6px 12px; border-radius: 999px; font-weight: 500; font-size: 12px;
+    }
+    .p2-pill {
+      background: var(--purple-dim); color: var(--purple-bright);
+      padding: 6px 12px; border-radius: 999px; font-weight: 500; font-size: 12px;
+    }
+    .source-pill {
+      display: inline-flex; padding: 6px 12px; border-radius: 999px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+      background: var(--cyan-dim); color: var(--cyan-bright);
+    }
+    .source-pill.fallback { background: var(--orange-dim); color: #fbbf24; }
+    .gate-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 28px 32px;
+      flex: 1;
+      box-shadow: var(--shadow);
+    }
+    .panel-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 16px; margin-bottom: 8px;
+    }
+    .panel-head h2 { font-size: 22px; font-weight: 600; }
+    .panel-head p { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+    .step-panel { display: none; }
+    .step-panel.active { display: block; animation: fadeUp 0.25s ease; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .panel-actions {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; margin-top: 28px; padding-top: 20px;
+      border-top: 1px solid var(--border-subtle); flex-wrap: wrap;
+    }
+    .panel-actions .right { display: flex; gap: 10px; flex-wrap: wrap; }
+    .type-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .type-card {
+      text-align: left; padding: 16px; border-radius: var(--radius-lg);
+      border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      min-height: 112px; transition: all 0.15s;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .type-card.active {
+      border-color: var(--cyan);
+      background: var(--cyan-dim);
+      box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.4);
+    }
+    .type-card.secondary { opacity: 0.45; cursor: not-allowed; }
+    .type-card .type-emoji { font-size: 22px; line-height: 1; }
+    .type-card strong { display: block; font-size: 15px; font-weight: 600; }
+    .type-card .type-help { font-size: 12px; color: var(--text-muted); line-height: 1.35; }
+    .type-card.active .type-help { color: rgba(243, 244, 246, 0.8); }
+    .pickup-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--cyan-bright);
+      background: rgba(34, 211, 238, 0.2); padding: 2px 8px; border-radius: 999px;
+      margin-top: 4px; width: fit-content;
+    }
+    .lookup-wrap { position: relative; margin-top: 16px; max-width: 520px; }
+    .lookup-wrap input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 18px 16px 48px;
+      color: var(--text); font-size: 16px; outline: none; min-height: 56px;
+    }
+    .lookup-wrap input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+    .lookup-icon {
+      position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+      color: var(--text-dim); pointer-events: none;
+    }
+    .lookup-results {
+      margin-top: 10px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg); overflow: hidden; display: none;
+    }
+    .lookup-results.open { display: block; }
+    .lookup-item {
+      display: flex; align-items: center; gap: 14px; width: 100%;
+      padding: 14px 16px; text-align: left; color: var(--text);
+      border-bottom: 1px solid var(--border-subtle); min-height: 64px;
+    }
+    .lookup-item:last-child { border-bottom: 0; }
+    .lookup-item:hover { background: var(--card-hover); }
+    .lookup-item strong { display: block; font-size: 15px; }
+    .lookup-item span { font-size: 12px; color: var(--text-muted); }
+    .student-banner {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+      padding: 16px 18px; border-radius: var(--radius-lg);
+      background: var(--bg); border: 1px solid var(--border); margin: 16px 0;
+    }
+    .student-banner .meta { flex: 1; min-width: 160px; }
+    .student-banner h3 { font-size: 18px; font-weight: 600; }
+    .student-banner .class-line { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+    .custody-banner {
+      display: none; align-items: flex-start; gap: 12px;
+      padding: 14px 16px; border-radius: var(--radius);
+      margin-bottom: 16px; border: 1px solid transparent;
+    }
+    .custody-banner.visible { display: flex; }
+    .custody-banner.quiet {
+      background: rgba(255,255,255,0.03); border-color: var(--border-subtle); color: var(--text-dim);
+    }
+    .custody-banner.court {
+      background: var(--red-dim); border-color: rgba(239, 68, 68, 0.45);
+      color: #fecaca; box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2), 0 8px 24px rgba(239, 68, 68, 0.15);
+    }
+    .custody-banner.restricted {
+      background: var(--orange-dim); border-color: rgba(245, 158, 11, 0.4); color: #fde68a;
+    }
+    .custody-banner .badge {
+      flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; padding: 4px 10px; border-radius: 6px;
+    }
+    .custody-banner.court .badge { background: var(--red); color: #fff; }
+    .custody-banner.restricted .badge { background: var(--orange); color: #111; }
+    .custody-banner.quiet .badge { background: var(--border); color: var(--text-muted); }
+    .custody-banner .instr { font-size: 14px; font-weight: 500; line-height: 1.45; }
+    .auth-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .auth-card {
+      display: flex; align-items: center; gap: 14px; width: 100%;
+      padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); text-align: left; min-height: 72px;
+    }
+    .auth-card:hover { border-color: var(--purple); background: var(--card-hover); }
+    .auth-card.active {
+      border-color: var(--purple); background: var(--purple-dim);
+      box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.35);
+    }
+    .auth-card.blocked-hint { opacity: 0.7; }
+    .auth-card .rel {
+      font-size: 11px; font-weight: 500; color: var(--purple-bright);
+      background: var(--purple-dim); padding: 2px 8px; border-radius: 999px;
+    }
+    .auth-card .mobile { font-size: 12px; color: var(--text-muted); }
+    .auth-extra {
+      margin-top: 14px; padding: 14px; border-radius: var(--radius);
+      border: 1px dashed var(--border); background: rgba(255,255,255,0.02);
+    }
+    .auth-extra label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px; }
+    .auth-extra .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .auth-extra input {
+      flex: 1; min-width: 180px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 14px; color: var(--text); min-height: 48px;
+    }
+    .match-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .match-row input {
+      flex: 1; min-width: 140px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 14px; color: var(--text); min-height: 48px;
+    }
+    .disambig-note {
+      margin-top: 10px; padding: 10px 12px; border-radius: var(--radius-sm);
+      background: var(--orange-dim); color: #fbbf24; font-size: 13px; line-height: 1.4;
+      display: none;
+    }
+    .disambig-note.visible { display: block; }
+    .demo-control-bar {
+      margin-top: 18px; padding: 14px 16px; border-radius: var(--radius);
+      border: 1px dashed rgba(139, 92, 246, 0.45); background: var(--purple-dim);
+      display: none; flex-wrap: wrap; gap: 10px; align-items: center; text-align: left;
+    }
+    .demo-control-bar.visible { display: flex; }
+    .demo-control-bar .hint {
+      font-size: 12px; color: var(--purple-bright); flex: 1; min-width: 160px; line-height: 1.4;
+    }
+    .override-reason-row { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; margin-top: 4px; }
+    .override-reason-row input {
+      flex: 1; min-width: 200px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 11px 12px; color: var(--text); min-height: 44px;
+    }
+    .reason-chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+    .reason-chip {
+      padding: 14px 20px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text-muted); font-weight: 500; font-size: 14px;
+      min-height: 52px;
+    }
+    .reason-chip:hover { border-color: var(--purple); color: var(--text); }
+    .reason-chip.active { background: var(--purple-dim); border-color: var(--purple); color: #fff; }
+    .capture-box {
+      border: 2px dashed var(--border); border-radius: var(--radius-lg);
+      background: var(--bg); min-height: 180px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 10px; color: var(--text-muted);
+      padding: 24px; cursor: pointer; max-width: 320px;
+    }
+    .capture-box:hover, .capture-box.filled {
+      border-color: var(--cyan); background: var(--cyan-dim); color: var(--cyan-bright);
+    }
+    .consent-box {
+      margin-top: 16px; padding: 14px 16px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--bg);
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .consent-box input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--purple); flex-shrink: 0; }
+    .consent-box label { font-size: 13px; color: var(--text-muted); line-height: 1.45; cursor: pointer; }
+    .campus-stub {
+      margin-top: 12px; display: flex; gap: 10px; align-items: center;
+      font-size: 13px; color: var(--text-dim);
+    }
+    .campus-stub input { width: 18px; height: 18px; accent-color: var(--cyan); }
+    .result-wrap { text-align: center; padding: 28px 12px 12px; max-width: 640px; margin: 0 auto; }
+    .result-icon {
+      width: 72px; height: 72px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; margin: 0 auto 18px;
+    }
+    .result-icon.ok { background: var(--green-dim); color: #4ade80; }
+    .result-icon.block-auth { background: var(--orange-dim); color: #fbbf24; }
+    .result-icon.block-custody { background: var(--red-dim); color: #f87171; }
+    .result-icon.override { background: var(--purple-dim); color: var(--purple-bright); }
+    .result-wrap h2 { font-size: 22px; margin-bottom: 10px; line-height: 1.35; }
+    .result-wrap .prompt {
+      font-size: 16px; line-height: 1.5; color: var(--text); margin-bottom: 16px;
+      padding: 16px 18px; border-radius: var(--radius); background: var(--bg);
+      border: 1px solid var(--border); text-align: left;
+    }
+    .status-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .status-chip.released { background: var(--green-dim); color: #4ade80; }
+    .status-chip.blocked-auth { background: var(--orange-dim); color: #fbbf24; }
+    .status-chip.blocked-custody { background: var(--red-dim); color: #f87171; }
+    .status-chip.override-wait { background: var(--purple-dim); color: var(--purple-bright); }
+    .status-chip.override-done { background: var(--purple-dim); color: var(--purple-bright); }
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--purple-bright);
+      animation: pulse 1.2s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .result-meta {
+      display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
+      margin-top: 8px; color: var(--text-muted); font-size: 13px;
+    }
+    .result-meta strong { display: block; color: var(--text); font-size: 14px; margin-top: 2px; word-break: break-all; }
+    .proof-note { margin-top: 14px; font-size: 11px; color: var(--text-dim); }
+  </style>
+</head>
+<body class="gate-page">
+  <div class="demo-watermark">DEMO · P2 PICKUP</div>
+
+  <div class="story-strip" role="navigation" aria-label="Demo scenarios G1–G7">
+    <span class="label">Scenarios</span>
+    <button type="button" class="story-btn active" data-story="purpose">1 Purpose</button>
+    <button type="button" class="story-btn" data-story="lookup">2 Lookup</button>
+    <button type="button" class="story-btn" data-story="list">3 List + banner</button>
+    <button type="button" class="story-btn" data-story="happy">4 Happy release</button>
+    <button type="button" class="story-btn" data-story="notauth">5 Not authorized</button>
+    <button type="button" class="story-btn" data-story="custody">6 Custody block</button>
+    <button type="button" class="story-btn" data-story="override">7 Override</button>
+  </div>
+
+  <div class="gate-shell">
+    <header class="gate-top">
+      <div class="gate-brand">
+        <div class="gate-brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+          <h1>Satcop Smart Visitor</h1>
+          <span>Demo International School · Student pickup (PickupEvent)</span>
+        </div>
+      </div>
+      <div class="gate-meta">
+        <span class="p2-pill">Priority P2</span>
+        <span class="gate-pill">Main Gate</span>
+        <span id="source-pill" class="source-pill">Checking mock…</span>
+        <span id="gate-clock">—</span>
+      </div>
+    </header>
+
+    <div class="gate-panel">
+      <div class="steps" id="step-dots" aria-hidden="true">
+        <div class="step-dot active" data-step="1"></div>
+        <div class="step-dot" data-step="2"></div>
+        <div class="step-dot" data-step="3"></div>
+        <div class="step-dot" data-step="4"></div>
+        <div class="step-dot" data-step="5"></div>
+      </div>
+
+      <section class="step-panel active" data-panel="1">
+        <div class="panel-head">
+          <div>
+            <h2>Purpose at gate</h2>
+            <p>Choose <strong>Student pickup</strong> for early / sick / appointment release (separate from visitor register)</p>
+          </div>
+        </div>
+        <div class="type-cards" role="group" aria-label="Gate purpose">
+          <button type="button" class="type-card active" data-purpose="pickup" id="purpose-pickup">
+            <span class="type-emoji" aria-hidden="true">🎒</span>
+            <strong>Student pickup</strong>
+            <span class="type-help">Lobby handover · PickupEvent · no QR by default</span>
+            <span class="pickup-badge">P2 focus</span>
+          </button>
+          <button type="button" class="type-card secondary" disabled title="Visitor MVP — use kiosk / host-web">
+            <span class="type-emoji" aria-hidden="true">👨‍👩‍👧</span>
+            <strong>Parent visit</strong>
+            <span class="type-help">Full visitor register (Phase 1)</span>
+          </button>
+          <button type="button" class="type-card secondary" disabled>
+            <span class="type-emoji" aria-hidden="true">📦</span>
+            <strong>Vendor</strong>
+            <span class="type-help">Delivery / contractor</span>
+          </button>
+          <button type="button" class="type-card secondary" disabled>
+            <span class="type-emoji" aria-hidden="true">🤝</span>
+            <strong>Guest</strong>
+            <span class="type-help">Invited visitor</span>
+          </button>
+          <button type="button" class="type-card secondary" disabled>
+            <span class="type-emoji" aria-hidden="true">🏛️</span>
+            <strong>Official</strong>
+            <span class="type-help">Govt / board visit</span>
+          </button>
+        </div>
+        <div class="panel-actions">
+          <span style="color:var(--text-dim);font-size:12px;">Default: gate-lobby release only · P1–P6+H1 LOCKED</span>
+          <div class="right">
+            <button type="button" class="btn btn-cyan btn-lg" id="btn-to-lookup">Continue →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="step-panel" data-panel="2">
+        <div class="panel-head">
+          <div>
+            <h2>Find student</h2>
+            <p>Typeahead by name or class · force class/section if name collides (F2)</p>
+          </div>
+        </div>
+        <div class="lookup-wrap">
+          <svg class="icon lookup-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="search" id="student-search" placeholder="Search student name or class…" autocomplete="off" />
+        </div>
+        <div class="disambig-note" id="disambig-note"></div>
+        <div class="lookup-results open" id="lookup-results" role="listbox"></div>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-ghost" data-back="1">← Back</button>
+          <div class="right">
+            <button type="button" class="btn btn-cyan btn-lg" id="btn-to-list" disabled>Show authorized list →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="step-panel" data-panel="3">
+        <div class="panel-head">
+          <div>
+            <h2>Authorized collectors</h2>
+            <p>Select collector or match mobile / ID last-4 (P5) · custody banner = flag + gate_instruction only (P4/H1)</p>
+          </div>
+        </div>
+        <div class="student-banner" id="student-banner">
+          <div class="avatar avatar-xl avatar-cyan" id="student-avatar">AM</div>
+          <div class="meta">
+            <h3 id="student-name">Aarav Mehta</h3>
+            <div class="class-line" id="student-class">Class 5-B</div>
+          </div>
+        </div>
+        <div class="custody-banner quiet visible" id="custody-banner">
+          <span class="badge" id="custody-badge">NONE</span>
+          <div class="instr" id="custody-instr">No custody restriction on file.</div>
+        </div>
+        <div class="auth-list" id="auth-list"></div>
+        <div class="match-row" aria-label="P5 match mobile or ID last-4">
+          <input type="text" id="match-mobile" placeholder="Match mobile (last-4 ok)" inputmode="numeric" />
+          <input type="text" id="match-id" placeholder="ID last-4" maxlength="4" inputmode="numeric" />
+          <button type="button" class="btn btn-ghost" id="btn-match">Match</button>
+        </div>
+        <div class="auth-extra">
+          <label>Person not on list? Enter claimed name (→ BlockedNotAuthorized · AC-D1)</label>
+          <div class="row">
+            <input type="text" id="claimed-name" placeholder="Claimed collector name" />
+            <button type="button" class="btn btn-ghost" id="btn-claim-notlist">Check against list</button>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-ghost" data-back="2">← Back</button>
+          <div class="right">
+            <button type="button" class="btn btn-cyan btn-lg" id="btn-to-release" disabled>Continue →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="step-panel" data-panel="4">
+        <div class="panel-head">
+          <div>
+            <h2>Release details</h2>
+            <p id="release-sub">Reason → live photo stub → consent</p>
+          </div>
+        </div>
+        <label style="font-size:12px;font-weight:500;color:var(--text-muted);">Pickup reason</label>
+        <div class="reason-chips" id="reason-chips">
+          <button type="button" class="reason-chip" data-reason="early">Early dismissal</button>
+          <button type="button" class="reason-chip active" data-reason="sick">Sick</button>
+          <button type="button" class="reason-chip" data-reason="appointment">Appointment</button>
+          <button type="button" class="reason-chip" data-reason="other">Other</button>
+        </div>
+        <label style="font-size:12px;font-weight:500;color:var(--text-muted);">Collector live photo</label>
+        <button type="button" class="capture-box" id="photo-box" style="margin-top:8px;">
+          <div class="avatar avatar-2xl avatar-purple" id="photo-avatar">?</div>
+          <strong>Tap to capture (stub)</strong>
+          <span style="font-size:12px;">Required for Released · 90-day retention</span>
+        </button>
+        <div class="consent-box">
+          <input type="checkbox" id="consent-check" />
+          <label for="consent-check">I consent to the school recording this pickup (name, mobile, live photo) for student safety and audit. Short EN notice · HI twin pending Compliance.</label>
+        </div>
+        <label class="campus-stub">
+          <input type="checkbox" id="campus-enter" />
+          Also enter campus (optional stub → linked Parent Visit; not required for lobby handover)
+        </label>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-ghost" data-back="3">← Back</button>
+          <div class="right">
+            <button type="button" class="btn btn-success btn-lg" id="btn-complete" disabled>Log release</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="step-panel" data-panel="5">
+        <div class="result-wrap" id="result-wrap">
+          <div class="result-icon ok" id="result-icon">
+            <svg class="icon icon-xl" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <div class="status-chip released" id="result-chip">Released</div>
+          <h2 id="result-title">Release logged</h2>
+          <div class="prompt" id="result-prompt">Release logged for Aarav Mehta → Rohan Mehta (Uncle).</div>
+          <div class="result-meta" id="result-meta">
+            <div><span>Gate</span><strong>G-MAIN</strong></div>
+            <div><span>Match</span><strong id="meta-match">manual_list_select</strong></div>
+            <div><span>Student</span><strong id="proof-student">—</strong></div>
+            <div><span>Collector</span><strong id="proof-collector">—</strong></div>
+            <div><span>Mobile</span><strong id="proof-mobile">—</strong></div>
+            <div><span>Event</span><strong id="proof-event">PickupEvent</strong></div>
+            <div><span>Photo ref</span><strong id="proof-photo">—</strong></div>
+            <div><span>Time</span><strong id="proof-times">—</strong></div>
+          </div>
+          <p class="proof-note">Proof fields above are stored on the PickupEvent for later Admin search. This Gate slice does not invent Admin CRUD/history UI.</p>
+          <div class="demo-control-bar" id="override-demo-bar">
+            <span class="hint">Gate cannot self-override. Security Head only (reason required) · login <code>security</code> / <code>sh123</code>:</span>
+            <div class="override-reason-row">
+              <input type="text" id="sh-override-reason" placeholder="SH override reason (required)" value="Parent called SH; same-day release confirmed by phone" />
+              <button type="button" class="btn btn-primary" id="btn-sh-approve">SH approve → ReleasedWithOverride</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-ghost" id="btn-restart">New pickup</button>
+          <div class="right">
+            <button type="button" class="btn btn-ghost" id="btn-request-override" style="display:none;">Request override</button>
+            <button type="button" class="btn btn-primary" id="btn-admin-stub">Admin history (desk) →</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-box"></div>
+
+  <script src="config.js"></script>
+  <script src="fixtures.js"></script>
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

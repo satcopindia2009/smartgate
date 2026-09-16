@@ -43,8 +43,10 @@ import com.satcop.smartvisitor.kiosk.ui.components.SourcePill
 import com.satcop.smartvisitor.kiosk.ui.components.StepDots
 import com.satcop.smartvisitor.kiosk.ui.components.ToastBanner
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
+import com.satcop.smartvisitor.kiosk.ui.components.StatusPill
 import com.satcop.smartvisitor.kiosk.ui.steps.OutcomeStep
 import com.satcop.smartvisitor.kiosk.ui.steps.PhotoIdStep
+import com.satcop.smartvisitor.kiosk.ui.steps.PickupEntryStep
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorDetailsStep
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorTypeStep
 import com.satcop.smartvisitor.kiosk.ui.theme.CardShape
@@ -78,7 +80,10 @@ fun KioskApp(
                 clockLabel = state.clockLabel,
                 dataSource = state.dataSource,
                 roleLabel = state.meDisplayName,
+                mode = state.mode,
                 onSelectGate = viewModel::selectGate,
+                onVisitorMode = viewModel::openVisitorMode,
+                onPickupMode = viewModel::openPickupMode,
             )
             Box(
                 modifier = Modifier
@@ -91,15 +96,24 @@ fun KioskApp(
                     .padding(horizontal = 32.dp, vertical = 28.dp),
             ) {
                 Column(Modifier.fillMaxSize()) {
-                    StepDots(current = state.step)
+                    if (state.mode == KioskMode.VISITOR) {
+                        StepDots(current = state.step)
+                    }
                     AnimatedContent(
-                        targetState = state.step,
+                        targetState = state.mode to state.step,
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                         label = "kiosk-step",
                         modifier = Modifier
                             .weight(1f)
                             .verticalScroll(rememberScrollState()),
-                    ) { step ->
+                    ) { (mode, step) ->
+                        if (mode == KioskMode.PICKUP) {
+                            PickupEntryStep(
+                                onBackToVisitor = viewModel::openVisitorMode,
+                                onShowWebHint = viewModel::showPickupWebHint,
+                            )
+                            return@AnimatedContent
+                        }
                         when (step) {
                             1 -> VisitorTypeStep(
                                 selectedType = state.draft.visitorType,
@@ -108,6 +122,7 @@ fun KioskApp(
                                 recent = state.recent,
                                 gates = state.gates,
                                 onSelectType = viewModel::selectVisitorType,
+                                onOpenPickup = viewModel::openPickupMode,
                                 onPrefill = viewModel::prefillSample,
                                 onContinue = viewModel::continueFromStep1,
                             )
@@ -193,7 +208,10 @@ private fun KioskHeader(
     clockLabel: String,
     dataSource: DataSource,
     roleLabel: String,
+    mode: KioskMode,
     onSelectGate: (String) -> Unit,
+    onVisitorMode: () -> Unit,
+    onPickupMode: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     Row(
@@ -217,7 +235,9 @@ private fun KioskHeader(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                 )
                 Text(
-                    text = if (roleLabel.isBlank()) {
+                    text = if (mode == KioskMode.PICKUP) {
+                        "$schoolName · Student pickup (P2)"
+                    } else if (roleLabel.isBlank()) {
                         "$schoolName · Gate check-in"
                     } else {
                         "$schoolName · $roleLabel"
@@ -232,6 +252,18 @@ private fun KioskHeader(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            StatusPill(
+                label = "Visitor",
+                background = if (mode == KioskMode.VISITOR) KioskColors.purpleDim else KioskColors.bg,
+                foreground = if (mode == KioskMode.VISITOR) KioskColors.purpleBright else KioskColors.textMuted,
+                onClick = onVisitorMode,
+            )
+            StatusPill(
+                label = "Pickup",
+                background = if (mode == KioskMode.PICKUP) KioskColors.cyanDim else KioskColors.bg,
+                foreground = if (mode == KioskMode.PICKUP) KioskColors.cyanBright else KioskColors.textMuted,
+                onClick = onPickupMode,
+            )
             SourcePill(live = dataSource == DataSource.LIVE)
             Box {
                 GatePill(name = gateName, onClick = { menuOpen = true })

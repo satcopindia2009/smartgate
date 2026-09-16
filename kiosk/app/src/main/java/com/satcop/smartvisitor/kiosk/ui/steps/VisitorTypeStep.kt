@@ -50,6 +50,7 @@ fun VisitorTypeStep(
     recent: List<InsideVisit>,
     gates: List<Gate>,
     onSelectType: (String) -> Unit,
+    onOpenPickup: () -> Unit,
     onPrefill: () -> Unit,
     onContinue: () -> Unit,
 ) {
@@ -89,6 +90,10 @@ fun VisitorTypeStep(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                PickupTypeCard(
+                    onClick = onOpenPickup,
+                    modifier = Modifier.width(168.dp),
+                )
                 VisitorType.entries.forEach { type ->
                     TypeCard(
                         type = type,
@@ -116,6 +121,39 @@ fun VisitorTypeStep(
         ) {
             KioskPrimaryButton(text = "Continue", onClick = onContinue)
         }
+    }
+}
+
+@Composable
+private fun PickupTypeCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .heightIn(min = 108.dp)
+            .clip(RoundedCornerShape(RadiusLg))
+            .background(KioskColors.cyanDim)
+            .border(2.dp, KioskColors.cyan, RoundedCornerShape(RadiusLg))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(text = "🎒", fontSize = 22.sp)
+        Text(
+            text = "Student pickup",
+            color = KioskColors.text,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = KioskFont,
+        )
+        Text(
+            text = "P2 PickupEvent · open pickup-gate",
+            color = Color(0xBFF3F4F6),
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            fontFamily = KioskFont,
+        )
     }
 }
 
