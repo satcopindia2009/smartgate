@@ -14,6 +14,8 @@ Shared story: **Priya Sharma** (Parent, `+91 98220 11122`) → **Anita Joshi** (
 | 2 | **Host approve** (phone ~390) | `cd host-web && python3 -m http.server 8767` → http://127.0.0.1:8767/ |
 | 3 | **Visitor QR** (read-only badge) | `cd visitor-qr && python3 -m http.server 8768` → http://127.0.0.1:8768/?passId=P-4F21 |
 
+**Theme (host-web + visitor-qr):** header Light / Dark toggle. Persists `localStorage` `satcop-theme` = `light` | `dark`. Unset → `prefers-color-scheme`. Same teal token pack as Admin. Product flows unchanged.
+
 Pills: cyan **LIVE mock** when the tunnel answers; amber **FIXTURES** when it does not. Demo still works offline.
 
 ## Mock URL + seed logins
