@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Host Approve — Satcop Smart Visitor</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .host-screen { padding-bottom: 8px; }
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 4px 4px 12px;
+    }
+    .app-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .app-header .mark {
+      width: 32px; height: 32px; border-radius: 9px;
+      background: linear-gradient(135deg, #22c55e, #06b6d4);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .app-header .mark svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2.2; }
+    .app-header h1 { font-size: 16px; font-weight: 600; }
+    .app-header p { font-size: 11px; color: var(--text-dim); }
+    .source-pill {
+      display: inline-flex; margin-bottom: 12px; padding: 4px 10px; border-radius: 999px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+      background: var(--cyan-dim); color: var(--cyan-bright);
+    }
+    .source-pill.fallback { background: var(--orange-dim); color: #fbbf24; }
+    .story-switch { display: flex; gap: 8px; margin-bottom: 12px; }
+    .story-switch button {
+      flex: 1; min-height: 40px; border-radius: 999px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 500;
+    }
+    .story-switch button.active { background: var(--purple-dim); border-color: var(--purple); color: #fff; }
+    .notif-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 20px; box-shadow: var(--shadow);
+    }
+    .notif-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--orange-dim); color: #fbbf24; font-size: 11px; font-weight: 600;
+      padding: 4px 10px; border-radius: 999px; margin-bottom: 16px;
+    }
+    .visitor-row { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
+    .visitor-row h2 { font-size: 18px; font-weight: 600; margin-bottom: 2px; }
+    .meta-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .meta-row {
+      display: flex; justify-content: space-between; gap: 12px; font-size: 13px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border-subtle);
+    }
+    .meta-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .meta-row span { color: var(--text-dim); }
+    .meta-row strong { color: var(--text); font-weight: 500; text-align: right; }
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .reject-panel { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+    .reject-panel.open { display: block; }
+    .reject-panel h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text-muted); }
+    .confirm-view { display: none; text-align: center; padding: 28px 8px; }
+    .confirm-view.visible { display: block; }
+    .confirm-icon {
+      width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 18px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .confirm-icon.ok { background: var(--green-dim); color: #4ade80; }
+    .confirm-icon.no { background: var(--red-dim); color: #f87171; }
+    .confirm-view h2 { font-size: 20px; margin-bottom: 8px; }
+    .confirm-view p { color: var(--text-muted); font-size: 14px; margin-bottom: 8px; }
+    .confirm-view .onway {
+      display: inline-flex; align-items: center; gap: 8px; margin-top: 12px;
+      background: var(--cyan-dim); color: var(--cyan-bright); padding: 10px 16px;
+      border-radius: 999px; font-weight: 500; font-size: 13px;
+    }
+    .hub-link-bar { text-align: center; margin-top: 20px; }
+    .hub-link-bar a { font-size: 12px; color: var(--text-dim); }
+    .hidden { display: none !important; }
+    .phone-shell .toast-container {
+      position: absolute; bottom: 28px; right: 12px; left: 12px;
+    }
+    .phone-shell .toast { min-width: 0; max-width: none; }
+    @media (max-width: 480px) {
+      .phone-stage { padding: 0; background: var(--bg); }
+      .phone-label { display: none; }
+      .phone-shell {
+        width: 100%; max-width: none; height: 100vh; max-height: none;
+        border: 0; border-radius: 0; box-shadow: none;
+      }
+      .phone-notch { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="phone-stage">
+    <div>
+      <p class="phone-label">Host approve · mobile web (~390px)</p>
+      <div class="phone-shell">
+        <div class="demo-watermark">DEMO</div>
+        <div class="phone-notch"></div>
+        <div class="phone-body host-screen">
+          <div class="status-bar">
+            <span>9:41</span>
+            <span>●●● LTE</span>
+          </div>
+          <div class="app-header">
+            <div class="mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
+            </div>
+            <div>
+              <h1>Visitor request</h1>
+              <p id="host-label">Anita Joshi · Primary Coordinator</p>
+            </div>
+          </div>
+          <div id="source-pill" class="source-pill">Checking mock…</div>
+          <div class="story-switch">
+            <button type="button" id="tab-pending" class="active">Pending</button>
+            <button type="button" id="tab-priya">Priya (inside)</button>
+          </div>
+
+          <div id="request-view">
+            <div class="notif-card">
+              <div class="notif-badge" id="status-badge">Awaiting your decision</div>
+              <div class="visitor-row">
+                <div class="avatar avatar-2xl avatar-purple" id="visitor-avatar">PS</div>
+                <div>
+                  <h2 id="visitor-name">Priya Sharma</h2>
+                  <span class="tag type-parent" id="visitor-type">Parent</span>
+                </div>
+              </div>
+              <div class="meta-list">
+                <div class="meta-row"><span>Purpose</span><strong id="visitor-purpose">PTM follow-up, Class 4B</strong></div>
+                <div class="meta-row"><span>Gate</span><strong id="visitor-gate">Main Gate</strong></div>
+                <div class="meta-row"><span>Requested</span><strong id="req-time">—</strong></div>
+                <div class="meta-row"><span>Mobile</span><strong id="visitor-mobile">+91 98220 11122</strong></div>
+                <div class="meta-row"><span>visitId</span><strong id="visit-id">—</strong></div>
+              </div>
+              <div class="action-row" id="action-row">
+                <button type="button" class="btn btn-danger btn-lg" id="btn-reject">Reject</button>
+                <button type="button" class="btn btn-success btn-lg" id="btn-approve">Approve</button>
+              </div>
+              <button type="button" class="btn btn-cyan btn-block btn-lg hidden" id="btn-meeting" style="margin-top:10px;">
+                Meeting done
+              </button>
+              <div class="reject-panel" id="reject-panel">
+                <h3>Reason for rejection</h3>
+                <div class="chip-group" id="reason-chips">
+                  <button type="button" class="chip reason" data-reason="Not expecting visitor">Not expecting</button>
+                  <button type="button" class="chip reason" data-reason="Wrong host">Wrong host</button>
+                  <button type="button" class="chip reason" data-reason="In a meeting">In a meeting</button>
+                  <button type="button" class="chip reason" data-reason="Ask to reschedule">Reschedule</button>
+                </div>
+                <button type="button" class="btn btn-danger btn-block btn-lg" id="btn-confirm-reject" style="margin-top:14px;" disabled>
+                  Confirm reject
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="confirm-view" id="confirm-view">
+            <div class="confirm-icon ok" id="confirm-icon">
+              <svg class="icon icon-xl" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <h2 id="confirm-title">Approved</h2>
+            <p id="confirm-sub">Visitor can enter via Main Gate.</p>
+            <div class="onway" id="onway-banner">Visitor on the way</div>
+            <button type="button" class="btn btn-ghost btn-block" id="btn-reset" style="margin-top:28px;">Back to request</button>
+          </div>
+
+          <div class="hub-link-bar">
+            <a href="../visitor-qr/index.html">Visitor QR →</a>
+          </div>
+          <div id="toast-box" class="toast-container" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="config.js"></script>
+  <script src="fixtures.js"></script>
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

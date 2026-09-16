@@ -1,0 +1,32 @@
+{
+  "data": [
+    {
+      "id": "V-20260916-014",
+      "visitorName": "Priya Sharma",
+      "timeIn": "2026-09-16T14:10:00+05:30",
+      "gateId": "G-MAIN",
+      "hostId": "H03",
+      "visitorType": "Parent",
+      "status": "inside"
+    },
+    {
+      "id": "V-20260916-021",
+      "visitorName": "Arjun Kale",
+      "timeIn": "2026-09-16T10:02:00+05:30",
+      "gateId": "G-STAFF",
+      "hostId": "H04",
+      "visitorType": "Vendor",
+      "status": "inside"
+    },
+    {
+      "id": "V-20260916-033",
+      "visitorName": "Neha Salunkhe",
+      "timeIn": "2026-09-16T16:20:00+05:30",
+      "gateId": "G-PED",
+      "hostId": "H02",
+      "visitorType": "Vendor",
+      "status": "inside"
+    }
+  ],
+  "meta": { "watermark": "DEMO" }
+}

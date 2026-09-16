@@ -1,0 +1,9 @@
+{
+  "data": [
+    { "id": "G-MAIN", "schoolId": "SCH-DEMO-01", "name": "Main Gate", "active": true },
+    { "id": "G-PED", "schoolId": "SCH-DEMO-01", "name": "Pedestrian Gate", "active": true },
+    { "id": "G-STAFF", "schoolId": "SCH-DEMO-01", "name": "Staff Gate", "active": true },
+    { "id": "G-BUS", "schoolId": "SCH-DEMO-01", "name": "Bus Bay", "active": true }
+  ],
+  "meta": { "watermark": "DEMO" }
+}

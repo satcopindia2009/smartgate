@@ -1,121 +1,52 @@
-# Satcop Smart Visitor — MVP API Stub
+# Satcop Smart Visitor — Mobile MVP (showable demo)
 
-In-memory FastAPI mock implementing Wave 1–2 of `mvp-api-contract-2026-09-16.md` (§§0–5 under `/v1`).  
-For Mobile / Admin local demos. **Not for live school deploy.**
+**Not for live school deploy.** DEMO watermark stays on until Viren says go. Live / pilot remain HOLD.
 
-## Stack
+Designs STOP. Demos + API contract are the source of truth. Backend FastAPI under `app/` is untouched on this branch.
 
-- Python 3.12+
-- FastAPI + Pydantic v2 + PyJWT + uvicorn
-- In-memory store (re-seeded on process start)
-- CORS `*`
-- JWT Bearer auth
-- Error envelope: `{ "error": { "code", "message", "details?" } }`
+## Viren: click all three surfaces
 
-## Run
+Shared story: **Priya Sharma** (Parent, `+91 98220 11122`) → **Anita Joshi** (`H03`, Primary Coordinator) → **Main Gate** (`G-MAIN`) → pass **P-4F21** / visit `V-20260916-014`.
 
-```bash
-cd /workspace/satcop-smart-visitor-api
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8080
-```
+| # | Surface | Open |
+|---|---------|------|
+| 1 | **Gate kiosk** (Android tablet landscape) | Android Studio → **File → Open** `kiosk/` → Run `app` (CAMERA + INTERNET). Tablet AVD ~1280×800 if you have one. |
+| 2 | **Host approve** (phone ~390) | `cd host-web && python3 -m http.server 8767` → http://127.0.0.1:8767/ |
+| 3 | **Visitor QR** (read-only badge) | `cd visitor-qr && python3 -m http.server 8768` → http://127.0.0.1:8768/?passId=P-4F21 |
 
-- API base: `http://127.0.0.1:8080/v1`
-- OpenAPI: `http://127.0.0.1:8080/docs`
-- Health: `http://127.0.0.1:8080/health`
+Pills: cyan **LIVE mock** when the tunnel answers; amber **FIXTURES** when it does not. Demo still works offline.
 
-## Demo seed logins
+## Mock URL + seed logins
 
-School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEMO-01`
+API base (ephemeral Cloudflare tunnel):
 
-| Username   | Password  | Role           | Notes                          |
-|------------|-----------|----------------|--------------------------------|
-| `gate`     | `gate123` | gate           | Gate — Ramesh; all 4 gates     |
-| `host`     | `host123` | host           | Anita Joshi (H03)              |
-| `rahul`    | `host123` | host           | Rahul Deshpande (H02)          |
-| `admin`    | `admin123`| admin          | Office Admin                   |
-| `security` | `sh123`   | security_head  | Blacklist write + force        |
+`https://weed-pumps-laura-upc.trycloudflare.com/v1`
 
-### Seed highlights
+School: **Demo International School** · `SCH-DEMO-01` · TZ `Asia/Calcutta`
 
-- Gates: Main Gate, Pedestrian Gate, Staff Gate, Bus Bay
-- Staff includes **Anita Joshi** (`H03`)
-- Walkthrough pass: **Priya Sharma** → passId **`P-4F21`** → status `inside` (Main Gate)
-- Blacklist: `BL-01` Vikram More (Block), `BL-02` Neha Salunkhe (Alert)
-- Pending visit for host demo: `V-20260916-040` (host H03)
+| Username | Password | Role | Who |
+|----------|----------|------|-----|
+| `gate` | `gate123` | gate | Gate — Ramesh (all 4 gates) |
+| `host` | `host123` | host | Anita Joshi (`H03`) |
+| `admin` | `admin123` | admin | Office Admin (not needed for this demo) |
 
-## Auth matrix (MVP)
+Blacklist samples on the kiosk: **Block** Vikram More `9876500001` · **Alert** Neha Salunkhe `9876500002`.
 
-| Action                         | gate | host | admin | security_head |
-|--------------------------------|:----:|:----:|:-----:|:-------------:|
-| Create / check-in / out / scan | ✓    |      |       |               |
-| Approve / reject own + meeting-done | | ✓* | ✓ | ✓ |
-| Force checkout                 |      |      | ✓     | ✓             |
-| Staff POST/PATCH               |      |      | ✓     | ✓             |
-| Blacklist write                |      |      | view  | ✓             |
+## 90-second walkthrough
 
-\* Host scoped to `hostId == self.staffId`.
+1. **Kiosk** — Prefill sample → Continue → capture live photo (placeholder OK) + ID number → Submit. Status is `pending` (no QR until host). On FIXTURES tap **Demo host approve**. On LIVE leave it pending.
+2. **Host** (`8767`) — Pending tab: Approve (or Reject with a reason). Priya (inside) tab: **Meeting done** for the seed `inside` visit.
+3. **Kiosk step 4** — **Refresh** after live approve → SATCOP PASS box + **Check in** (`POST /v1/passes/scan` `check_in`) → **Check out**. Or **Load P-4F21 story**.
+4. **Visitor QR** (`8768`) — Read-only P-4F21 badge; QR encodes opaque `qrToken`. On FIXTURES tap the status banner to cycle pending → approved → inside → completed.
 
-## Curl happy-path (Priya already inside; new visitor lifecycle)
+## Build / tests (kiosk)
 
 ```bash
-BASE=http://127.0.0.1:8080/v1
-
-# 1) Login as gate
-TOKEN=$(curl -s -X POST "$BASE/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"gate","password":"gate123"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
-
-# 2) List gates + staff
-curl -s "$BASE/gates" -H "Authorization: Bearer $TOKEN" | python3 -m json.tool | head
-curl -s "$BASE/staff?active=true" -H "Authorization: Bearer $TOKEN" | python3 -m json.tool | head
-
-# 3) Upload stub photo
-MEDIA=$(curl -s -X POST "$BASE/media/upload" \
-  -H "Authorization: Bearer $TOKEN" \
-  -F 'file=@README.md;type=image/jpeg' \
-  -F 'kind=live_photo')
-KEY=$(echo "$MEDIA" | python3 -c 'import sys,json; print(json.load(sys.stdin)["key"])')
-
-# 4) Register visit
-VISIT=$(curl -s -X POST "$BASE/visits" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d "{\"visitorName\":\"Test Parent\",\"mobile\":\"9822099999\",\"visitorType\":\"Parent\",\"purpose\":\"Demo\",\"hostId\":\"H03\",\"livePhotoKey\":\"$KEY\",\"idType\":\"Aadhaar\",\"idNumber\":\"999988887777\",\"gateId\":\"G-MAIN\"}")
-VID=$(echo "$VISIT" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
-
-# 5) Host approve
-HTOKEN=$(curl -s -X POST "$BASE/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"host","password":"host123"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
-APPROVED=$(curl -s -X POST "$BASE/visits/$VID/approve" -H "Authorization: Bearer $HTOKEN")
-PASS=$(echo "$APPROVED" | python3 -c 'import sys,json; print(json.load(sys.stdin)["passId"])')
-
-# 6) Gate scan check-in + check-out
-curl -s -X POST "$BASE/passes/scan" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d "{\"passId\":\"$PASS\",\"action\":\"check_in\",\"gateId\":\"G-MAIN\"}"
-curl -s -X POST "$BASE/passes/scan" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d "{\"passId\":\"$PASS\",\"action\":\"check_out\"}"
-
-# Seed pass badge
-curl -s "$BASE/passes/P-4F21" -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
-```
-
-## Smoke tests
-
-```bash
-source .venv/bin/activate
-pytest -q
-# or
-bash scripts/smoke.sh
+cd kiosk
+./gradlew :app:assembleDebug :app:testDebugUnitTest
+# APK: app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ## Out of scope
 
-Priority P2 (pickup / access / blast), guard patrol, real S3/Postgres, production deploy.
+P2 pickup / access / blast, guard patrol, production or school SSO, inventing Aadhaar / real PII. Local FastAPI stub (`uvicorn app.main:app`) is the backend desk — Mobile does not change `app/`.

@@ -5,3 +5,12 @@ __pycache__/
 *.egg-info/
 .env
 .DS_Store
+
+# Android kiosk
+kiosk/.gradle/
+kiosk/.kotlin/
+kiosk/**/build/
+kiosk/local.properties
+kiosk/.idea/
+kiosk/*.iml
+kiosk/.cxx/
