@@ -10,7 +10,7 @@ from app.reporting import agg_by_gate, demo_today, validate_date_range, visitor_
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-@router.get("/today-by-gate", response_model=GateReportResponse)
+@router.get("/today-by-gate", response_model=GateReportResponse, response_model_exclude_none=True)
 def today_by_gate(user: dict = Depends(require_roles(Role.admin, Role.security_head, Role.gate))):
     today = demo_today()
     data = agg_by_gate(user["schoolId"], today, today)
@@ -26,7 +26,7 @@ def today_by_gate(user: dict = Depends(require_roles(Role.admin, Role.security_h
     )
 
 
-@router.get("/range-by-gate", response_model=GateReportResponse)
+@router.get("/range-by-gate", response_model=GateReportResponse, response_model_exclude_none=True)
 def range_by_gate(
     from_: str = Query(alias="from"),
     to: str = Query(...),
@@ -45,7 +45,7 @@ def range_by_gate(
     )
 
 
-@router.get("/visitor-type-mix", response_model=TypeMixResponse)
+@router.get("/visitor-type-mix", response_model=TypeMixResponse, response_model_exclude_none=True)
 def visitor_type_mix_report(
     from_: str = Query(alias="from"),
     to: str = Query(...),
