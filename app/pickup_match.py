@@ -158,6 +158,7 @@ def gate_prompt(
         )
     if status == "BlockedCustody":
         instruction = (flag.get("gateInstruction") or "").strip() or "restriction in force"
+        instruction = instruction.rstrip(".")
         return f"Custody restriction: {instruction}. Release blocked. Security Head alerted."
     if status in ("Released", "ReleasedWithOverride"):
         rel = f" ({relation})" if relation else ""
