@@ -135,6 +135,13 @@ export function todayByGate(token: string) {
   return apiRequest<ApiList<GateReport>>("/reports/today-by-gate", { token });
 }
 
+export function rangeByGate(token: string, from: string, to: string) {
+  return apiRequest<ApiList<GateReport>>(
+    `/reports/range-by-gate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    { token },
+  );
+}
+
 export function visitorTypeMix(token: string, from: string, to: string) {
   return apiRequest<ApiList<{ visitorType: string; count: number }>>(
     `/reports/visitor-type-mix?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,

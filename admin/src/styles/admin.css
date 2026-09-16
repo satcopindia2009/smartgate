@@ -745,6 +745,57 @@ body.admin-page,
   font-size: 12px;
 }
 
+.export-modal { max-width: 480px; }
+.scope-grid { display: grid; gap: 8px; margin: 14px 0 8px; }
+.scope-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+}
+.scope-option:hover { border-color: var(--purple); }
+.scope-option.active {
+  border-color: var(--purple);
+  background: var(--purple-dim);
+}
+.scope-option input { margin-top: 3px; accent-color: var(--purple); }
+.scope-option strong { display: block; font-size: 13px; margin-bottom: 2px; }
+.scope-option span { font-size: 11px; color: var(--text-muted); }
+.export-meta { font-size: 11px; color: var(--text-dim); margin-top: 8px; line-height: 1.4; }
+.audit-panel {
+  margin-top: 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+}
+.audit-panel h3 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.audit-list { display: flex; flex-direction: column; gap: 8px; max-height: 160px; overflow: auto; }
+.audit-row {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  line-height: 1.45;
+}
+.audit-row strong { color: var(--text); font-weight: 600; }
+.audit-empty { font-size: 12px; color: var(--text-dim); }
+
 @media (max-width: 800px) {
   .admin-page {
     flex-direction: column;

@@ -1,5 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { canWriteBlacklist, useAuth } from "../auth/AuthContext";
+import { useAudit } from "../components/AuditContext";
+import { ExportButton, ExportModal } from "../components/ExportModal";
 import { useToast } from "../components/Toast";
 import { createBlacklist, isNetworkError, listBlacklist, patchBlacklist } from "../lib/api";
 import { ID_TYPES } from "../lib/constants";
@@ -22,6 +24,8 @@ const emptyForm = {
 export function BlacklistPage() {
   const { token, user, source } = useAuth();
   const { showToast } = useToast();
+  const { pushAudit } = useAudit();
+  const [exportOpen, setExportOpen] = useState(false);
   const canWrite = canWriteBlacklist(user?.role);
   const [rows, setRows] = useState<BlacklistEntry[]>([]);
   const [usingFixtures, setUsingFixtures] = useState(source === "fixtures");
@@ -166,6 +170,7 @@ export function BlacklistPage() {
               + Add entry
             </button>
           )}
+          <ExportButton onClick={() => setExportOpen(true)} />
         </div>
       </div>
       <div className="board">
@@ -362,6 +367,47 @@ export function BlacklistPage() {
           </div>
         </div>
       )}
+      <ExportModal
+        open={exportOpen}
+        initialScope="blacklist"
+        onClose={() => setExportOpen(false)}
+        onAudit={pushAudit}
+        bundles={{
+          blacklist: {
+            headers: [
+              "id",
+              "name",
+              "mobile",
+              "idType",
+              "idNumber",
+              "reason",
+              "severity",
+              "active",
+              "addedBy",
+              "addedAt",
+              "expiresOn",
+              "notes",
+              "demo_watermark",
+            ],
+            rows: rows.map((b) => [
+              b.id,
+              b.name,
+              b.mobile,
+              b.idType,
+              maskGovtId(b.idNumber),
+              b.reason,
+              b.severity,
+              b.active ? "Y" : "N",
+              b.addedBy,
+              b.addedAt,
+              b.expiresOn,
+              b.notes,
+              "DEMO",
+            ]),
+            filter: "all blacklist entries",
+          },
+        }}
+      />
     </section>
   );
 }

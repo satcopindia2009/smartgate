@@ -21,8 +21,10 @@ Walkthrough story: **Priya Sharma** → pass **`P-4F21`** → **Main Gate** → 
 
 ### Stretch (included)
 
-- History (default today, filters, checkout type Force after force-checkout)
+- History (default today, host/gate/type/decision/checkout filters, 90-day max, checkout type Force after force-checkout)
 - Blacklist (view for Admin; write for Security Head)
+- Gates + Reports (today-by-gate, range-by-gate, type mix)
+- CSV export (history / inside / blacklist / daily gate summary) + demo audit row
 
 ### Out of this slice
 

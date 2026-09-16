@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { canForceCheckout, useAuth } from "../auth/AuthContext";
+import { useAudit } from "../components/AuditContext";
+import { ExportButton, ExportModal, type ExportScope } from "../components/ExportModal";
 import { ForceCheckoutModal } from "../components/ForceCheckoutModal";
 import { GateMultiSelect } from "../components/GateMultiSelect";
 import { IconSearch } from "../components/Icons";
@@ -30,6 +32,9 @@ import type { Gate, GateReport, LiveVisitor, Staff } from "../lib/types";
 export function LivePage() {
   const { token, user, source } = useAuth();
   const { showToast } = useToast();
+  const { pushAudit } = useAudit();
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<ExportScope>("inside");
   const [clock, setClock] = useState(formatClock);
   const [nowMs, setNowMs] = useState(Date.now());
   const [gates, setGates] = useState<Gate[]>([]);
@@ -233,6 +238,12 @@ export function LivePage() {
           <option value="overdue">Overdue only</option>
           <option value="blacklist">Blacklist flag</option>
         </select>
+        <ExportButton
+          onClick={() => {
+            setExportScope("inside");
+            setExportOpen(true);
+          }}
+        />
       </div>
 
       <div className="board">
@@ -325,6 +336,45 @@ export function LivePage() {
         busy={busy}
         onCancel={() => setForceTarget(null)}
         onConfirm={(reason) => void confirmForce(reason)}
+      />
+      <ExportModal
+        open={exportOpen}
+        initialScope={exportScope}
+        onClose={() => setExportOpen(false)}
+        onAudit={pushAudit}
+        bundles={{
+          inside: {
+            headers: [
+              "visitId",
+              "name",
+              "type",
+              "mobile",
+              "host",
+              "purpose",
+              "gate",
+              "timeIn",
+              "passId",
+              "blacklistHit",
+              "demo_watermark",
+            ],
+            rows: filtered.map((v) => [
+              v.visitId,
+              v.name,
+              v.type,
+              v.mobile,
+              v.host,
+              v.purpose,
+              v.gate,
+              v.timeIn,
+              v.passId,
+              v.blacklistHit ? "Y" : "N",
+              "DEMO",
+            ]),
+            filter: [type && `type=${type}`, hostId && `host=${hostId}`, flag && `flag=${flag}`, q && `q=${q}`]
+              .filter(Boolean)
+              .join(", ") || "all currently inside",
+          },
+        }}
       />
     </section>
   );

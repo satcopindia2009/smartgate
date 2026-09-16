@@ -15,7 +15,7 @@
 7. Force checkout with required reason → `POST /visits/{id}/force-checkout`
 8. Directory: `GET /gates`, `GET /staff?active=true`
 9. Default API tunnel: `https://weed-pumps-laura-upc.trycloudflare.com/v1` (fixtures fallback if it drops)
-10. Stretch: History + Blacklist (SH write)
+10. History + Blacklist (SH write) + Gates/Reports + CSV export (4 scopes)
 11. Multi-gate enums: Main Gate, Pedestrian Gate, Staff Gate, Bus Bay
 
 ## Walkthrough
@@ -24,4 +24,4 @@ Priya Sharma is inside at Main Gate, pass `P-4F21`, host Anita Joshi (Primary Co
 
 ## Out
 
-Blast, pickup/custody, access-rules. CSV export UI not in Day-1.
+Blast, pickup/custody, access-rules. `kiosk/` and Mobile paths untouched.

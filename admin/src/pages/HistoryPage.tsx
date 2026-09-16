@@ -1,17 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { useAudit } from "../components/AuditContext";
+import { ExportButton, ExportModal } from "../components/ExportModal";
 import { IconSearch } from "../components/Icons";
+import { useToast } from "../components/Toast";
 import { isNetworkError, listGates, listStaff, listVisits } from "../lib/api";
 import { GATE_ENUMS, VISITOR_TYPES } from "../lib/constants";
-import { fixtureGates, getFixtureSession, loadFixtures } from "../lib/fixtures";
+import { fixtureGates, fixtureStaff, getFixtureSession, loadFixtures } from "../lib/fixtures";
 import { avatarClass, formatDateTime, formatDurationMin, formatMobile, initials, todayIso, typeClass } from "../lib/format";
 import { toHistoryVisit } from "../lib/mapVisit";
 import type { Gate, HistoryVisit, Staff } from "../lib/types";
 
 export function HistoryPage() {
   const { token, source } = useAuth();
+  const { pushAudit } = useAudit();
+  const { showToast } = useToast();
   const [rows, setRows] = useState<HistoryVisit[]>([]);
   const [gates, setGates] = useState<Gate[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [hostId, setHostId] = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
   const [q, setQ] = useState("");
   const [gate, setGate] = useState("");
   const [type, setType] = useState("");
@@ -25,11 +33,18 @@ export function HistoryPage() {
   const [usingFixtures, setUsingFixtures] = useState(source === "fixtures");
 
   const load = useCallback(async () => {
-    await loadFixtures();
+    const fx = await loadFixtures();
     const gLocal = fixtureGates();
+    const span =
+      (new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000;
+    if (span > 90) {
+      showToast("Date range max 90 days", "warning");
+      return;
+    }
     if (source === "fixtures" || !token || token.startsWith("fixture:")) {
       const sess = await getFixtureSession();
       setGates(gLocal);
+      setStaff(fixtureStaff(fx));
       setRows(sess.history);
       setUsingFixtures(true);
       return;
@@ -41,6 +56,7 @@ export function HistoryPage() {
         listVisits(token, { dateFrom, dateTo }),
       ]);
       setGates(g.data);
+      setStaff(s.data);
       setRows(visits.data.map((v) => toHistoryVisit(v, g.data, s.data as Staff[])));
       setUsingFixtures(false);
     } catch (err) {
@@ -52,7 +68,7 @@ export function HistoryPage() {
         /* fallback anyway */
       }
     }
-  }, [source, token, dateFrom, dateTo]);
+  }, [source, token, dateFrom, dateTo, showToast]);
 
   useEffect(() => {
     void load();
@@ -69,6 +85,10 @@ export function HistoryPage() {
           const d = (h.timeIn || h.decisionAt || "").slice(0, 10);
           if (d && d > dateTo) return false;
         }
+        if (hostId) {
+          const hostName = staff.find((s) => s.id === hostId)?.name;
+          if (hostName && h.host !== hostName && !h.host.startsWith(hostName)) return false;
+        }
         if (type && h.type !== type) return false;
         if (gate && h.gateIn !== gate && h.gateOut !== gate) return false;
         if (decision && h.decision !== decision) return false;
@@ -83,7 +103,7 @@ export function HistoryPage() {
         return true;
       })
       .sort((a, b) => String(b.timeIn || b.decisionAt || "").localeCompare(String(a.timeIn || a.decisionAt || "")));
-  }, [rows, usingFixtures, dateFrom, dateTo, type, gate, decision, checkout, bl, q]);
+  }, [rows, usingFixtures, dateFrom, dateTo, type, gate, hostId, staff, decision, checkout, bl, q]);
 
   return (
     <section className="view active">
@@ -117,6 +137,16 @@ export function HistoryPage() {
             </option>
           ))}
         </select>
+        <select value={hostId} onChange={(e) => setHostId(e.target.value)} aria-label="Host">
+          <option value="">All hosts</option>
+          {staff
+            .filter((s) => s.id.startsWith("H"))
+            .map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name}
+              </option>
+            ))}
+        </select>
         <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Type">
           <option value="">All types</option>
           {VISITOR_TYPES.map((t) => (
@@ -141,6 +171,7 @@ export function HistoryPage() {
           <option value="">Any blacklist</option>
           <option value="1">Blacklist hit only</option>
         </select>
+        <ExportButton onClick={() => setExportOpen(true)} />
       </div>
       <div className="board">
         <table>
@@ -235,6 +266,56 @@ export function HistoryPage() {
           </tbody>
         </table>
       </div>
+      <ExportModal
+        open={exportOpen}
+        initialScope="history"
+        onClose={() => setExportOpen(false)}
+        onAudit={pushAudit}
+        bundles={{
+          history: {
+            headers: [
+              "visitId",
+              "name",
+              "mobile",
+              "type",
+              "purpose",
+              "host",
+              "decision",
+              "gateIn",
+              "timeIn",
+              "gateOut",
+              "timeOut",
+              "checkoutType",
+              "durationMin",
+              "blacklistHit",
+              "notes",
+              "demo_watermark",
+            ],
+            rows: filtered.map((h) => [
+              h.visitId,
+              h.name,
+              h.mobile,
+              h.type,
+              h.purpose,
+              h.host,
+              h.decision,
+              h.gateIn,
+              h.timeIn,
+              h.gateOut,
+              h.timeOut,
+              h.checkoutType,
+              h.durationMin,
+              h.blacklistHit ? "Y" : "N",
+              h.notes,
+              "DEMO",
+            ]),
+            filter:
+              [gate && `gate=${gate}`, type && `type=${type}`, decision && `decision=${decision}`, checkout && `checkout=${checkout}`, q && `q=${q}`]
+                .filter(Boolean)
+                .join(", ") || "all history (no filters)",
+          },
+        }}
+      />
     </section>
   );
 }
