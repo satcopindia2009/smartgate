@@ -1,29 +1,7 @@
-"""Smoke tests for MVP Wave 1–2 stub."""
+"""Smoke tests for MVP stub happy paths."""
 from __future__ import annotations
 
-import pytest
-from fastapi.testclient import TestClient
-
-from app.main import app
-from app.seed import seed
-
-
-@pytest.fixture(autouse=True)
-def _reseed():
-    seed()
-    yield
-
-
-@pytest.fixture
-def client():
-    with TestClient(app) as c:
-        yield c
-
-
-def _login(client: TestClient, username: str, password: str) -> str:
-    r = client.post("/v1/auth/login", json={"username": username, "password": password})
-    assert r.status_code == 200, r.text
-    return r.json()["accessToken"]
+from tests.conftest import login
 
 
 def test_health(client):
@@ -33,7 +11,7 @@ def test_health(client):
 
 
 def test_login_me_and_gates(client):
-    token = _login(client, "gate", "gate123")
+    token = login(client, "gate", "gate123")
     me = client.get("/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
     assert me.json()["role"] == "gate"
@@ -44,7 +22,7 @@ def test_login_me_and_gates(client):
 
 
 def test_priya_pass_seed(client):
-    token = _login(client, "gate", "gate123")
+    token = login(client, "gate", "gate123")
     r = client.get("/v1/passes/P-4F21", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
     body = r.json()
@@ -54,8 +32,8 @@ def test_priya_pass_seed(client):
 
 
 def test_visit_lifecycle(client):
-    gtoken = _login(client, "gate", "gate123")
-    htoken = _login(client, "host", "host123")
+    gtoken = login(client, "gate", "gate123")
+    htoken = login(client, "host", "host123")
 
     up = client.post(
         "/v1/media/upload",
@@ -117,8 +95,8 @@ def test_visit_lifecycle(client):
 
 
 def test_host_cannot_approve_others(client):
-    gtoken = _login(client, "gate", "gate123")
-    htoken = _login(client, "host", "host123")  # H03
+    gtoken = login(client, "gate", "gate123")
+    htoken = login(client, "host", "host123")  # H03
     create = client.post(
         "/v1/visits",
         headers={"Authorization": f"Bearer {gtoken}"},
@@ -140,8 +118,8 @@ def test_host_cannot_approve_others(client):
 
 
 def test_blacklist_block_and_match(client):
-    gtoken = _login(client, "gate", "gate123")
-    stoken = _login(client, "security", "sh123")
+    gtoken = login(client, "gate", "gate123")
+    stoken = login(client, "security", "sh123")
 
     m = client.post(
         "/v1/blacklist/match",
@@ -180,7 +158,7 @@ def test_blacklist_block_and_match(client):
 
 
 def test_force_checkout_admin(client):
-    atoken = _login(client, "admin", "admin123")
+    atoken = login(client, "admin", "admin123")
     # Arjun is inside
     r = client.post(
         "/v1/visits/V-20260916-021/force-checkout",
@@ -193,7 +171,7 @@ def test_force_checkout_admin(client):
 
 
 def test_staff_admin_only(client):
-    gtoken = _login(client, "gate", "gate123")
+    gtoken = login(client, "gate", "gate123")
     deny = client.post(
         "/v1/staff",
         headers={"Authorization": f"Bearer {gtoken}"},
@@ -201,7 +179,7 @@ def test_staff_admin_only(client):
     )
     assert deny.status_code == 403
 
-    atoken = _login(client, "admin", "admin123")
+    atoken = login(client, "admin", "admin123")
     ok = client.post(
         "/v1/staff",
         headers={"Authorization": f"Bearer {atoken}"},
@@ -221,7 +199,7 @@ def test_error_envelope(client):
 
 
 def test_inside_board(client):
-    token = _login(client, "admin", "admin123")
+    token = login(client, "admin", "admin123")
     r = client.get("/v1/visits/inside", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
     ids = {v["id"] for v in r.json()["data"]}

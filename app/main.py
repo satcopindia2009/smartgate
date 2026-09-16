@@ -4,9 +4,15 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.errors import AppError, app_error_handler, unhandled_error_handler
+from app.errors import (
+    AppError,
+    app_error_handler,
+    unhandled_error_handler,
+    validation_error_handler,
+)
 from app.seed import seed
 from app.routers import (
     auth,
@@ -30,8 +36,12 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="Satcop Smart Visitor API",
-    version="0.1.0",
-    description="MVP Wave 1–2 in-memory stub for Mobile/Admin demos. Demo watermark; no production deploy.",
+    version="0.2.0",
+    description=(
+        "MVP FastAPI stub for Mobile/Admin showable demos. "
+        "Contract §§0–5 field names + visit state machine. "
+        "Demo watermark; no production / live-school deploy."
+    ),
     lifespan=lifespan,
 )
 
@@ -44,6 +54,7 @@ app.add_middleware(
 )
 
 app.add_exception_handler(AppError, app_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
 app.add_exception_handler(Exception, unhandled_error_handler)
 
 app.include_router(auth.router, prefix="/v1")

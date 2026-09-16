@@ -1,11 +1,10 @@
 """Pydantic v2 models — field names locked to API contract."""
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Role(str, Enum):
@@ -66,14 +65,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class LoginResponse(BaseModel):
-    accessToken: str
-    tokenType: str = "Bearer"
-    expiresIn: int
-    user: dict
-
-
-class MeResponse(BaseModel):
+class UserPublic(BaseModel):
     id: str
     schoolId: str
     role: Role
@@ -82,6 +74,18 @@ class MeResponse(BaseModel):
     displayName: str
     phone: Optional[str] = None
     email: Optional[str] = None
+
+
+class LoginResponse(BaseModel):
+    accessToken: str
+    tokenType: str = "Bearer"
+    expiresIn: int
+    user: UserPublic
+    meta: Optional[dict] = None
+
+
+class MeResponse(UserPublic):
+    meta: Optional[dict] = None
 
 
 # --- Directory ---
@@ -126,39 +130,60 @@ class StaffPatch(BaseModel):
 class MediaUploadResponse(BaseModel):
     key: str
     url: str
+    meta: Optional[dict] = None
 
 
 # --- Visits ---
 
 
 class VisitCreate(BaseModel):
-    visitorName: str
-    mobile: str
+    visitorName: str = Field(min_length=1)
+    mobile: str = Field(min_length=1)
     visitorType: VisitorType
-    purpose: str
-    hostId: str
-    livePhotoKey: str
+    purpose: str = Field(min_length=1)
+    hostId: str = Field(min_length=1)
+    livePhotoKey: str = Field(min_length=1)
     idType: IdType
     idNumber: Optional[str] = None
     idImageKey: Optional[str] = None
     vehicleNumber: Optional[str] = None
-    accompanyingCount: Optional[int] = None
+    accompanyingCount: Optional[int] = Field(default=None, ge=0)
     notes: Optional[str] = None
     signatureKey: Optional[str] = None
-    gateId: str
+    gateId: str = Field(min_length=1)
     blacklistOverride: bool = False
 
+    @field_validator("visitorName", "purpose", "hostId", "livePhotoKey", "gateId")
+    @classmethod
+    def strip_required(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be empty")
+        return v
 
-class RejectBody(BaseModel):
+
+class ReasonBody(BaseModel):
     reason: str = Field(min_length=1)
+
+    @field_validator("reason")
+    @classmethod
+    def reason_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("reason is required")
+        return v
+
+
+class RejectBody(ReasonBody):
+    pass
 
 
 class CheckInBody(BaseModel):
     gateId: Optional[str] = None
 
 
-class ForceCheckoutBody(BaseModel):
-    reason: str = Field(min_length=1)
+class ForceCheckoutBody(ReasonBody):
+    pass
 
 
 class VisitOut(BaseModel):
@@ -209,6 +234,16 @@ class PassScanBody(BaseModel):
     passId: Optional[str] = None
     action: Literal["check_in", "check_out"]
     gateId: Optional[str] = None
+
+    @model_validator(mode="after")
+    def token_or_pass_id(self) -> "PassScanBody":
+        token = (self.token or "").strip() or None
+        pass_id = (self.passId or "").strip() or None
+        self.token = token
+        self.passId = pass_id
+        if not token and not pass_id:
+            raise ValueError("token or passId required")
+        return self
 
 
 class PassOut(BaseModel):

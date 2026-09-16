@@ -515,6 +515,60 @@ def seed() -> None:
         }
     )
 
+    # Approved, not yet inside — pass scan check-in walkthrough
+    ready_token = gen_qr_token()
+    store.put_visit(
+        {
+            "id": "V-20260916-041",
+            "schoolId": SCHOOL_ID,
+            "visitorName": "Kiran Desai",
+            "mobile": "9811223344",
+            "visitorType": "Guest",
+            "purpose": "Approved — ready for Main Gate scan",
+            "hostId": "H03",
+            "livePhotoKey": "media/live_photo/priya",
+            "idType": "Voter",
+            "idNumber": "MH/99/0000001",
+            "idImageKey": None,
+            "vehicleNumber": None,
+            "accompanyingCount": 0,
+            "notes": "",
+            "signatureKey": None,
+            "gateId": "G-MAIN",
+            "registeredByUserId": "U-GATE",
+            "status": "approved",
+            "rejectReason": None,
+            "decidedAt": "2026-09-16T14:40:00+05:30",
+            "decidedByUserId": "U-HOST",
+            "passId": "P-C101",
+            "qrToken": ready_token,
+            "timeIn": None,
+            "timeOut": None,
+            "gateInId": None,
+            "gateOutId": None,
+            "checkoutType": None,
+            "forceCheckoutReason": None,
+            "forceCheckoutByUserId": None,
+            "blacklistHit": False,
+            "blacklistId": None,
+            "blacklistOverrideByUserId": None,
+            "meetingDoneAt": None,
+            "createdAt": "2026-09-16T14:35:00+05:30",
+            "updatedAt": "2026-09-16T14:40:00+05:30",
+        }
+    )
+    store.put_pass(
+        {
+            "passId": "P-C101",
+            "token": ready_token,
+            "visitId": "V-20260916-041",
+            "schoolId": SCHOOL_ID,
+            "issuedAt": "2026-09-16T14:40:00+05:30",
+            "expiresAt": None,
+            "revoked": False,
+        }
+    )
+
     # Pending visit for host approve walkthrough (extra)
     store.put_visit(
         {

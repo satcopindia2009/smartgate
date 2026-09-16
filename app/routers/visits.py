@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 
-from app.auth import CurrentUser, require_roles
+from app.auth import CurrentUser, assert_gate_allowed, require_roles
 from app.config import SCHOOL_TZ, WATERMARK
 from app.errors import AppError
 from app.models import (
@@ -20,7 +20,6 @@ from app.util import (
     gen_pass_id,
     gen_qr_token,
     gen_visit_id,
-    normalize_id,
     normalize_mobile,
     now_iso,
     parse_iso,
@@ -83,6 +82,47 @@ def _require_id_fields(body: VisitCreate) -> None:
             "VALIDATION",
             "One of idNumber or idImageKey is required",
             400,
+        )
+
+
+def _require_media_key(key: Optional[str], school_id: str, field: str) -> None:
+    if not key:
+        return
+    media = store.get_media(key)
+    if not media or media.get("schoolId") != school_id:
+        raise AppError("VALIDATION", f"Unknown {field}", 400, {"key": key})
+
+
+def _require_active_gate(gate_id: str, school_id: str) -> dict:
+    gate = store.get_gate(gate_id)
+    if not gate or gate.get("schoolId") != school_id:
+        raise AppError("VALIDATION", f"Unknown gateId {gate_id}", 400)
+    if not gate.get("active", True):
+        raise AppError("VALIDATION", f"Gate {gate_id} is inactive", 400)
+    return gate
+
+
+def _require_active_host(host_id: str, school_id: str) -> dict:
+    staff = store.get_staff(host_id)
+    if not staff or staff.get("schoolId") != school_id:
+        raise AppError("VALIDATION", f"Unknown hostId {host_id}", 400)
+    if not staff.get("active", True):
+        raise AppError("VALIDATION", f"Host {host_id} is inactive", 400)
+    return staff
+
+
+def _block_without_override(visit: dict, action: str) -> None:
+    if not visit.get("blacklistHit") or not visit.get("blacklistId"):
+        return
+    if visit.get("blacklistOverrideByUserId"):
+        return
+    bl = store.get_blacklist(visit["blacklistId"])
+    if bl and bl.get("severity") == "Block":
+        raise AppError(
+            "BLACKLIST_BLOCK",
+            f"Cannot {action} Block hit without security_head override on visit",
+            403,
+            {"blacklistId": bl["id"], "severity": bl.get("severity")},
         )
 
 
@@ -214,17 +254,23 @@ def get_visit(visit_id: str, user: CurrentUser):
 @router.post("")
 def create_visit(
     body: VisitCreate,
-    user: dict = Depends(require_roles(Role.gate)),
+    user: dict = Depends(require_roles(Role.gate, Role.security_head)),
 ):
     _require_id_fields(body)
-    if not store.get_gate(body.gateId):
-        raise AppError("VALIDATION", f"Unknown gateId {body.gateId}", 400)
-    if not store.get_staff(body.hostId):
-        raise AppError("VALIDATION", f"Unknown hostId {body.hostId}", 400)
+    _require_active_gate(body.gateId, user["schoolId"])
+    _require_active_host(body.hostId, user["schoolId"])
+    assert_gate_allowed(user, body.gateId)
+    _require_media_key(body.livePhotoKey, user["schoolId"], "livePhotoKey")
+    _require_media_key(body.idImageKey, user["schoolId"], "idImageKey")
+    _require_media_key(body.signatureKey, user["schoolId"], "signatureKey")
 
     mobile = normalize_mobile(body.mobile)
     if not mobile:
-        raise AppError("VALIDATION", "Invalid mobile", 400)
+        raise AppError(
+            "VALIDATION",
+            "Invalid mobile — expected IN 10-digit or E.164",
+            400,
+        )
 
     hit = match_blacklist_internal(
         user["schoolId"], mobile, body.idType.value if body.idType else None, body.idNumber
@@ -239,8 +285,6 @@ def create_visit(
         )
     if hit and hit["severity"] == "Block" and body.blacklistOverride:
         if user["role"] != "security_head":
-            # Gate cannot self-override Block; SH must approve separately.
-            # For MVP stub: allow only if caller is SH — gate must not set override alone.
             raise AppError(
                 "FORBIDDEN",
                 "Blacklist Block override requires security_head",
@@ -310,15 +354,7 @@ def approve_visit(
     if v["status"] != "pending":
         raise AppError("INVALID_STATE", f"Cannot approve from status {v['status']}", 409)
 
-    # Block without override cannot leave pending into pass issuance
-    if v.get("blacklistHit") and v.get("blacklistId"):
-        bl = store.get_blacklist(v["blacklistId"])
-        if bl and bl.get("severity") == "Block" and not v.get("blacklistOverrideByUserId"):
-            raise AppError(
-                "BLACKLIST_BLOCK",
-                "Cannot approve Block hit without security_head override on visit",
-                403,
-            )
+    _block_without_override(v, "approve")
 
     ts = now_iso()
     pass_id = gen_pass_id()
@@ -366,6 +402,11 @@ def reject_visit(
     v["decidedByUserId"] = user["id"]
     v["checkoutType"] = "never"
     v["updatedAt"] = ts
+    if v.get("passId"):
+        p = store.get_pass(v["passId"])
+        if p:
+            p["revoked"] = True
+            store.put_pass(p)
     store.put_visit(v)
     _emit("visit.rejected", v, {"reason": body.reason})
     return _meta_visit(v)
@@ -386,13 +427,10 @@ def _do_check_in(visit_id: str, user: dict, gate_id: Optional[str] = None) -> di
         raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
     if v["status"] != "approved":
         raise AppError("INVALID_STATE", f"Cannot check-in from status {v['status']}", 409)
-    if v.get("blacklistHit") and v.get("blacklistId"):
-        bl = store.get_blacklist(v["blacklistId"])
-        if bl and bl.get("severity") == "Block" and not v.get("blacklistOverrideByUserId"):
-            raise AppError("BLACKLIST_BLOCK", "Block hit — check-in denied", 403)
+    _block_without_override(v, "check-in")
     gid = gate_id or v["gateId"]
-    if not store.get_gate(gid):
-        raise AppError("VALIDATION", f"Unknown gateId {gid}", 400)
+    _require_active_gate(gid, user["schoolId"])
+    assert_gate_allowed(user, gid)
     ts = now_iso()
     v["status"] = "inside"
     v["timeIn"] = ts
@@ -418,6 +456,8 @@ def _do_check_out(visit_id: str, user: dict, gate_id: Optional[str] = None) -> d
     if v["status"] != "inside":
         raise AppError("INVALID_STATE", f"Cannot check-out from status {v['status']}", 409)
     gid = gate_id or v.get("gateInId") or v["gateId"]
+    _require_active_gate(gid, user["schoolId"])
+    assert_gate_allowed(user, gid)
     ts = now_iso()
     v["status"] = "completed"
     v["timeOut"] = ts

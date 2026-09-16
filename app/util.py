@@ -24,7 +24,7 @@ def normalize_mobile(mobile: str | None) -> str | None:
         digits = digits[2:]
     if len(digits) == 10:
         return digits
-    return digits or None
+    return None
 
 
 def normalize_id(id_number: str | None) -> str | None:
