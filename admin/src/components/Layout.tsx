@@ -48,7 +48,7 @@ export function Layout() {
             Sign out
           </button>
         </div>
-        <div className="sidebar-foot">Day-1 MVP + P2 pickup / after-hours · no live school</div>
+        <div className="sidebar-foot">Day-1 MVP + P2 pickup / after-hours / blast · no live school</div>
       </aside>
       <main className="main">
         <AuditProvider>

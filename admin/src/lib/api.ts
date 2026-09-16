@@ -16,6 +16,10 @@ import type {
   HolidayEntry,
   ZoneLabel,
   EscortZoneRule,
+  SchoolBlastConfig,
+  BlastTemplate,
+  BlastPreview,
+  EmergencyBlast,
 } from "./types";
 
 export class ApiError extends Error {
@@ -353,4 +357,59 @@ export function listPickups(
   params: Record<string, string | boolean | undefined> = {},
 ) {
   return apiRequest<ApiList<PickupEvent>>(`/pickups${querySuffix(params)}`, { token });
+}
+
+export function getBlastConfig(token: string) {
+  return apiRequest<SchoolBlastConfig>("/schools/me/blast-config", { token });
+}
+
+export async function listBlastTemplates(token: string, active?: boolean) {
+  const q = active === undefined ? "" : `?active=${active}`;
+  const res = await apiRequest<ApiList<BlastTemplate> | BlastTemplate[]>(
+    `/emergency/blast-templates${q}`,
+    { token },
+  );
+  return asList<BlastTemplate>(res);
+}
+
+export function previewBlast(token: string, templateId?: string) {
+  const q = templateId ? `?templateId=${encodeURIComponent(templateId)}` : "";
+  return apiRequest<BlastPreview>(`/emergency/blasts/preview${q}`, { token });
+}
+
+export function postBlast(
+  token: string,
+  body: {
+    templateId: string;
+    confirm?: boolean | null;
+    mode?: "preview" | "pending_confirm" | null;
+    instruction?: string | null;
+  },
+) {
+  return apiRequest<BlastPreview | EmergencyBlast>("/emergency/blasts", {
+    method: "POST",
+    token,
+    body: JSON.stringify(body),
+  });
+}
+
+export function getBlast(token: string, blastId: string) {
+  return apiRequest<EmergencyBlast>(`/emergency/blasts/${encodeURIComponent(blastId)}`, {
+    token,
+  });
+}
+
+export function confirmBlastApi(token: string, blastId: string) {
+  return apiRequest<EmergencyBlast>(`/emergency/blasts/${encodeURIComponent(blastId)}/confirm`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ confirm: true }),
+  });
+}
+
+export function retryFailedBlast(token: string, blastId: string) {
+  return apiRequest<EmergencyBlast>(
+    `/emergency/blasts/${encodeURIComponent(blastId)}/retry-failed`,
+    { method: "POST", token },
+  );
 }

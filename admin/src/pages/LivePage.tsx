@@ -1,15 +1,51 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { canForceCheckout, useAuth } from "../auth/AuthContext";
+import { canForceCheckout, canTriggerBlast, useAuth } from "../auth/AuthContext";
 import { useAudit } from "../components/AuditContext";
+import { EmergencyBlastModal } from "../components/EmergencyBlastModal";
 import { ExportButton, ExportModal, type ExportScope } from "../components/ExportModal";
 import { ForceCheckoutModal } from "../components/ForceCheckoutModal";
 import { GateMultiSelect } from "../components/GateMultiSelect";
-import { IconSearch } from "../components/Icons";
+import { IconBlast, IconSearch } from "../components/Icons";
 import { useToast } from "../components/Toast";
-import { forceCheckoutApi, isNetworkError, listGates, listInside, listStaff, listVisits, todayByGate } from "../lib/api";
+import {
+  ApiError,
+  confirmBlastApi,
+  forceCheckoutApi,
+  getBlast,
+  getBlastConfig,
+  isNetworkError,
+  listBlastTemplates,
+  listGates,
+  listInside,
+  listStaff,
+  listVisits,
+  postBlast,
+  previewBlast,
+  retryFailedBlast,
+  todayByGate,
+} from "../lib/api";
 import { matchesAfterHoursFlag, policyTriggerLabel } from "../lib/afterHours";
+import {
+  blastIdOf,
+  confirmBlastLocal,
+  countsLabel,
+  getBlastLocal,
+  latestBlastLocal,
+  listActiveTemplates,
+  previewFromInside,
+  retryFailedLocal,
+  seedBlastConfig,
+  SEED_TEMPLATES,
+} from "../lib/blast";
 import { escortCell, formatAllowedZones } from "../lib/escort";
-import { LIVE_REFRESH_MS, OVERDUE_HOURS_DEFAULT, SCHOOL_NAME, VISITOR_TYPES } from "../lib/constants";
+import {
+  BLAST_INSTRUCTION_MAX,
+  LIVE_REFRESH_MS,
+  OVERDUE_HOURS_DEFAULT,
+  SCHOOL_NAME,
+  SEED_BLAST_ID,
+  VISITOR_TYPES,
+} from "../lib/constants";
 import {
   applyForceCheckoutLocal,
   fixtureGates,
@@ -30,7 +66,16 @@ import {
   typeClass,
 } from "../lib/format";
 import { matchesLiveSearch, mergeVisitsById, toHistoryVisit, toLiveVisitor } from "../lib/mapVisit";
-import type { Gate, GateReport, HistoryVisit, LiveVisitor, Staff } from "../lib/types";
+import type {
+  BlastPreview,
+  BlastTemplate,
+  EmergencyBlast,
+  Gate,
+  GateReport,
+  HistoryVisit,
+  LiveVisitor,
+  Staff,
+} from "../lib/types";
 
 export function LivePage() {
   const { token, user, source } = useAuth();
@@ -55,6 +100,19 @@ export function LivePage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [forceTarget, setForceTarget] = useState<LiveVisitor | null>(null);
   const [busy, setBusy] = useState(false);
+  const [blastEnabled, setBlastEnabled] = useState(false);
+  const [lastBlast, setLastBlast] = useState<EmergencyBlast | null>(null);
+  const [blastOpen, setBlastOpen] = useState(false);
+  const [blastStage, setBlastStage] = useState<"confirm" | "results">("confirm");
+  const [blastTemplates, setBlastTemplates] = useState<BlastTemplate[]>(SEED_TEMPLATES);
+  const [blastPreview, setBlastPreview] = useState<BlastPreview | null>(null);
+  const [blastTemplateId, setBlastTemplateId] = useState("tpl_evac_assembly");
+  const [blastInstruction, setBlastInstruction] = useState("");
+  const [blastConfirmed, setBlastConfirmed] = useState(false);
+  const [blastBusy, setBlastBusy] = useState(false);
+  const [blastLoadError, setBlastLoadError] = useState<string | null>(null);
+  const [resultBlast, setResultBlast] = useState<EmergencyBlast | null>(null);
+  const canBlast = canTriggerBlast(user?.role);
 
   const refresh = useCallback(async () => {
     const fx = await loadFixtures();
@@ -66,6 +124,8 @@ export function LivePage() {
       setPendingAh(sess.history.filter((h) => h.afterHours && h.decision === "Pending"));
       setReports(fixtureReports(fx));
       setUsingFixtures(true);
+      setBlastEnabled(seedBlastConfig().emergencyBlastEnabled);
+      setLastBlast((prev) => prev ?? latestBlastLocal());
       setLoading(false);
       return;
     }
@@ -88,6 +148,19 @@ export function LivePage() {
       setPendingAh(pendingMerged);
       setReports(rep.data.length ? rep.data : fixtureReports(fx));
       setUsingFixtures(false);
+      try {
+        const cfg = await getBlastConfig(token);
+        setBlastEnabled(Boolean(cfg.emergencyBlastEnabled));
+        if (cfg.emergencyBlastEnabled) {
+          const seeded = await getBlast(token, SEED_BLAST_ID).catch(() => null);
+          setLastBlast((prev) => prev ?? seeded);
+        } else {
+          setLastBlast((prev) => prev ?? null);
+        }
+      } catch {
+        setBlastEnabled(seedBlastConfig().emergencyBlastEnabled);
+        setLastBlast(latestBlastLocal());
+      }
     } catch (err) {
       const sess = await getFixtureSession();
       setGates(fixtureGates());
@@ -96,6 +169,8 @@ export function LivePage() {
       setPendingAh(sess.history.filter((h) => h.afterHours && h.decision === "Pending"));
       setReports(fixtureReports(fx));
       setUsingFixtures(true);
+      setBlastEnabled(seedBlastConfig().emergencyBlastEnabled);
+      setLastBlast((prev) => prev ?? latestBlastLocal());
       if (isNetworkError(err)) {
         /* silent fallback */
       }
@@ -187,6 +262,194 @@ export function LivePage() {
     }
   }
 
+  const useLocalBlast =
+    usingFixtures || source === "fixtures" || !token || Boolean(token?.startsWith("fixture:"));
+
+  async function loadBlastConfirm(templateId: string) {
+    setBlastLoadError(null);
+    const localInside = rows;
+    if (useLocalBlast) {
+      const templates = listActiveTemplates();
+      setBlastTemplates(templates);
+      const tpl = templates.find((t) => t.id === templateId) || templates[0] || null;
+      setBlastPreview(previewFromInside(localInside, tpl));
+      return;
+    }
+    try {
+      const [cfg, listed, preview] = await Promise.all([
+        getBlastConfig(token!),
+        listBlastTemplates(token!, true),
+        previewBlast(token!, templateId),
+      ]);
+      if (!cfg.emergencyBlastEnabled) {
+        setBlastEnabled(false);
+        setBlastLoadError("Emergency blast is not enabled for this school");
+        return;
+      }
+      const templates = listActiveTemplates(listed.data.length ? listed.data : SEED_TEMPLATES);
+      setBlastTemplates(templates);
+      setBlastPreview(preview);
+    } catch (err) {
+      const templates = listActiveTemplates();
+      setBlastTemplates(templates);
+      const tpl = templates.find((t) => t.id === templateId) || templates[0] || null;
+      setBlastPreview(previewFromInside(localInside, tpl));
+      if (err instanceof ApiError && err.status === 404) {
+        setBlastEnabled(false);
+        setBlastLoadError("Emergency blast is not enabled");
+        return;
+      }
+      if (err instanceof ApiError && !isNetworkError(err)) {
+        setBlastLoadError(err.message);
+      }
+    }
+  }
+
+  function openBlastConfirm() {
+    if (!canBlast) {
+      showToast("Emergency blast is Admin or Security Head only", "warning");
+      return;
+    }
+    setBlastStage("confirm");
+    setBlastConfirmed(false);
+    setBlastInstruction("");
+    setBlastTemplateId("tpl_evac_assembly");
+    setResultBlast(null);
+    setBlastOpen(true);
+    void loadBlastConfirm("tpl_evac_assembly");
+  }
+
+  function openBlastResults(blast: EmergencyBlast) {
+    setResultBlast(blast);
+    setLastBlast(blast);
+    setBlastStage("results");
+    setBlastOpen(true);
+  }
+
+  async function changeBlastTemplate(id: string) {
+    setBlastTemplateId(id);
+    setBlastConfirmed(false);
+    await loadBlastConfirm(id);
+  }
+
+  async function confirmBlastSend() {
+    if (!canBlast) {
+      showToast("Emergency blast is Admin or Security Head only", "warning");
+      return;
+    }
+    if (!blastConfirmed) {
+      showToast("Confirm is required — blast is not one-click", "warning");
+      return;
+    }
+    const template =
+      blastTemplates.find((t) => t.id === blastTemplateId) || blastTemplates[0] || null;
+    if (!template) {
+      showToast("Select a blast template", "warning");
+      return;
+    }
+    const instruction = blastInstruction.trim().slice(0, BLAST_INSTRUCTION_MAX);
+    setBlastBusy(true);
+    try {
+      let confirmed: EmergencyBlast;
+      if (!useLocalBlast && token && !token.startsWith("fixture:")) {
+        const pending = await postBlast(token, {
+          templateId: template.id,
+          mode: "pending_confirm",
+          instruction: instruction || null,
+        });
+        const pendingId = blastIdOf(pending as EmergencyBlast);
+        if (!pendingId) {
+          throw new ApiError(400, "VALIDATION", "pending_confirm did not return a blast id");
+        }
+        confirmed = await confirmBlastApi(token, pendingId);
+      } else {
+        confirmed = confirmBlastLocal(
+          rows,
+          template,
+          instruction || template.instruction,
+          user?.id || "U-ADMIN",
+        );
+      }
+      setResultBlast(confirmed);
+      setLastBlast(confirmed);
+      setBlastStage("results");
+      showToast(
+        `Blast ${blastIdOf(confirmed)} · ${countsLabel(confirmed)} · who’s-inside unchanged`,
+        "success",
+      );
+      await refresh();
+    } catch (err) {
+      if (!useLocalBlast && token && !token.startsWith("fixture:")) {
+        try {
+          const fallback = await postBlast(token, {
+            templateId: template.id,
+            confirm: true,
+            instruction: instruction || null,
+          });
+          const confirmed = fallback as EmergencyBlast;
+          if (blastIdOf(confirmed)) {
+            setResultBlast(confirmed);
+            setLastBlast(confirmed);
+            setBlastStage("results");
+            showToast(`Blast ${blastIdOf(confirmed)} · who’s-inside unchanged`, "success");
+            await refresh();
+            return;
+          }
+        } catch {
+          /* use local below */
+        }
+      }
+      const local = confirmBlastLocal(
+        rows,
+        template,
+        instruction || template.instruction,
+        user?.id || "U-ADMIN",
+      );
+      setResultBlast(local);
+      setLastBlast(local);
+      setBlastStage("results");
+      showToast(`Blast saved in fixtures fallback · who’s-inside unchanged`, "warning");
+      if (err instanceof ApiError && !isNetworkError(err)) {
+        /* already fell back */
+      }
+    } finally {
+      setBlastBusy(false);
+    }
+  }
+
+  async function retryLastFailed() {
+    const target = resultBlast || lastBlast;
+    const id = blastIdOf(target);
+    if (!id) return;
+    setBlastBusy(true);
+    try {
+      if (!useLocalBlast && token && !token.startsWith("fixture:")) {
+        const updated = await retryFailedBlast(token, id);
+        setResultBlast(updated);
+        setLastBlast(updated);
+        showToast(`Retry failed · ${countsLabel(updated)}`, "success");
+      } else {
+        const updated = retryFailedLocal(id) || getBlastLocal(id);
+        if (updated) {
+          setResultBlast(updated);
+          setLastBlast(updated);
+          showToast(`Retry failed · ${countsLabel(updated)}`, "success");
+        }
+      }
+    } catch (err) {
+      const updated = retryFailedLocal(id) || getBlastLocal(id);
+      if (updated) {
+        setResultBlast(updated);
+        setLastBlast(updated);
+        showToast("Retry saved in fixtures fallback", "warning");
+      } else if (err instanceof Error) {
+        showToast(err.message, "error");
+      }
+    } finally {
+      setBlastBusy(false);
+    }
+  }
+
   return (
     <section className="view active">
       <div className="topbar">
@@ -197,7 +460,20 @@ export function LivePage() {
             {usingFixtures && <span className="source-inline"> · fixtures fallback</span>}
           </p>
         </div>
-        <div className="admin-clock">{clock}</div>
+        <div className="topbar-actions">
+          {blastEnabled && (
+            <button
+              type="button"
+              className="btn btn-danger btn-blast-cta"
+              disabled={!canBlast}
+              onClick={openBlastConfirm}
+            >
+              <IconBlast />
+              Emergency blast
+            </button>
+          )}
+          <div className="admin-clock">{clock}</div>
+        </div>
       </div>
 
       <div className="stats">
@@ -261,6 +537,25 @@ export function LivePage() {
           }}
         />
       </div>
+
+      {blastEnabled && lastBlast && (
+        <div className="blast-last-strip">
+          <div className="blast-last-copy">
+            <strong>Last blast {blastIdOf(lastBlast)}</strong>
+            <div className="subline">
+              {lastBlast.status} · {countsLabel(lastBlast)} · template {lastBlast.templateId} · no
+              auto-checkout
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => openBlastResults(lastBlast)}
+          >
+            View audit
+          </button>
+        </div>
+      )}
 
       {pendingAh.length > 0 && (
         <div className="pending-sh-strip">
@@ -377,6 +672,24 @@ export function LivePage() {
         </table>
       </div>
 
+      <EmergencyBlastModal
+        open={blastOpen}
+        stage={blastStage}
+        templates={blastTemplates}
+        preview={blastPreview}
+        blast={resultBlast || lastBlast}
+        selectedTemplateId={blastTemplateId}
+        instruction={blastInstruction}
+        confirmed={blastConfirmed}
+        busy={blastBusy}
+        loadError={blastLoadError}
+        onTemplateChange={(id) => void changeBlastTemplate(id)}
+        onInstructionChange={setBlastInstruction}
+        onConfirmedChange={setBlastConfirmed}
+        onCancel={() => setBlastOpen(false)}
+        onConfirmSend={() => void confirmBlastSend()}
+        onRetryFailed={() => void retryLastFailed()}
+      />
       <ForceCheckoutModal
         visitor={forceTarget}
         busy={busy}

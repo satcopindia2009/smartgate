@@ -341,3 +341,105 @@ export interface PickupEvent {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type BlastChannel = "sms" | "push" | "in_app" | "whatsapp";
+export type BlastRecipientStatus =
+  | "queued"
+  | "sent"
+  | "failed"
+  | "skipped_no_mobile"
+  | "skipped_hold";
+export type EmergencyBlastStatus =
+  | "pending_confirm"
+  | "queued"
+  | "sending"
+  | "completed"
+  | "partial"
+  | "failed"
+  | "cancelled";
+
+export interface SchoolBlastConfig {
+  schoolId?: string;
+  emergencyBlastEnabled: boolean;
+  blastStaffLaneEnabled?: boolean;
+  blastChannelsVisitor?: BlastChannel[] | string[];
+  blastChannelsStaff?: BlastChannel[] | string[];
+  updatedByUserId?: string | null;
+  updatedAt?: string | null;
+  meta?: { watermark?: string };
+}
+
+export interface BlastTemplate {
+  id: string;
+  schoolId?: string;
+  name: string;
+  instruction: string;
+  channel: BlastChannel | string;
+  active: boolean;
+  updatedByUserId?: string | null;
+  updatedAt?: string | null;
+  meta?: { watermark?: string };
+}
+
+export interface BlastChannelPlan {
+  planned?: number;
+  skipped_no_mobile?: number;
+  skipped_hold?: number;
+  hold?: boolean;
+}
+
+export interface BlastChannelsSummary {
+  sms?: BlastChannelPlan;
+  whatsapp?: BlastChannelPlan;
+  visitor?: string[];
+  staff?: { enabled?: boolean; channels?: string[] };
+  staffLaneEnabled?: boolean;
+  whatsappHold?: boolean;
+}
+
+export interface BlastPreview {
+  insideCount: number;
+  templateId?: string | null;
+  instruction?: string | null;
+  instructionPreview?: string | null;
+  channelsSummary?: BlastChannelsSummary;
+  emergencyBlastEnabled?: boolean;
+  meta?: { watermark?: string };
+}
+
+export interface BlastRecipient {
+  blastId?: string;
+  blast_id?: string;
+  visitId?: string | null;
+  mobileMasked: string;
+  channel: BlastChannel | string;
+  status: BlastRecipientStatus | string;
+  providerMessageId?: string | null;
+  attemptedAt?: string | null;
+  errorCode?: string | null;
+}
+
+export interface BlastCounts {
+  sent?: number;
+  failed?: number;
+  queued?: number;
+  skipped_hold?: number;
+  skipped_no_mobile?: number;
+}
+
+export interface EmergencyBlast {
+  blastId?: string;
+  blast_id?: string;
+  schoolId?: string;
+  triggeredByUserId: string;
+  triggeredAt: string;
+  templateId: string;
+  instruction: string;
+  insideCount: number;
+  recipientCount: number;
+  status: EmergencyBlastStatus | string;
+  confirmAt?: string | null;
+  recipients?: BlastRecipient[];
+  counts?: BlastCounts;
+  meta?: { watermark?: string };
+}

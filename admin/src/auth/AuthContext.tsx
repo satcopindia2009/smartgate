@@ -175,3 +175,7 @@ export function canEditCampusHours(role?: string | null) {
 export function canApproveAfterHours(role?: string | null) {
   return role === "security_head";
 }
+
+export function canTriggerBlast(role?: string | null) {
+  return role === "admin" || role === "security_head";
+}
