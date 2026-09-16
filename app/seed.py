@@ -671,18 +671,6 @@ def _seed_after_hours(ts: str) -> None:
             "updatedAt": "2026-09-01T09:00:00+05:30",
         }
     )
-    store.put_holiday(
-        {
-            "id": "HOL-GANDHI",
-            "schoolId": SCHOOL_ID,
-            "date": "2026-10-02",
-            "label": "Gandhi Jayanti",
-            "createdByUserId": "U-SH",
-            "updatedByUserId": "U-SH",
-            "createdAt": "2026-09-01T09:05:00+05:30",
-            "updatedAt": "2026-09-01T09:05:00+05:30",
-        }
-    )
 
     # Evening Vendor — pending SH (outside hours). Not Priya.
     store.put_visit(

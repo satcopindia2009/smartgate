@@ -114,10 +114,10 @@ def test_a2_holiday_crud_no_csv(client):
     assert dates["2026-10-20"]["id"] == "HOL-DIWALI"
 
     ranged = client.get(
-        "/v1/access-rules/holidays?from=2026-10-01&to=2026-10-10",
+        "/v1/access-rules/holidays?from=2026-10-01&to=2026-10-31",
         headers=auth(gtoken),
     )
-    assert {h["date"] for h in ranged.json()["data"]} == {"2026-10-02"}
+    assert {h["date"] for h in ranged.json()["data"]} == {"2026-10-20"}
 
     created = client.post(
         "/v1/access-rules/holidays",

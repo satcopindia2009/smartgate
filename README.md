@@ -56,7 +56,7 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 - Blacklist: `BL-01` Vikram More (Block), `BL-02` Neha Salunkhe (Alert)
 - Pending visit for host demo: `V-20260916-040` (host H03)
 - **Campus hours (A1):** Mon–Fri `08:00–18:00`, Sat `08:00–13:00`, Sun closed; timezone **Asia/Kolkata**
-- **Holidays (A2):** `2026-10-20` Diwali (`HOL-DIWALI`), `2026-10-02` Gandhi Jayanti
+- **Holidays (A2):** one fixture — `2026-10-20` Diwali (`HOL-DIWALI`)
 - **After-hours demos (separate from Priya):** evening Vendor **Ravi Deshmukh** `V-AH-VENDOR` pending SH (host Anita / H03); holiday Parent **Deepak Nair** → **Meera Kulkarni** (H01) → pass **`P-7K88`** (`V-AH-HOLIDAY`)
 - **Pickup (P6, separate from Priya):** student **Aarav Mehta · 5-B** (`STU-AARAV`) with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** (`STU-KABIR`) `court_order` blocking **Rajesh Singh**, allow-list **Sunita Singh**
 
@@ -301,6 +301,7 @@ bash scripts/smoke.sh
 - `tests/test_pickup.py` — Aarav/Neha release, Rohan relative, Kabir BlockedCustody, not-authorized, override, H1 allow-list, no Visit subtype coupling
 - `tests/test_pickup_acceptance.py` — AC-D1 / AC-D2 / AC-D3 / F3 / F6 explicit
 - `tests/test_after_hours.py` — A1–A6 / C4: hours+holidays CRUD, in-hours host approve, outside/holiday sticky, host no-op, SH reason, sticky not recomputed
+- `tests/test_after_hours_acceptance.py` — AC-C4a / AC-C4b / AC-C4c / AC-C4d / AC-C4e + close-exclusive / holiday-wins edges
 
 ## Remaining thin stubs / out of scope
 
