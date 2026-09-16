@@ -644,9 +644,13 @@
 
   $("#photo-box").addEventListener("click", async function () {
     state.photo = true;
-    state.photoBlob = await api.canvasPngBlob();
     $("#photo-box").classList.add("filled");
     updateReleaseReady();
+    try {
+      state.photoBlob = await api.canvasPngBlob();
+    } catch (e) {
+      state.photoBlob = api.stubPngBlob();
+    }
   });
 
   $("#consent-check").addEventListener("change", function (e) {
