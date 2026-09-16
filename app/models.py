@@ -434,6 +434,71 @@ class ExportRequest(BaseModel):
     purpose: Optional[str] = None
 
 
+class GateReportRow(BaseModel):
+    gate: str
+    gateId: str
+    checkIns: int
+    checkOuts: int
+    stillInside: int
+    rejects: int
+    blacklistHits: int
+    forceCheckouts: int
+    uniqueMobiles: int
+    medianApprovalSec: Optional[int] = None
+    peakInside: int
+
+
+class TypeMixRow(BaseModel):
+    visitorType: str
+    count: int
+
+
+class ReportMeta(BaseModel):
+    watermark: str
+    schoolId: Optional[str] = None
+    demoToday: Optional[str] = None
+    from_: Optional[str] = Field(default=None, alias="from")
+    to: Optional[str] = None
+
+    model_config = {"populate_by_name": True, "serialize_by_alias": True}
+
+
+class GateReportResponse(BaseModel):
+    data: list[GateReportRow]
+    meta: ReportMeta
+
+
+class TypeMixResponse(BaseModel):
+    data: list[TypeMixRow]
+    meta: ReportMeta
+
+
+class NotifyOutboxItem(BaseModel):
+    id: str
+    schoolId: str
+    event: str
+    visitId: Optional[str] = None
+    pickupId: Optional[str] = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+    channelHints: list[str] = Field(default_factory=list)
+    status: str
+    createdAt: str
+
+
+class NotifyOutboxResponse(BaseModel):
+    data: list[NotifyOutboxItem]
+    meta: dict[str, Any]
+
+
+class ExportJobOut(BaseModel):
+    jobId: str
+    status: str
+    scope: str
+    rowCount: int
+    message: str
+    meta: Optional[dict[str, Any]] = None
+
+
 # --- Pickup & Custody (P2 §1) ---
 
 

@@ -9,6 +9,9 @@ SCHOOL_TZ = "Asia/Calcutta"
 # A1 lock — CampusHours / after-hours evaluation (alias of Asia/Calcutta)
 CAMPUS_TZ = "Asia/Kolkata"
 WATERMARK = "DEMO"
+# SCH-DEMO-01 walkthrough day — today-by-gate / daily_gate_summary stay seeded
+DEMO_TODAY = "2026-09-16"
+MAX_EXPORT_ROWS = 10_000
 MEDIA_BASE = "/v1/media"
 HOST = "0.0.0.0"
 PORT = 8080

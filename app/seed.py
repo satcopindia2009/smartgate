@@ -612,8 +612,8 @@ def seed() -> None:
             "blacklistId": None,
             "blacklistOverrideByUserId": None,
             "meetingDoneAt": None,
-            "createdAt": ts,
-            "updatedAt": ts,
+            "createdAt": "2026-09-16T14:35:00+05:30",
+            "updatedAt": "2026-09-16T14:35:00+05:30",
         }
     )
 
@@ -626,10 +626,67 @@ def seed() -> None:
                 "hostPhone": "9000000003",
                 "visitorName": "Demo Pending Parent",
                 "purpose": "Meet class teacher",
+                "hostId": "H03",
+                "hostFyi": False,
             },
             "channelHints": ["in_app"],
             "status": "pending",
-            "createdAt": ts,
+            "createdAt": "2026-09-16T14:36:00+05:30",
+        }
+    )
+    # Notifications desk: sent Host FYI after Priya was approved / checked in
+    store.add_outbox(
+        {
+            "schoolId": SCHOOL_ID,
+            "event": "visit.approved",
+            "visitId": "V-20260916-014",
+            "payload": {
+                "hostPhone": "9000000003",
+                "visitorName": "Priya Sharma",
+                "purpose": "PTM follow-up, Class 4B",
+                "hostId": "H03",
+                "passId": "P-4F21",
+                "hostFyi": True,
+            },
+            "channelHints": ["in_app"],
+            "status": "sent",
+            "createdAt": "2026-09-16T14:08:00+05:30",
+        }
+    )
+    store.add_outbox(
+        {
+            "schoolId": SCHOOL_ID,
+            "event": "visit.checked_in",
+            "visitId": "V-20260916-014",
+            "payload": {
+                "hostPhone": "9000000003",
+                "visitorName": "Priya Sharma",
+                "purpose": "PTM follow-up, Class 4B",
+                "hostId": "H03",
+                "passId": "P-4F21",
+                "gateId": "G-MAIN",
+            },
+            "channelHints": ["in_app"],
+            "status": "sent",
+            "createdAt": "2026-09-16T14:10:00+05:30",
+        }
+    )
+    store.add_outbox(
+        {
+            "schoolId": SCHOOL_ID,
+            "event": "visit.pending",
+            "visitId": "V-20260916-040",
+            "payload": {
+                "hostPhone": "9000000003",
+                "visitorName": "Demo Pending Parent",
+                "purpose": "Meet class teacher",
+                "hostId": "H03",
+                "channel": "whatsapp",
+                "error": "DEMO — WhatsApp not configured (no blast)",
+            },
+            "channelHints": ["whatsapp"],
+            "status": "failed",
+            "createdAt": "2026-09-16T14:36:30+05:30",
         }
     )
 
@@ -1013,3 +1070,59 @@ def _seed_pickup(ts: str) -> None:
     )
     denormalize_blocked_by_custody("STU-AARAV", SCHOOL_ID)
     denormalize_blocked_by_custody("STU-KABIR", SCHOOL_ID)
+
+    # Notifications desk: pending SH pickup override (Kabir / Rajesh court_order)
+    store.put_pickup(
+        {
+            "id": "PK-20260916-OVR",
+            "schoolId": SCHOOL_ID,
+            "gateId": "G-MAIN",
+            "studentId": "STU-KABIR",
+            "collectorPickupPersonId": "APP-RAJESH",
+            "collectorName": "Rajesh Singh",
+            "collectorMobile": "9822012002",
+            "collectorRelation": "parent",
+            "matchMethod": "mobile",
+            "pickupReason": "early",
+            "reasonOther": None,
+            "collectorLivePhotoRef": "media/collector_live_photo/rohan-mehta",
+            "status": "BlockedCustody",
+            "custodyFlagSnapshot": "court_order",
+            "override": False,
+            "overrideByUserId": None,
+            "overrideReason": None,
+            "linkedVisitId": None,
+            "visitLinkFailed": None,
+            "releasedAt": None,
+            "attemptedAt": "2026-09-16T15:10:00+05:30",
+            "gateUserId": "U-GATE",
+            "pickupConsentAt": "2026-09-16T15:12:00+05:30",
+            "pickupConsentVersion": PICKUP_CONSENT_VERSION,
+            "createdAt": "2026-09-16T15:10:00+05:30",
+            "updatedAt": "2026-09-16T15:14:00+05:30",
+        }
+    )
+    store.add_outbox(
+        {
+            "schoolId": SCHOOL_ID,
+            "event": "pickup.override_requested",
+            "pickupId": "PK-20260916-OVR",
+            "visitId": None,
+            "payload": {
+                "pickupId": "PK-20260916-OVR",
+                "studentId": "STU-KABIR",
+                "studentName": "Kabir Singh",
+                "collectorName": "Rajesh Singh",
+                "collectorMobile": "9822012002",
+                "status": "BlockedCustody",
+                "gateId": "G-MAIN",
+                "gateInstruction": (
+                    "Release only to Sunita Singh (Mother). Block Rajesh Singh. "
+                    "Do not discuss case details at gate."
+                ),
+            },
+            "channelHints": ["in_app", "sms"],
+            "status": "pending",
+            "createdAt": "2026-09-16T15:14:00+05:30",
+        }
+    )
