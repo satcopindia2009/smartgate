@@ -626,3 +626,186 @@ def seed() -> None:
             "createdAt": ts,
         }
     )
+
+    _seed_pickup(ts)
+
+
+def _seed_pickup(ts: str) -> None:
+    """P6 demo fixtures — separate from Priya visitor walkthrough. No real Aadhaar."""
+    from app.config import PICKUP_CONSENT_VERSION
+    from app.pickup_match import denormalize_blocked_by_custody
+
+    for key, kind in (
+        ("media/collector_live_photo/neha-mehta", "collector_live_photo"),
+        ("media/collector_live_photo/rohan-mehta", "collector_live_photo"),
+        ("media/pickup_list_photo/neha-mehta", "pickup_list_photo"),
+    ):
+        store.put_media(
+            {
+                "key": key,
+                "schoolId": SCHOOL_ID,
+                "kind": kind,
+                "visitId": None,
+                "pickupId": None,
+                "contentType": "image/jpeg",
+                "createdAt": ts,
+                "createdByUserId": "U-GATE",
+                "bytes": b"",
+                "retainUntilDays": 90 if kind == "collector_live_photo" else None,
+            }
+        )
+
+    store.put_student(
+        {
+            "id": "STU-AARAV",
+            "schoolId": SCHOOL_ID,
+            "studentId": "5B-17",
+            "name": "Aarav Mehta",
+            "class": "5",
+            "section": "B",
+            "active": True,
+            "enrollmentEndedAt": None,
+            "legalHold": False,
+            "createdAt": "2026-06-01T09:00:00+05:30",
+            "updatedAt": "2026-06-01T09:00:00+05:30",
+        }
+    )
+    store.put_student(
+        {
+            "id": "STU-KABIR",
+            "schoolId": SCHOOL_ID,
+            "studentId": "3A-09",
+            "name": "Kabir Singh",
+            "class": "3",
+            "section": "A",
+            "active": True,
+            "enrollmentEndedAt": None,
+            "legalHold": True,
+            "createdAt": "2026-06-01T09:00:00+05:30",
+            "updatedAt": "2026-09-10T11:00:00+05:30",
+        }
+    )
+
+    consent_at = "2026-06-15T10:00:00+05:30"
+    people = [
+        {
+            "id": "APP-NEHA",
+            "schoolId": SCHOOL_ID,
+            "studentId": "STU-AARAV",
+            "name": "Neha Mehta",
+            "relation": "parent",
+            "mobile": "9822011001",
+            "idType": "DL",
+            "idNumber": None,
+            "idLast4": "1001",
+            "photoRef": "media/pickup_list_photo/neha-mehta",
+            "active": True,
+            "effectiveFrom": None,
+            "effectiveTo": None,
+            "blockedByCustody": False,
+            "pickupConsentVersion": PICKUP_CONSENT_VERSION,
+            "pickupConsentAt": consent_at,
+            "createdByUserId": "U-ADMIN",
+            "updatedByUserId": "U-ADMIN",
+            "createdAt": consent_at,
+            "updatedAt": consent_at,
+        },
+        {
+            "id": "APP-ROHAN",
+            "schoolId": SCHOOL_ID,
+            "studentId": "STU-AARAV",
+            "name": "Rohan Mehta",
+            "relation": "relative",
+            "mobile": "9822011002",
+            "idType": "Other",
+            "idNumber": None,
+            "idLast4": "2002",
+            "photoRef": None,
+            "active": True,
+            "effectiveFrom": "2026-09-01",
+            "effectiveTo": "2026-12-31",
+            "blockedByCustody": False,
+            "pickupConsentVersion": PICKUP_CONSENT_VERSION,
+            "pickupConsentAt": consent_at,
+            "createdByUserId": "U-ADMIN",
+            "updatedByUserId": "U-ADMIN",
+            "createdAt": consent_at,
+            "updatedAt": consent_at,
+        },
+        {
+            "id": "APP-SUNITA",
+            "schoolId": SCHOOL_ID,
+            "studentId": "STU-KABIR",
+            "name": "Sunita Singh",
+            "relation": "parent",
+            "mobile": "9822012001",
+            "idType": "Voter",
+            "idNumber": None,
+            "idLast4": "3003",
+            "photoRef": None,
+            "active": True,
+            "effectiveFrom": None,
+            "effectiveTo": None,
+            "blockedByCustody": False,
+            "pickupConsentVersion": PICKUP_CONSENT_VERSION,
+            "pickupConsentAt": consent_at,
+            "createdByUserId": "U-SH",
+            "updatedByUserId": "U-SH",
+            "createdAt": consent_at,
+            "updatedAt": consent_at,
+        },
+        {
+            "id": "APP-RAJESH",
+            "schoolId": SCHOOL_ID,
+            "studentId": "STU-KABIR",
+            "name": "Rajesh Singh",
+            "relation": "parent",
+            "mobile": "9822012002",
+            "idType": "DL",
+            "idNumber": None,
+            "idLast4": "4004",
+            "photoRef": None,
+            "active": True,
+            "effectiveFrom": None,
+            "effectiveTo": None,
+            "blockedByCustody": True,
+            "pickupConsentVersion": PICKUP_CONSENT_VERSION,
+            "pickupConsentAt": consent_at,
+            "createdByUserId": "U-SH",
+            "updatedByUserId": "U-SH",
+            "createdAt": consent_at,
+            "updatedAt": "2026-09-10T11:00:00+05:30",
+        },
+    ]
+    for person in people:
+        store.put_authorized_person(person)
+
+    store.put_custody_flag(
+        {
+            "studentId": "STU-AARAV",
+            "schoolId": SCHOOL_ID,
+            "flag": "none",
+            "gateInstruction": "",
+            "blockedPersonIds": [],
+            "allowedPersonIds": None,
+            "updatedByUserId": "U-ADMIN",
+            "updatedAt": "2026-06-15T10:05:00+05:30",
+        }
+    )
+    store.put_custody_flag(
+        {
+            "studentId": "STU-KABIR",
+            "schoolId": SCHOOL_ID,
+            "flag": "court_order",
+            "gateInstruction": (
+                "Release only to Sunita Singh (Mother). Block Rajesh Singh. "
+                "Do not discuss case details at gate."
+            ),
+            "blockedPersonIds": ["APP-RAJESH"],
+            "allowedPersonIds": ["APP-SUNITA"],
+            "updatedByUserId": "U-SH",
+            "updatedAt": "2026-09-10T11:00:00+05:30",
+        }
+    )
+    denormalize_blocked_by_custody("STU-AARAV", SCHOOL_ID)
+    denormalize_blocked_by_custody("STU-KABIR", SCHOOL_ID)
