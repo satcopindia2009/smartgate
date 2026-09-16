@@ -31,9 +31,13 @@ export function GateMultiSelect({ gates, selected, onChange }: Props) {
   }, [allSelected, selected, gates]);
 
   function toggle(id: string) {
-    const current = allSelected ? [...allIds] : [...selected];
-    const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
-    onChange(next.length === allIds.length ? [] : next);
+    // From "All gates", picking one gate filters to that gate only.
+    if (allSelected) {
+      onChange([id]);
+      return;
+    }
+    const next = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
+    onChange(next.length === 0 || next.length === allIds.length ? [] : next);
   }
 
   function selectAll() {
