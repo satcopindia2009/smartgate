@@ -6,6 +6,8 @@ JWT_ALG = "HS256"
 JWT_TTL_SECONDS = 60 * 60 * 12  # 12h
 SCHOOL_ID = "SCH-DEMO-01"
 SCHOOL_TZ = "Asia/Calcutta"
+# A1 lock — CampusHours / after-hours evaluation (alias of Asia/Calcutta)
+CAMPUS_TZ = "Asia/Kolkata"
 WATERMARK = "DEMO"
 MEDIA_BASE = "/v1/media"
 HOST = "0.0.0.0"

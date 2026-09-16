@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 
+from app.after_hours import stamp_after_hours
 from app.auth import assert_gate_allowed, require_roles
 from app.blacklist_match import match_blacklist
 from app.config import SCHOOL_TZ, WATERMARK
@@ -209,6 +210,7 @@ def _try_link_visit(pickup: dict, user: dict) -> None:
         "createdAt": ts,
         "updatedAt": ts,
     }
+    stamp_after_hours(visit)
     store.put_visit(visit)
     pickup["linkedVisitId"] = vid
     pickup["visitLinkFailed"] = False

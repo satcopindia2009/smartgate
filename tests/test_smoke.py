@@ -1,7 +1,7 @@
 """Smoke tests for MVP stub happy paths."""
 from __future__ import annotations
 
-from tests.conftest import login
+from tests.conftest import login, put_week_hours
 
 
 def test_health(client):
@@ -34,6 +34,9 @@ def test_priya_pass_seed(client):
 def test_visit_lifecycle(client):
     gtoken = login(client, "gate", "gate123")
     htoken = login(client, "host", "host123")
+    atoken = login(client, "admin", "admin123")
+    # Keep MVP host-approve path independent of wall-clock after-hours.
+    put_week_hours(client, atoken, open_time="00:00", close_time="23:59")
 
     up = client.post(
         "/v1/media/upload",

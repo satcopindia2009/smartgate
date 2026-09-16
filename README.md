@@ -1,9 +1,9 @@
-# Satcop Smart Visitor — MVP API Stub + P2 Pickup
+# Satcop Smart Visitor — MVP API Stub + P2 Pickup + After-hours
 
-In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1 LOCKED**).  
+In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**) and **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**).  
 For Mobile / Admin **showable demos**. **Not for live school deploy** (V4 HOLD).
 
-Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype.
+Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype. After-hours does **not** include escort/zones or blast.
 
 ## Stack
 
@@ -55,6 +55,9 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 - Approved ready for scan: **Kiran Desai** → **`P-C101`** → status `approved` (Main Gate)
 - Blacklist: `BL-01` Vikram More (Block), `BL-02` Neha Salunkhe (Alert)
 - Pending visit for host demo: `V-20260916-040` (host H03)
+- **Campus hours (A1):** Mon–Fri `08:00–18:00`, Sat `08:00–13:00`, Sun closed; timezone **Asia/Kolkata**
+- **Holidays (A2):** `2026-10-20` Diwali (`HOL-DIWALI`), `2026-10-02` Gandhi Jayanti
+- **After-hours demos (separate from Priya):** evening Vendor **Ravi Kulkarni** `V-AH-VENDOR` pending SH; holiday Parent **Meera Shah** `V-AH-HOLIDAY` pending SH
 - **Pickup (P6, separate from Priya):** student **Aarav Mehta · 5-B** (`STU-AARAV`) with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** (`STU-KABIR`) `court_order` blocking **Rajesh Singh**, allow-list **Sunita Singh**
 
 ## Visit lifecycle (contract §2)
@@ -67,9 +70,9 @@ inside → force_completed   (Admin/SH; body.reason required)
 
 | Action | From | Notes |
 |--------|------|--------|
-| `POST /visits` | → `pending` | Gate (or SH override create). Blacklist Block without override → `BLACKLIST_BLOCK` |
-| `POST /visits/{id}/approve` | `pending` → `approved` | Host **own visits only** (`hostId == staffId`). Issues `passId` + `qrToken` |
-| `POST /visits/{id}/reject` | `pending` → `rejected` | `{ "reason": "..." }` required (non-blank) |
+| `POST /visits` | → `pending` | Gate (or SH override create). Blacklist Block without override → `BLACKLIST_BLOCK`. Stamps sticky `afterHours` / `policyTrigger` / `afterHoursEvaluatedAt` (Asia/Kolkata; **not** recomputed later) |
+| `POST /visits/{id}/approve` | `pending` → `approved` | In-hours: Host **own visits only**. After-hours: **Security Head only** with `{ "reason" }`; Host/Admin → `AFTER_HOURS_SH_REQUIRED` (no-op). Issues `passId` + `qrToken` |
+| `POST /visits/{id}/reject` | `pending` → `rejected` | `{ "reason": "..." }` required. After-hours: SH only (A6) |
 | `POST /visits/{id}/check-in` or `POST /passes/scan` `check_in` | `approved` → `inside` | Sets `timeIn`, `gateInId` |
 | `POST /visits/{id}/check-out` or scan `check_out` | `inside` → `completed` | `checkoutType=normal` |
 | `POST /visits/{id}/force-checkout` | `inside` → `force_completed` | `{ "reason": "..." }` required |
@@ -83,6 +86,7 @@ Illegal transitions return `409` `{ "error": { "code": "INVALID_STATE" } }`.
 |--------------------------------|:----:|:----:|:-----:|:-------------:|
 | Create / check-in / out / scan | ✓    |      |       | ✓ create w/ Block override |
 | Approve / reject own + meeting-done | | ✓* | ✓ | ✓ |
+| Approve / reject when `afterHours=true` | | FYI only | | ✓ reason |
 | Force checkout                 |      |      | ✓     | ✓             |
 | Staff POST/PATCH               |      |      | ✓     | ✓             |
 | Blacklist write                |      |      | view  | ✓             |
@@ -122,7 +126,52 @@ Matching → Released
 
 **Exports:** scopes `pickup_events`, `pickup_lists` (lists require logged `purpose` — AC-D9).
 
-Out of this slice: after-hours, escort/zones, blast, face match, MSR, live school (V4), Patrol.
+Out of this slice: escort/zones, blast, face match, MSR, live school (V4), Patrol.
+
+## After-hours / holiday (Priority P2 · Hub A1–A6 / C4)
+
+Per-school weekday hours + holiday date calendar. Evaluation is **sticky on `POST /v1/visits` only** (A3 / AC-C4e). Dual-approve is **rejected**. Escort/zones are **not** in this PR.
+
+```
+afterHours=false → normal MVP Host Approve
+afterHours=true  → Pending (SH gate)
+  ├─ Host notified (FYI outbox) — Host Approve is NO-OP (does not → Approved)
+  ├─ Security Head Approve ({ "reason" } required — A6) → Approved
+  └─ Security Head Reject ({ "reason" } required) → Rejected
+```
+
+| Action | Role | Notes |
+|--------|------|-------|
+| `GET /access-rules/hours` | any authed | 7 weekday rows; timezone Asia/Kolkata |
+| `PUT /access-rules/hours` | Admin/SH | Full week array; `closeTime < openTime` requires `overnight=true` |
+| `GET /access-rules/holidays?from&to` | any authed | Date calendar (no CSV) |
+| `POST /access-rules/holidays` | Admin/SH | `{ date, label? }`; duplicate date rejected |
+| `DELETE /access-rules/holidays/{id}` | Admin/SH | |
+| `GET /visits` · `GET /visits/inside` | (MVP roles) | Extra filters: `afterHours`, `policyTrigger` |
+
+**Evaluation (create time → Asia/Kolkata):** holiday date wins even if the clock is inside the weekday window; close is **exclusive** `[open, close)`; overnight is a single window when `close < open`. `policyTrigger` = `outside_hours` \| `holiday` \| `both`.
+
+### Curl — hours + after-hours SH approve
+
+```bash
+BASE=http://127.0.0.1:8080/v1
+ADMIN=$(curl -s -X POST "$BASE/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+SH=$(curl -s -X POST "$BASE/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"security","password":"sh123"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+
+curl -s "$BASE/access-rules/hours" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+curl -s "$BASE/access-rules/holidays" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+curl -s "$BASE/visits/V-AH-VENDOR" -H "Authorization: Bearer $SH" | python3 -m json.tool
+
+# Host Approve on after-hours is a no-op (403 AFTER_HOURS_SH_REQUIRED)
+# SH Approve with reason:
+curl -s -X POST "$BASE/visits/V-AH-VENDOR/approve" \
+  -H "Authorization: Bearer $SH" -H 'Content-Type: application/json' \
+  -d '{"reason":"Verified night vendor call"}' | python3 -m json.tool
+```
 
 ### Curl — Aarav / Neha lobby release
 
@@ -182,6 +231,7 @@ curl -s -X POST "$BASE/pickups/$PK/release" \
 | `PASS_REVOKED` / `PASS_EXPIRED` | 410 | scan |
 | `INVALID_STATE` | 409 | illegal lifecycle transition |
 | `BLACKLIST_BLOCK` | 403 | Block hit without SH override |
+| `AFTER_HOURS_SH_REQUIRED` | 403 | Host/Admin Approve or Reject when `afterHours=true` (no state change) |
 
 Pydantic/request validation uses the same `{ "error": { "code": "VALIDATION", ... } }` envelope (not FastAPI `{ detail: [...] }`).
 
@@ -248,6 +298,7 @@ bash scripts/smoke.sh
 - `tests/test_contract.py` — host-scope approve, force-checkout without reason, blacklist Block/Alert, invalid pass scan, gateIds, media kinds, state machine negatives
 - `tests/test_pickup.py` — Aarav/Neha release, Rohan relative, Kabir BlockedCustody, not-authorized, override, H1 allow-list, no Visit subtype coupling
 - `tests/test_pickup_acceptance.py` — AC-D1 / AC-D2 / AC-D3 / F3 / F6 explicit
+- `tests/test_after_hours.py` — A1–A6 / C4: hours+holidays CRUD, in-hours host approve, outside/holiday sticky, host no-op, SH reason, sticky not recomputed
 
 ## Remaining thin stubs / out of scope
 
@@ -259,5 +310,5 @@ OK to stay thin (not blocking Mobile/Admin demos):
 - Media GET returns bytes (or `DEMO_MEDIA_STUB`); not S3 signed URLs
 - No Postgres / real object storage
 - Optional `cancelled` before check-in is in the §2 diagram but **no REST cancel** in §4 (not implemented)
-- Priority P2 after-hours / escort / zones / blast / face match / MSR — **not implemented**
+- Priority P2 escort / zones / blast / face match / MSR — **not implemented**
 - Production / live-school deploy — **HOLD**

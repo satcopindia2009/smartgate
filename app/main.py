@@ -15,6 +15,7 @@ from app.errors import (
 )
 from app.seed import seed
 from app.routers import (
+    access_rules,
     auth,
     blacklist,
     exports,
@@ -38,10 +39,10 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="Satcop Smart Visitor API",
-    version="0.3.0",
+    version="0.4.0",
     description=(
-        "MVP FastAPI stub + Priority P2 Pickup & Custody (Hub P1–P6+H1). "
-        "Contract §§0–5 visit lifecycle unchanged. "
+        "MVP FastAPI stub + Priority P2 Pickup (P1–P6+H1) + after-hours Access Rules (A1–A6). "
+        "Contract §§0–5 visit lifecycle unchanged. Escort/zones/blast not in this slice. "
         "Demo watermark; no production / live-school deploy."
     ),
     lifespan=lifespan,
@@ -71,6 +72,7 @@ app.include_router(exports.router, prefix="/v1")
 app.include_router(outbox.router, prefix="/v1")
 app.include_router(students.router, prefix="/v1")
 app.include_router(pickups.router, prefix="/v1")
+app.include_router(access_rules.router, prefix="/v1")
 
 
 @app.get("/health")

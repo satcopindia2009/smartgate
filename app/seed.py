@@ -627,7 +627,190 @@ def seed() -> None:
         }
     )
 
+    _seed_after_hours(ts)
     _seed_pickup(ts)
+
+
+def _seed_after_hours(ts: str) -> None:
+    """A1–A2 + P6-style after-hours demos — separate from Priya MVP walkthrough."""
+    from app.config import CAMPUS_TZ
+
+    week = [
+        ("mon", "08:00", "18:00", False, False),
+        ("tue", "08:00", "18:00", False, False),
+        ("wed", "08:00", "18:00", False, False),
+        ("thu", "08:00", "18:00", False, False),
+        ("fri", "08:00", "18:00", False, False),
+        ("sat", "08:00", "13:00", False, False),
+        ("sun", None, None, True, False),
+    ]
+    for weekday, open_t, close_t, closed, overnight in week:
+        store.put_hours_row(
+            {
+                "schoolId": SCHOOL_ID,
+                "timezone": CAMPUS_TZ,
+                "weekday": weekday,
+                "openTime": open_t,
+                "closeTime": close_t,
+                "closed": closed,
+                "overnight": overnight,
+                "updatedByUserId": "U-ADMIN",
+                "updatedAt": "2026-09-01T09:00:00+05:30",
+            }
+        )
+
+    store.put_holiday(
+        {
+            "id": "HOL-DIWALI",
+            "schoolId": SCHOOL_ID,
+            "date": "2026-10-20",
+            "label": "Diwali",
+            "createdByUserId": "U-ADMIN",
+            "updatedByUserId": "U-ADMIN",
+            "createdAt": "2026-09-01T09:00:00+05:30",
+            "updatedAt": "2026-09-01T09:00:00+05:30",
+        }
+    )
+    store.put_holiday(
+        {
+            "id": "HOL-GANDHI",
+            "schoolId": SCHOOL_ID,
+            "date": "2026-10-02",
+            "label": "Gandhi Jayanti",
+            "createdByUserId": "U-SH",
+            "updatedByUserId": "U-SH",
+            "createdAt": "2026-09-01T09:05:00+05:30",
+            "updatedAt": "2026-09-01T09:05:00+05:30",
+        }
+    )
+
+    # Evening Vendor — pending SH (outside hours). Not Priya.
+    store.put_visit(
+        {
+            "id": "V-AH-VENDOR",
+            "schoolId": SCHOOL_ID,
+            "visitorName": "Ravi Kulkarni",
+            "mobile": "9822098801",
+            "visitorType": "Vendor",
+            "purpose": "After-hours AC repair — Main Gate",
+            "hostId": "H04",
+            "livePhotoKey": "media/live_photo/arjun",
+            "idType": "DL",
+            "idNumber": "MH12AH8801",
+            "idImageKey": None,
+            "vehicleNumber": "MH12AH8801",
+            "accompanyingCount": 0,
+            "notes": "After-hours Vendor demo — SH approve required",
+            "signatureKey": None,
+            "gateId": "G-MAIN",
+            "registeredByUserId": "U-GATE",
+            "status": "pending",
+            "rejectReason": None,
+            "decidedAt": None,
+            "decidedByUserId": None,
+            "passId": None,
+            "qrToken": None,
+            "timeIn": None,
+            "timeOut": None,
+            "gateInId": None,
+            "gateOutId": None,
+            "checkoutType": None,
+            "forceCheckoutReason": None,
+            "forceCheckoutByUserId": None,
+            "blacklistHit": False,
+            "blacklistId": None,
+            "blacklistOverrideByUserId": None,
+            "meetingDoneAt": None,
+            "afterHours": True,
+            "policyTrigger": "outside_hours",
+            "afterHoursEvaluatedAt": "2026-09-16T19:30:00+05:30",
+            "afterHoursApproveReason": None,
+            "createdAt": "2026-09-16T19:30:00+05:30",
+            "updatedAt": "2026-09-16T19:30:00+05:30",
+        }
+    )
+    store.add_outbox(
+        {
+            "schoolId": SCHOOL_ID,
+            "event": "visit.pending",
+            "visitId": "V-AH-VENDOR",
+            "payload": {
+                "hostPhone": "9000000004",
+                "visitorName": "Ravi Kulkarni",
+                "purpose": "After-hours AC repair — Main Gate",
+                "afterHours": True,
+                "policyTrigger": "outside_hours",
+                "hostFyi": True,
+            },
+            "channelHints": ["in_app", "security_head"],
+            "status": "pending",
+            "createdAt": "2026-09-16T19:30:00+05:30",
+        }
+    )
+
+    # Holiday Parent — in-hours clock on Diwali; holiday wins. Not Priya.
+    store.put_visit(
+        {
+            "id": "V-AH-HOLIDAY",
+            "schoolId": SCHOOL_ID,
+            "visitorName": "Meera Shah",
+            "mobile": "9822098802",
+            "visitorType": "Parent",
+            "purpose": "Holiday walk-in — collect notebooks",
+            "hostId": "H02",
+            "livePhotoKey": "media/live_photo/priya",
+            "idType": "Aadhaar",
+            "idNumber": "888877776666",
+            "idImageKey": None,
+            "vehicleNumber": None,
+            "accompanyingCount": 1,
+            "notes": "Holiday Parent demo — SH approve required",
+            "signatureKey": None,
+            "gateId": "G-MAIN",
+            "registeredByUserId": "U-GATE",
+            "status": "pending",
+            "rejectReason": None,
+            "decidedAt": None,
+            "decidedByUserId": None,
+            "passId": None,
+            "qrToken": None,
+            "timeIn": None,
+            "timeOut": None,
+            "gateInId": None,
+            "gateOutId": None,
+            "checkoutType": None,
+            "forceCheckoutReason": None,
+            "forceCheckoutByUserId": None,
+            "blacklistHit": False,
+            "blacklistId": None,
+            "blacklistOverrideByUserId": None,
+            "meetingDoneAt": None,
+            "afterHours": True,
+            "policyTrigger": "holiday",
+            "afterHoursEvaluatedAt": "2026-10-20T10:30:00+05:30",
+            "afterHoursApproveReason": None,
+            "createdAt": "2026-10-20T10:30:00+05:30",
+            "updatedAt": "2026-10-20T10:30:00+05:30",
+        }
+    )
+    store.add_outbox(
+        {
+            "schoolId": SCHOOL_ID,
+            "event": "visit.pending",
+            "visitId": "V-AH-HOLIDAY",
+            "payload": {
+                "hostPhone": "9000000002",
+                "visitorName": "Meera Shah",
+                "purpose": "Holiday walk-in — collect notebooks",
+                "afterHours": True,
+                "policyTrigger": "holiday",
+                "hostFyi": True,
+            },
+            "channelHints": ["in_app", "security_head"],
+            "status": "pending",
+            "createdAt": "2026-10-20T10:30:00+05:30",
+        }
+    )
 
 
 def _seed_pickup(ts: str) -> None:

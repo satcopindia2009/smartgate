@@ -6,10 +6,12 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 
+from app.after_hours import stamp_after_hours
 from app.auth import CurrentUser, assert_gate_allowed, require_roles
 from app.config import SCHOOL_TZ, WATERMARK
 from app.errors import AppError
 from app.models import (
+    ApproveBody,
     CheckInBody,
     ForceCheckoutBody,
     RejectBody,
@@ -47,18 +49,38 @@ def _emit(event: str, visit: dict, extra: Optional[dict] = None) -> None:
         "passId": visit.get("passId"),
         "status": visit["status"],
     }
+    if visit.get("afterHours"):
+        payload["afterHours"] = True
+        payload["policyTrigger"] = visit.get("policyTrigger")
+        payload["hostFyi"] = True
     if extra:
         payload.update(extra)
+    hints = ["in_app"]
+    if event == "visit.pending" and visit.get("afterHours"):
+        hints = ["in_app", "security_head"]
     store.add_outbox(
         {
             "schoolId": visit["schoolId"],
             "event": event,
             "visitId": visit["id"],
             "payload": payload,
-            "channelHints": ["in_app"],
+            "channelHints": hints,
             "status": "pending",
             "createdAt": now_iso(),
         }
+    )
+
+
+def _after_hours_sh_required(visit: dict) -> None:
+    raise AppError(
+        "AFTER_HOURS_SH_REQUIRED",
+        "After hours / holiday — Security Head approval required",
+        403,
+        {
+            "afterHours": True,
+            "policyTrigger": visit.get("policyTrigger"),
+            "afterHoursEvaluatedAt": visit.get("afterHoursEvaluatedAt"),
+        },
     )
 
 
@@ -134,6 +156,8 @@ def visits_inside(
     hostId: Optional[str] = None,
     overdueOnly: bool = False,
     q: Optional[str] = None,
+    afterHours: Optional[bool] = None,
+    policyTrigger: Optional[str] = None,
 ):
     school = store.school()
     overdue_h = school.get("overdueHoursDefault", 4) if school else 4
@@ -149,6 +173,10 @@ def visits_inside(
         if visitorType and v.get("visitorType") != visitorType:
             continue
         if hostId and v.get("hostId") != hostId:
+            continue
+        if afterHours is not None and bool(v.get("afterHours")) != afterHours:
+            continue
+        if policyTrigger and v.get("policyTrigger") != policyTrigger:
             continue
         if q:
             ql = q.lower()
@@ -187,6 +215,8 @@ def list_visits(
     checkoutStatus: Optional[str] = None,
     blacklistHit: Optional[bool] = None,
     q: Optional[str] = None,
+    afterHours: Optional[bool] = None,
+    policyTrigger: Optional[str] = None,
 ):
     today = datetime.now(TZ).date()
     if not dateFrom:
@@ -225,6 +255,10 @@ def list_visits(
             if checkoutStatus != "never" and ct != checkoutStatus:
                 continue
         if blacklistHit is not None and bool(v.get("blacklistHit")) != blacklistHit:
+            continue
+        if afterHours is not None and bool(v.get("afterHours")) != afterHours:
+            continue
+        if policyTrigger and v.get("policyTrigger") != policyTrigger:
             continue
         if q:
             ql = q.lower()
@@ -334,6 +368,7 @@ def create_visit(
         "createdAt": ts,
         "updatedAt": ts,
     }
+    stamp_after_hours(visit)
     store.put_visit(visit)
     _emit("visit.pending", visit, {"blacklistHit": bool(hit)})
     if hit:
@@ -344,6 +379,7 @@ def create_visit(
 @router.post("/{visit_id}/approve")
 def approve_visit(
     visit_id: str,
+    body: ApproveBody = ApproveBody(),
     user: dict = Depends(require_roles(Role.host, Role.admin, Role.security_head)),
 ):
     v = store.get_visit(visit_id)
@@ -356,6 +392,17 @@ def approve_visit(
 
     _block_without_override(v, "approve")
 
+    # A3/A4: sticky afterHours — do not re-evaluate; Host/Admin Approve is no-op
+    if v.get("afterHours"):
+        if user["role"] != "security_head":
+            _after_hours_sh_required(v)
+        if not body.reason:
+            raise AppError(
+                "VALIDATION",
+                "reason is required for Security Head after-hours approve",
+                400,
+            )
+
     ts = now_iso()
     pass_id = gen_pass_id()
     # Walkthrough convenience: if this is a Priya-like create, keep story — but seed already has P-4F21
@@ -366,6 +413,8 @@ def approve_visit(
     v["passId"] = pass_id
     v["qrToken"] = token
     v["updatedAt"] = ts
+    if v.get("afterHours"):
+        v["afterHoursApproveReason"] = body.reason
     store.put_visit(v)
     store.put_pass(
         {
@@ -395,6 +444,9 @@ def reject_visit(
         raise AppError("FORBIDDEN", "Host may only reject own visits", 403)
     if v["status"] != "pending":
         raise AppError("INVALID_STATE", f"Cannot reject from status {v['status']}", 409)
+    # A4/A6: after-hours reject is SH-only; reason already required by RejectBody
+    if v.get("afterHours") and user["role"] != "security_head":
+        _after_hours_sh_required(v)
     ts = now_iso()
     v["status"] = "rejected"
     v["rejectReason"] = body.reason

@@ -1,6 +1,7 @@
 """Pydantic v2 models — field names locked to API contract."""
 from __future__ import annotations
 
+from datetime import date
 from enum import Enum
 from typing import Any, Literal, Optional
 
@@ -93,6 +94,22 @@ class CustodyFlag(str, Enum):
     none = "none"
     restricted = "restricted"
     court_order = "court_order"
+
+
+class Weekday(str, Enum):
+    mon = "mon"
+    tue = "tue"
+    wed = "wed"
+    thu = "thu"
+    fri = "fri"
+    sat = "sat"
+    sun = "sun"
+
+
+class PolicyTrigger(str, Enum):
+    outside_hours = "outside_hours"
+    holiday = "holiday"
+    both = "both"
 
 
 # --- Auth ---
@@ -212,6 +229,20 @@ class ReasonBody(BaseModel):
         return v
 
 
+class ApproveBody(BaseModel):
+    """Optional for in-hours Host Approve; required non-blank reason when afterHours (A6)."""
+
+    reason: Optional[str] = None
+
+    @field_validator("reason")
+    @classmethod
+    def strip_reason(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+
 class RejectBody(ReasonBody):
     pass
 
@@ -259,6 +290,10 @@ class VisitOut(BaseModel):
     blacklistId: Optional[str] = None
     blacklistOverrideByUserId: Optional[str] = None
     meetingDoneAt: Optional[str] = None
+    afterHours: bool = False
+    policyTrigger: Optional[str] = None
+    afterHoursEvaluatedAt: Optional[str] = None
+    afterHoursApproveReason: Optional[str] = None
     createdAt: str
     updatedAt: str
     meta: Optional[dict] = None
@@ -594,6 +629,56 @@ class PickupOut(BaseModel):
     pickupConsentVersion: Optional[str] = None
     createdAt: str
     updatedAt: str
+    meta: Optional[dict] = None
+
+
+# --- Access Rules: hours + holidays (P2 after-hours A1–A2) ---
+
+
+class CampusHoursRow(BaseModel):
+    schoolId: Optional[str] = None
+    timezone: str = "Asia/Kolkata"
+    weekday: Weekday
+    openTime: Optional[str] = None
+    closeTime: Optional[str] = None
+    closed: bool = False
+    overnight: Optional[bool] = False
+    updatedByUserId: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+
+class HolidayCreate(BaseModel):
+    date: str = Field(min_length=1)
+    label: Optional[str] = None
+
+    @field_validator("date")
+    @classmethod
+    def date_iso(cls, v: str) -> str:
+        v = (v or "").strip()
+        try:
+            date.fromisoformat(v)
+        except ValueError as e:
+            raise ValueError("date must be YYYY-MM-DD") from e
+        return v
+
+    @field_validator("label")
+    @classmethod
+    def strip_label(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+
+class HolidayOut(BaseModel):
+    id: str
+    schoolId: str
+    date: str
+    label: Optional[str] = None
+    createdByUserId: Optional[str] = None
+    updatedByUserId: Optional[str] = None
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
     meta: Optional[dict] = None
 
 
