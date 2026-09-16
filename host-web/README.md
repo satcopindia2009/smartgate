@@ -34,7 +34,7 @@ Same UX pack as Admin (`tokens-admin.css`). Teal accents, Satcop Smart Visitor b
 - Sets `data-theme` on `<html>` (no reload)
 - Min tap 44px
 
-Toggle on host-web, reload — the choice stays. Visitor QR (`8768`) uses the same key if you open it next.
+Toggle on host-web, reload — the choice stays. Visitor QR uses the same `satcop-theme` key (shared when both pages are on the same origin; separate `http.server` ports keep their own storage).
 
 ## API
 
