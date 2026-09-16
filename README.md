@@ -20,7 +20,9 @@ Default API: `VITE_API_BASE_URL=https://weed-pumps-laura-upc.trycloudflare.com/v
 
 Walkthrough: **Priya Sharma** · pass **P-4F21** · **Main Gate** · host **Anita Joshi**.
 
-**Out of Day-1:** emergency blast, pickup/custody, access-rules. No production / no live school.
+**Out of Day-1 / this Admin P2 slice:** emergency blast, access-rules, kiosk/gate pickup, production / live school.
+
+Admin Priority P2 pickup (separate from visit Live/History): `/pickup` authorized-list CRUD + custody flags, `/pickup-history` proof trail. Same `/v1` tunnel. Seed **Aarav Mehta 5-B / Neha Mehta**.
 
 Mobile kiosk lives under `kiosk/` when present — Admin Day-1 does not own, overwrite, or rewrite that tree.
 

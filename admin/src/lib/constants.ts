@@ -25,6 +25,18 @@ export const ID_TYPES = ["Aadhaar", "DL", "Voter", "Passport", "Other"] as const
 
 export const AUTH_STORAGE_KEY = "satcop-admin-auth";
 export const FIXTURE_STATE_KEY = "satcop-admin-fixture-state";
+export const PICKUP_FIXTURE_STATE_KEY = "satcop-admin-pickup-fixture-state";
+export const PICKUP_CONSENT_VERSION = "pickup_notice_en_hi_v1";
+
+export const PICKUP_RELATIONS = ["parent", "guardian", "sibling", "relative", "other"] as const;
+export const CUSTODY_FLAGS = ["none", "restricted", "court_order"] as const;
+export const PICKUP_STATUSES = [
+  "Released",
+  "BlockedNotAuthorized",
+  "BlockedCustody",
+  "ReleasedWithOverride",
+  "Matching",
+] as const;
 
 export const DEMO_LOGINS = {
   admin: { password: "admin123", role: "admin" as const, displayName: "Office Admin" },

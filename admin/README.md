@@ -28,8 +28,17 @@ Walkthrough story: **Priya Sharma** → pass **`P-4F21`** → **Main Gate** → 
 
 ### Out of this slice
 
-- Emergency blast, pickup/custody, access-rules (after-hours / escort zones)
-- CSV export audit UI, production deploy, live school
+- Emergency blast, access-rules (after-hours / escort zones)
+- Production deploy, live school, kiosk / gate tablet pickup
+
+## Pickup & custody (Priority P2)
+
+Admin/Security Head surfaces only — no visit-flow or kiosk changes.
+
+- **Students & lists** (`/pickup`): authorized pickup CRUD + custody flag editor (`none` / `restricted` / `court_order` + `gate_instruction` ≤280). No court PDF upload. Office Admin cannot set `court_order`.
+- **Pickup history** (`/pickup-history`): searchable proof trail (student, collector, relation, gate, status, override) + purpose-required CSV.
+- Wire: `GET /students`, `GET|POST /students/{id}/authorized-pickup`, `PATCH .../authorized-pickup/{personId}`, `GET|PUT /students/{id}/custody-flag`, `GET /pickups`.
+- Seed: **Aarav Mehta · Class 5-B** with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** `court_order` demo. Fixtures fallback if the `/v1` tunnel is down.
 
 ## Run
 
@@ -61,6 +70,8 @@ Default `VITE_API_BASE_URL` is `https://weed-pumps-laura-upc.trycloudflare.com/v
 | Live / History    | yes   | yes           |
 | Force checkout    | yes   | yes           |
 | Blacklist write   | view  | yes           |
+| Pickup list CRUD  | yes   | yes           |
+| Custody `court_order` | no | yes           |
 
 Gate / Host accounts are rejected at login on this surface.
 

@@ -2,12 +2,16 @@ import { API_BASE } from "./constants";
 import type {
   ApiList,
   ApiVisit,
+  AuthorizedPickupPerson,
   AuthUser,
   BlacklistEntry,
+  CustodyFlagRecord,
   Gate,
   GateReport,
   LoginResponse,
+  PickupEvent,
   Staff,
+  Student,
 } from "./types";
 
 export class ApiError extends Error {
@@ -147,4 +151,93 @@ export function visitorTypeMix(token: string, from: string, to: string) {
     `/reports/visitor-type-mix?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
     { token },
   );
+}
+
+function querySuffix(params: Record<string, string | boolean | number | undefined> = {}) {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v === undefined || v === "" || v === false) return;
+    q.set(k, String(v));
+  });
+  return q.toString() ? `?${q}` : "";
+}
+
+export function listStudents(
+  token: string,
+  params: Record<string, string | boolean | number | undefined> = {},
+) {
+  return apiRequest<ApiList<Student>>(`/students${querySuffix(params)}`, { token });
+}
+
+export function listAuthorizedPickup(token: string, studentId: string) {
+  return apiRequest<ApiList<AuthorizedPickupPerson>>(
+    `/students/${encodeURIComponent(studentId)}/authorized-pickup`,
+    { token },
+  );
+}
+
+export function createAuthorizedPickup(
+  token: string,
+  studentId: string,
+  body: {
+    name: string;
+    relation: string;
+    mobile: string;
+    idType?: string | null;
+    idNumber?: string | null;
+    idLast4?: string | null;
+    active?: boolean;
+    effectiveFrom?: string | null;
+    effectiveTo?: string | null;
+    pickupConsentVersion: string;
+    pickupConsentAt: string;
+  },
+) {
+  return apiRequest<AuthorizedPickupPerson>(
+    `/students/${encodeURIComponent(studentId)}/authorized-pickup`,
+    { method: "POST", token, body: JSON.stringify(body) },
+  );
+}
+
+export function patchAuthorizedPickup(
+  token: string,
+  studentId: string,
+  personId: string,
+  body: Partial<AuthorizedPickupPerson>,
+) {
+  return apiRequest<AuthorizedPickupPerson>(
+    `/students/${encodeURIComponent(studentId)}/authorized-pickup/${encodeURIComponent(personId)}`,
+    { method: "PATCH", token, body: JSON.stringify(body) },
+  );
+}
+
+export function getCustodyFlag(token: string, studentId: string) {
+  return apiRequest<CustodyFlagRecord>(
+    `/students/${encodeURIComponent(studentId)}/custody-flag`,
+    { token },
+  );
+}
+
+export function putCustodyFlag(
+  token: string,
+  studentId: string,
+  body: {
+    flag: string;
+    gateInstruction?: string;
+    blockedPersonIds?: string[];
+    allowedPersonIds?: string[] | null;
+  },
+) {
+  return apiRequest<CustodyFlagRecord>(`/students/${encodeURIComponent(studentId)}/custody-flag`, {
+    method: "PUT",
+    token,
+    body: JSON.stringify(body),
+  });
+}
+
+export function listPickups(
+  token: string,
+  params: Record<string, string | boolean | undefined> = {},
+) {
+  return apiRequest<ApiList<PickupEvent>>(`/pickups${querySuffix(params)}`, { token });
 }

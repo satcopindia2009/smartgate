@@ -166,3 +166,91 @@ export interface ApiList<T> {
   data: T[];
   meta?: { watermark?: string };
 }
+
+export type PickupRelation = "parent" | "guardian" | "sibling" | "relative" | "other";
+export type CustodyFlagValue = "none" | "restricted" | "court_order";
+export type PickupEventStatus =
+  | "Draft"
+  | "Matching"
+  | "Released"
+  | "BlockedNotAuthorized"
+  | "BlockedCustody"
+  | "ReleasedWithOverride";
+
+export interface Student {
+  id: string;
+  schoolId?: string;
+  studentId?: string | null;
+  name: string;
+  class: string;
+  section: string;
+  active: boolean;
+  enrollmentEndedAt?: string | null;
+  legalHold?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AuthorizedPickupPerson {
+  id: string;
+  schoolId?: string;
+  studentId: string;
+  name: string;
+  relation: PickupRelation | string;
+  mobile: string;
+  idType?: string | null;
+  idNumber?: string | null;
+  idLast4?: string | null;
+  photoRef?: string | null;
+  active: boolean;
+  effectiveFrom?: string | null;
+  effectiveTo?: string | null;
+  blockedByCustody?: boolean;
+  pickupConsentVersion?: string;
+  pickupConsentAt?: string;
+  createdByUserId?: string | null;
+  updatedByUserId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CustodyFlagRecord {
+  studentId: string;
+  schoolId?: string;
+  flag: CustodyFlagValue | string;
+  gateInstruction: string;
+  blockedPersonIds?: string[];
+  allowedPersonIds?: string[] | null;
+  updatedByUserId?: string | null;
+  updatedAt?: string;
+  meta?: { watermark?: string };
+}
+
+export interface PickupEvent {
+  id: string;
+  schoolId?: string;
+  gateId: string;
+  studentId: string;
+  collectorPickupPersonId?: string | null;
+  collectorName: string;
+  collectorMobile: string;
+  collectorRelation?: string | null;
+  matchMethod?: string | null;
+  pickupReason?: string;
+  reasonOther?: string | null;
+  collectorLivePhotoRef?: string | null;
+  status: PickupEventStatus | string;
+  custodyFlagSnapshot?: string;
+  override?: boolean;
+  overrideByUserId?: string | null;
+  overrideReason?: string | null;
+  linkedVisitId?: string | null;
+  visitLinkFailed?: boolean | null;
+  releasedAt?: string | null;
+  attemptedAt: string;
+  gateUserId?: string | null;
+  pickupConsentAt?: string | null;
+  pickupConsentVersion?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}

@@ -1,28 +1,31 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { ExportScope } from "./ExportModal";
 
+export type AuditScope = ExportScope | "pickup_history";
+
 export interface AuditRow {
   who: string;
   when: string;
-  scope: ExportScope;
+  scope: AuditScope;
   filter: string;
 }
 
-const LABELS: Record<ExportScope, string> = {
+const LABELS: Record<AuditScope, string> = {
   history: "History (filtered)",
   inside: "Currently inside",
   blacklist: "Blacklist",
   gates: "Daily gate summary",
+  pickup_history: "Pickup history",
 };
 
 const AuditContext = createContext<{
   rows: AuditRow[];
-  pushAudit: (who: string, when: string, scope: ExportScope, filter: string) => void;
+  pushAudit: (who: string, when: string, scope: AuditScope, filter: string) => void;
 } | null>(null);
 
 export function AuditProvider({ children }: { children: ReactNode }) {
   const [rows, setRows] = useState<AuditRow[]>([]);
-  const pushAudit = useCallback((who: string, when: string, scope: ExportScope, filter: string) => {
+  const pushAudit = useCallback((who: string, when: string, scope: AuditScope, filter: string) => {
     setRows((prev) => [{ who, when, scope, filter }, ...prev].slice(0, 12));
   }, []);
   const value = useMemo(() => ({ rows, pushAudit }), [rows, pushAudit]);
