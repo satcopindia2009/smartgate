@@ -1,0 +1,11 @@
+{
+  "id": "U-GATE",
+  "schoolId": "SCH-DEMO-01",
+  "role": "gate",
+  "staffId": "G01",
+  "gateIds": ["G-MAIN", "G-PED", "G-STAFF", "G-BUS"],
+  "displayName": "Gate — Ramesh",
+  "phone": "9000000010",
+  "email": "gate@demo.school",
+  "meta": { "watermark": "DEMO" }
+}

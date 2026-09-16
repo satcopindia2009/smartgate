@@ -1,0 +1,50 @@
+{
+  "data": [
+    {
+      "id": "H01",
+      "schoolId": "SCH-DEMO-01",
+      "name": "Meera Kulkarni",
+      "roleTitle": "Principal",
+      "mobile": "9000000001",
+      "userId": null,
+      "active": true
+    },
+    {
+      "id": "H02",
+      "schoolId": "SCH-DEMO-01",
+      "name": "Rahul Deshpande",
+      "roleTitle": "Admin Officer",
+      "mobile": "9000000002",
+      "userId": "U-HOST-H02",
+      "active": true
+    },
+    {
+      "id": "H03",
+      "schoolId": "SCH-DEMO-01",
+      "name": "Anita Joshi",
+      "roleTitle": "Primary Coordinator",
+      "mobile": "9000000003",
+      "userId": "U-HOST",
+      "active": true
+    },
+    {
+      "id": "H04",
+      "schoolId": "SCH-DEMO-01",
+      "name": "Sanjay Patil",
+      "roleTitle": "Accounts",
+      "mobile": "9000000004",
+      "userId": null,
+      "active": true
+    },
+    {
+      "id": "G01",
+      "schoolId": "SCH-DEMO-01",
+      "name": "Gate — Ramesh",
+      "roleTitle": "Guard",
+      "mobile": "9000000010",
+      "userId": "U-GATE",
+      "active": true
+    }
+  ],
+  "meta": { "watermark": "DEMO" }
+}

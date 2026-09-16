@@ -3,6 +3,11 @@
 In-memory FastAPI mock implementing Wave 1–2 of `mvp-api-contract-2026-09-16.md` (§§0–5 under `/v1`).  
 For Mobile / Admin local demos. **Not for live school deploy.**
 
+## Gate tablet (Android kiosk)
+
+Wave 1 gate / reception tablet lives in [`kiosk/`](kiosk/) (Kotlin + Jetpack Compose, landscape). Open that folder in Android Studio. See [`kiosk/README.md`](kiosk/README.md). Backend files in `app/` are unchanged.
+
+
 ## Stack
 
 - Python 3.12+
