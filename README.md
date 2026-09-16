@@ -1,7 +1,28 @@
-# Satcop Smart Visitor — MVP API Stub
+# Satcop Smart Visitor — MVP API Stub + Admin Dashboard (Day-1)
 
 In-memory FastAPI mock implementing Wave 1–2 of `mvp-api-contract-2026-09-16.md` (§§0–5 under `/v1`).  
+Admin web dashboard: `admin/` (Vite + React 18 + TypeScript + React Router).  
 For Mobile / Admin local demos. **Not for live school deploy.**
+
+## Admin web (Day-1)
+
+See **[admin/README.md](admin/README.md)** for Day-1 notes (login, Live who’s-inside, gate multi-select, force-checkout reason, fixtures fallback).
+
+```bash
+cd admin
+npm install
+npm run dev      # http://127.0.0.1:5173
+npm run build
+```
+
+Demo logins: `admin` / `admin123` · `security` / `sh123`.  
+Default API: `VITE_API_BASE_URL=http://127.0.0.1:8080/v1`. If the stub is down, the UI falls back to `admin/public/data/admin-mvp-fixtures.json`.
+
+Walkthrough: **Priya Sharma** · pass **P-4F21** · **Main Gate** · host **Anita Joshi**.
+
+**Out of Day-1:** emergency blast, pickup/custody, access-rules. No production / no live school.
+
+---
 
 ## Stack
 

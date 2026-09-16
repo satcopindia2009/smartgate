@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Dashboard — Satcop Smart Visitor</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    body.admin-page {
+      display: flex;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .sidebar {
+      width: 232px;
+      min-width: 232px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 12px;
+      height: 100vh;
+      position: sticky;
+      top: 0;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 10px 22px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px var(--purple-glow);
+    }
+    .logo-mark svg {
+      width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2.5;
+    }
+    .logo small {
+      display: block;
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--text-dim);
+    }
+    .nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .nav a, .nav button {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 500;
+      width: 100%;
+      text-align: left;
+      transition: background var(--transition), color var(--transition);
+    }
+    .nav a:hover, .nav button:hover {
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+    .nav a.active, .nav button.active {
+      background: var(--purple-dim);
+      color: #fff;
+      box-shadow: 0 0 20px var(--purple-glow), inset 0 0 0 1px rgba(139, 92, 246, 0.35);
+    }
+    .nav a.active .icon, .nav button.active .icon { color: var(--purple-bright); }
+    .sidebar-foot {
+      padding: 12px 10px;
+      font-size: 11px;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border-subtle);
+    }
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      padding: 24px 28px 40px;
+    }
+    .view { display: none; }
+    .view.active { display: block; }
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+    .topbar h1 { font-size: 22px; font-weight: 600; }
+    .topbar p {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .live-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #4ade80;
+      font-weight: 500;
+    }
+    .live-dot::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+      animation: pulse 1.6s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    @media (max-width: 1000px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+    }
+    .stat-card .label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .stat-card .value.cyan { color: var(--cyan-bright); }
+    .stat-card .value.orange { color: #fbbf24; }
+    .stat-card .value.green { color: #4ade80; }
+    .stat-card .value.red { color: #f87171; }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+    .search svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+    }
+    .search input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px 10px 38px;
+      color: var(--text);
+      outline: none;
+      min-height: 42px;
+    }
+    .search input:focus { border-color: var(--purple); }
+    .toolbar select {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      color: var(--text);
+      min-height: 42px;
+      outline: none;
+    }
+    .board {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: auto;
+    }
+    .board table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+    .board th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(0,0,0,0.2);
+      white-space: nowrap;
+    }
+    .board td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    .board tr:last-child td { border-bottom: 0; }
+    .board tr:hover td { background: rgba(255,255,255,0.02); }
+    .board tr.checked-out {
+      opacity: 0.35;
+    }
+    .visitor-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .visitor-cell strong { display: block; font-weight: 600; }
+    .visitor-cell span { font-size: 11px; color: var(--text-dim); }
+    .btn-checkout, .btn-force {
+      padding: 8px 12px;
+      min-height: 36px;
+      font-size: 12px;
+    }
+    .purpose-cell {
+      max-width: 160px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .purpose-cell.expanded {
+      white-space: normal;
+      overflow: visible;
+      color: var(--text);
+    }
+    .flag {
+      display: inline-flex;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+    .flag-overdue { background: var(--orange-dim); color: #fbbf24; }
+    .flag-bl { background: var(--red-dim); color: #f87171; }
+    .sev-block { background: var(--red-dim); color: #f87171; }
+    .sev-alert { background: var(--orange-dim); color: #fbbf24; }
+    .empty-row td {
+      text-align: center;
+      color: var(--text-dim);
+      padding: 40px 16px;
+    }
+    .hub-mini {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .hub-mini:hover { color: var(--text-muted); }
+    .dur-overdue { color: #fbbf24; font-weight: 600; }
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .report-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+    }
+    .report-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .report-card .metric {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 4px 0;
+      color: var(--text-muted);
+    }
+    .report-card .metric strong { color: var(--text); font-weight: 600; }
+    .type-mix {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .type-mix .bar-wrap {
+      flex: 1;
+      min-width: 100px;
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .type-mix .bar-wrap span {
+      display: block;
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .type-mix .bar-wrap strong { font-size: 20px; }
+    .loading-msg {
+      color: var(--text-muted);
+      padding: 40px;
+      text-align: center;
+    }
+    .modal textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      color: var(--text);
+      outline: none;
+      min-height: 88px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    .modal textarea:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px var(--purple-dim);
+    }
+    .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+    .notes-cell {
+      max-width: 140px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+    .notes-cell.expanded { white-space: normal; color: var(--text-muted); }
+    .export-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .audit-panel {
+      margin-top: 18px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+    }
+    .audit-panel h3 {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+    .audit-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 160px;
+      overflow: auto;
+    }
+    .audit-row {
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 8px 10px;
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      line-height: 1.45;
+    }
+    .audit-row strong { color: var(--text); font-weight: 600; }
+    .audit-empty { font-size: 12px; color: var(--text-dim); }
+    .scope-grid {
+      display: grid;
+      gap: 8px;
+      margin: 14px 0 8px;
+    }
+    .scope-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      cursor: pointer;
+      text-align: left;
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .scope-option:hover { border-color: var(--purple); }
+    .scope-option.active {
+      border-color: var(--purple);
+      background: var(--purple-dim);
+    }
+    .scope-option input { margin-top: 3px; accent-color: var(--purple); }
+    .scope-option strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .scope-option span { font-size: 11px; color: var(--text-muted); }
+    .export-meta {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+    .modal.export-modal { max-width: 480px; }
+    .role-toggle {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .role-toggle button {
+      flex: 1;
+      padding: 8px 10px;
+      min-height: 36px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .role-toggle button.active {
+      background: var(--cyan-dim);
+      border-color: var(--cyan);
+      color: var(--cyan-bright);
+    }
+
+    .sidebar-role {
+      padding: 12px 10px 4px;
+      border-top: 1px solid var(--border-subtle);
+      margin-top: 8px;
+    }
+    .sidebar-role .role-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .sidebar-role .role-toggle { margin-top: 0; }
+    .sidebar-role .role-toggle button { font-size: 11px; padding: 7px 8px; }
+    .bl-top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .bl-role-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      max-width: 220px;
+      line-height: 1.35;
+      text-align: right;
+    }
+    .bl-role-hint.hidden { display: none; }
+    .board tr.bl-inactive td { opacity: 0.55; }
+    .modal.bl-modal { max-width: 520px; }
+    .modal.bl-modal .field { margin-bottom: 12px; }
+    .modal.bl-modal .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .modal.bl-modal .field label .req { color: #f87171; }
+    .modal.bl-modal .field input,
+    .modal.bl-modal .field select,
+    .modal.bl-modal .field textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      color: var(--text);
+      outline: none;
+      min-height: 40px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+    .modal.bl-modal .field textarea { min-height: 64px; resize: vertical; }
+    .modal.bl-modal .field input:focus,
+    .modal.bl-modal .field select:focus,
+    .modal.bl-modal .field textarea:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px var(--purple-dim);
+    }
+    .modal.bl-modal .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .modal.bl-modal .field-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .modal.bl-modal .field-check input { accent-color: var(--purple); width: 16px; height: 16px; }
+    .modal.bl-modal .form-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin: -4px 0 12px;
+      line-height: 1.35;
+    }
+    .modal.bl-modal .modal-actions { flex-wrap: wrap; }
+    .modal.bl-modal .modal-actions .btn-hard-remove {
+      margin-right: auto;
+      display: none;
+    }
+    .modal.bl-modal .modal-actions .btn-hard-remove.visible { display: inline-flex; }
+    .btn-sm {
+      padding: 6px 10px;
+      min-height: 32px;
+      font-size: 11px;
+    }
+    .btn[disabled], .btn.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="admin-page">
+  <div class="demo-watermark">DEMO</div>
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div>
+        Smart Visitor
+        <small id="school-name">Demo International School</small>
+      </div>
+    </div>
+    <nav class="nav" aria-label="Admin">
+      <button type="button" class="active" data-nav="live">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        Live
+      </button>
+      <button type="button" data-nav="history">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        History
+      </button>
+      <button type="button" data-nav="blacklist">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg>
+        Blacklist
+      </button>
+      <button type="button" data-nav="gates">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Gates
+      </button>
+      <button type="button" data-nav="reports">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Reports
+      </button>
+    </nav>
+    <div class="sidebar-role" id="demo-role-panel">
+      <div class="role-label">Demo role</div>
+      <div class="role-toggle" id="demo-role-toggle" role="group" aria-label="Demo role">
+        <button type="button" class="active" data-role="Security Head">Security Head</button>
+        <button type="button" data-role="Office Admin">Office Admin</button>
+      </div>
+    </div>
+    <div class="sidebar-foot">
+      <a class="hub-mini" href="index.html">← Demo hub</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="loading-msg" id="boot-msg">Loading fixtures…</div>
+
+    <!-- LIVE -->
+    <section class="view" id="view-live" data-view="live">
+      <div class="topbar">
+        <div>
+          <h1>Who’s inside</h1>
+          <p>Live campus presence · <span class="live-dot">Live</span></p>
+        </div>
+        <div style="text-align:right;color:var(--text-muted);font-size:13px;" id="admin-clock">—</div>
+      </div>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="label">Inside now</div>
+          <div class="value cyan" id="stat-inside">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Overdue (&gt;4h)</div>
+          <div class="value orange" id="stat-overdue">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Checked out today</div>
+          <div class="value green" id="stat-out">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Blacklist hits today</div>
+          <div class="value red" id="stat-bl">0</div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="search">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="search" id="live-search" placeholder="Search name, mobile last 4, pass…" aria-label="Search visitors" />
+        </div>
+        <select id="live-type" aria-label="Filter by type">
+          <option value="">All types</option>
+        </select>
+        <select id="live-gate" aria-label="Filter by gate">
+          <option value="">All gates</option>
+        </select>
+        <select id="live-flag" aria-label="Filter flags">
+          <option value="">All flags</option>
+          <option value="overdue">Overdue only</option>
+          <option value="blacklist">Blacklist flag</option>
+        </select>
+        <button type="button" class="btn btn-ghost" data-open-export="inside" title="Export CSV">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export
+        </button>
+      </div>
+      <div class="board">
+        <table>
+          <thead>
+            <tr>
+              <th>Visitor</th>
+              <th>Type</th>
+              <th>Host</th>
+              <th>Purpose</th>
+              <th>Gate</th>
+              <th>Time-in</th>
+              <th>Duration</th>
+              <th>Pass</th>
+              <th>Flags</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="live-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="view" id="view-history" data-view="history">
+      <div class="topbar">
+        <div>
+          <h1>Visit history</h1>
+          <p>Fixture visits · filters match surface map</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <div class="search">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="search" id="hist-search" placeholder="Name, mobile, visit id…" aria-label="Search history" />
+        </div>
+        <select id="hist-gate" aria-label="Gate"><option value="">All gates</option></select>
+        <select id="hist-type" aria-label="Type"><option value="">All types</option></select>
+        <select id="hist-decision" aria-label="Decision">
+          <option value="">All decisions</option>
+          <option>Approved</option>
+          <option>Rejected</option>
+          <option>Pending</option>
+        </select>
+        <select id="hist-checkout" aria-label="Checkout">
+          <option value="">All checkout</option>
+          <option value="Normal">Normal</option>
+          <option value="Force">Force</option>
+          <option value="Never">Never / open</option>
+        </select>
+        <select id="hist-bl" aria-label="Blacklist">
+          <option value="">Any blacklist</option>
+          <option value="1">Blacklist hit only</option>
+        </select>
+        <button type="button" class="btn btn-ghost" data-open-export="history" title="Export CSV">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export
+        </button>
+      </div>
+      <div class="board">
+        <table>
+          <thead>
+            <tr>
+              <th>Visit</th>
+              <th>Visitor</th>
+              <th>Type</th>
+              <th>Purpose</th>
+              <th>Host</th>
+              <th>Decision</th>
+              <th>In</th>
+              <th>Out</th>
+              <th>Checkout</th>
+              <th>Dur</th>
+              <th>BL</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="hist-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- BLACKLIST -->
+    <section class="view" id="view-blacklist" data-view="blacklist">
+      <div class="topbar">
+        <div>
+          <h1>Blacklist</h1>
+          <p id="bl-subtitle">Block vs Alert · masked IDs · Security Head can add / edit</p>
+        </div>
+        <div class="bl-top-actions">
+          <span class="bl-role-hint hidden" id="bl-oa-hint">View only — blacklist write is Security Head only</span>
+          <button type="button" class="btn btn-primary" id="bl-add-btn" title="Add blacklist entry">
+            + Add entry
+          </button>
+          <button type="button" class="btn btn-ghost" data-open-export="blacklist" title="Export CSV">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
+      <div class="board">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Mobile</th>
+              <th>ID</th>
+              <th>Severity</th>
+              <th>Reason</th>
+              <th>Active</th>
+              <th>Added</th>
+              <th>Expires</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="bl-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- GATES -->
+    <section class="view" id="view-gates" data-view="gates">
+      <div class="topbar">
+        <div>
+          <h1>Gates</h1>
+          <p>Today-by-gate from fixtures</p>
+        </div>
+        <button type="button" class="btn btn-ghost" data-open-export="gates" title="Export daily gate summary CSV">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export
+        </button>
+      </div>
+      <div class="report-grid" id="gates-cards"></div>
+      <div class="board">
+        <table>
+          <thead>
+            <tr>
+              <th>Gate</th>
+              <th>Check-ins</th>
+              <th>Check-outs</th>
+              <th>Still inside</th>
+              <th>Rejects</th>
+              <th>BL hits</th>
+              <th>Force CO</th>
+              <th>Unique mobiles</th>
+              <th>Median approve</th>
+              <th>Peak inside</th>
+            </tr>
+          </thead>
+          <tbody id="gates-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REPORTS -->
+    <section class="view" id="view-reports" data-view="reports">
+      <div class="topbar">
+        <div>
+          <h1>Reports</h1>
+          <p>Today-by-gate + type mix (demo)</p>
+        </div>
+        <button type="button" class="btn btn-ghost" data-open-export="gates" title="Export daily gate summary CSV">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export
+        </button>
+      </div>
+      <h2 style="font-size:14px;color:var(--text-muted);margin-bottom:12px;">Today by gate</h2>
+      <div class="report-grid" id="report-gate-cards"></div>
+      <h2 style="font-size:14px;color:var(--text-muted);margin:8px 0 12px;">Type mix (history + inside seed)</h2>
+      <div class="type-mix" id="type-mix"></div>
+    </section>
+
+    <div class="audit-panel" id="export-audit-panel" aria-live="polite">
+      <h3>CSV export audit (demo)</h3>
+      <div class="audit-list" id="export-audit-list">
+        <div class="audit-empty">No exports yet · Admin / Security Head · max 10k · UTF-8 · IST</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Force checkout modal -->
+  <div class="modal-overlay" id="force-modal" role="dialog" aria-modal="true" aria-labelledby="force-title">
+    <div class="modal">
+      <h3 id="force-title">Force checkout</h3>
+      <p class="modal-sub" id="force-sub">Reason required for Admin or Security Head.</p>
+      <label for="force-reason" class="sr-only">Reason</label>
+      <textarea id="force-reason" placeholder="e.g. School closing bell / visitor left without scan"></textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="force-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" id="force-confirm">Force checkout</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Blacklist CRUD modal -->
+  <div class="modal-overlay" id="bl-modal" role="dialog" aria-modal="true" aria-labelledby="bl-modal-title">
+    <div class="modal bl-modal">
+      <h3 id="bl-modal-title">Add blacklist entry</h3>
+      <p class="modal-sub" id="bl-modal-sub">Security Head write · soft-deactivate preferred</p>
+      <form id="bl-form" autocomplete="off">
+        <input type="hidden" id="bl-edit-id" value="" />
+        <div class="field">
+          <label for="bl-name">Full name <span class="req">*</span></label>
+          <input id="bl-name" type="text" required placeholder="e.g. Vikram More" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="bl-mobile">Mobile</label>
+            <input id="bl-mobile" type="tel" placeholder="10-digit IN mobile" inputmode="tel" />
+          </div>
+          <div class="field">
+            <label for="bl-severity">Severity <span class="req">*</span></label>
+            <select id="bl-severity" required>
+              <option value="Block">Block</option>
+              <option value="Alert">Alert</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="bl-id-type">Govt ID type</label>
+            <select id="bl-id-type">
+              <option value="">—</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="bl-id-number">Govt ID number</label>
+            <input id="bl-id-number" type="text" placeholder="If used with type" />
+          </div>
+        </div>
+        <p class="form-hint">Mobile <strong>or</strong> govt ID type+number required (at least one).</p>
+        <div class="field">
+          <label for="bl-reason">Reason <span class="req">*</span></label>
+          <textarea id="bl-reason" required placeholder="Why banned / watchlisted"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="bl-expires">Expires on</label>
+            <input id="bl-expires" type="date" />
+          </div>
+          <div class="field">
+            <label for="bl-photo">Photo URL / reference (optional)</label>
+            <input id="bl-photo" type="text" placeholder="https://… or /demo/photos/…" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="bl-notes">Notes</label>
+          <textarea id="bl-notes" placeholder="Optional internal notes"></textarea>
+        </div>
+        <label class="field-check">
+          <input type="checkbox" id="bl-active" checked />
+          Active (uncheck to soft-deactivate)
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-danger btn-hard-remove" id="bl-hard-remove" title="Permanently remove from demo list">Remove permanently</button>
+          <button type="button" class="btn btn-ghost" id="bl-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="bl-save">Save entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CSV export modal -->
+  <div class="modal-overlay" id="export-modal" role="dialog" aria-modal="true" aria-labelledby="export-title">
+    <div class="modal export-modal">
+      <h3 id="export-title">Export CSV</h3>
+      <p class="modal-sub">UTF-8 · IST labeled · photo as URL · DEMO watermark column · max 10k rows</p>
+      <div class="scope-grid" id="export-scopes" role="radiogroup" aria-label="Export scope">
+        <label class="scope-option active" data-scope="history">
+          <input type="radio" name="export-scope" value="history" checked />
+          <div>
+            <strong>History (filtered)</strong>
+            <span>Visit history with current History filters</span>
+          </div>
+        </label>
+        <label class="scope-option" data-scope="inside">
+          <input type="radio" name="export-scope" value="inside" />
+          <div>
+            <strong>Currently inside</strong>
+            <span>Live board with current Live filters</span>
+          </div>
+        </label>
+        <label class="scope-option" data-scope="blacklist">
+          <input type="radio" name="export-scope" value="blacklist" />
+          <div>
+            <strong>Blacklist</strong>
+            <span>All blacklist rows · masked IDs only</span>
+          </div>
+        </label>
+        <label class="scope-option" data-scope="gates">
+          <input type="radio" name="export-scope" value="gates" />
+          <div>
+            <strong>Daily gate summary</strong>
+            <span>Today-by-gate metrics from fixtures</span>
+          </div>
+        </label>
+      </div>
+      <div class="export-meta">
+        Exported by (demo role)
+        <div class="role-toggle" id="export-role-toggle">
+          <button type="button" class="active" data-role="Security Head">Security Head</button>
+          <button type="button" data-role="Office Admin">Office Admin</button>
+        </div>
+      </div>
+      <p class="export-meta" id="export-filter-summary">Filter: —</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="export-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="export-confirm">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Download CSV
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="fixtures-fallback.js"></script>
+  <script src="app.js"></script>
+  <script>
+  (function () {
+    var $ = function (s) { return document.querySelector(s); };
+    var $$ = function (s) { return Array.from(document.querySelectorAll(s)); };
+    var fx = null;
+    var liveState = []; /* mutable copy of inside */
+    var forceTarget = null;
+    var currentRole = 'Security Head';
+    var overdueHours = 4;
+    var ROLE_KEY = 'satcop-vms-admin-demo-role';
+
+    function tick() {
+      var el = $('#admin-clock');
+      if (!el) return;
+      el.textContent = new Date().toLocaleString('en-IN', {
+        weekday: 'short', day: 'numeric', month: 'short',
+        hour: '2-digit', minute: '2-digit',
+        hour12: true, timeZone: 'Asia/Calcutta'
+      }) + ' IST';
+    }
+    tick();
+    setInterval(tick, 30000);
+
+    function fillSelect(sel, items, allLabel) {
+      var el = $(sel);
+      var keep = el.querySelector('option[value=""]');
+      el.innerHTML = '';
+      if (keep) el.appendChild(keep);
+      else {
+        var o = document.createElement('option');
+        o.value = '';
+        o.textContent = allLabel || 'All';
+        el.appendChild(o);
+      }
+      items.forEach(function (v) {
+        var o = document.createElement('option');
+        o.value = v;
+        o.textContent = v;
+        el.appendChild(o);
+      });
+    }
+
+    function isOverdue(v) {
+      if (!v.timeIn) return false;
+      if (v.flags && v.flags.indexOf('overdue') !== -1) return true;
+      var hrs = (Date.now() - new Date(v.timeIn).getTime()) / 3600000;
+      return hrs > overdueHours;
+    }
+
+    function showView(key) {
+      $$('.nav button').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-nav') === key);
+      });
+      $$('.view').forEach(function (v) {
+        v.classList.toggle('active', v.getAttribute('data-view') === key);
+      });
+    }
+
+    function canWriteBlacklist() { return currentRole === 'Security Head'; }
+    function canForceCheckout() {
+      return currentRole === 'Security Head' || currentRole === 'Office Admin';
+    }
+
+    function setDemoRole(role, persist) {
+      if (role !== 'Security Head' && role !== 'Office Admin') role = 'Security Head';
+      currentRole = role;
+      exportRole = role;
+      if (persist !== false) {
+        try { sessionStorage.setItem(ROLE_KEY, role); } catch (err) { /* session variable still works */ }
+      }
+      $$('#demo-role-toggle button, #export-role-toggle button').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-role') === role);
+      });
+      var canWrite = canWriteBlacklist();
+      $('#bl-add-btn').style.display = canWrite ? '' : 'none';
+      $('#bl-oa-hint').classList.toggle('hidden', canWrite);
+      $('#bl-subtitle').textContent = canWrite
+        ? 'Block vs Alert · masked IDs · Security Head can add / edit'
+        : 'Block vs Alert · masked IDs · view only for Office Admin';
+      if (!canWrite) $('#bl-modal').classList.remove('open');
+      if (fx) {
+        renderBlacklist();
+        renderLive();
+      }
+    }
+
+    $$('.nav button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        showView(btn.getAttribute('data-nav'));
+      });
+    });
+
+    function computeStats() {
+      var inside = liveState.filter(function (v) { return !v._checkedOut; });
+      var overdue = inside.filter(isOverdue).length;
+      var outToday = (fx.reportsTodayByGate || []).reduce(function (s, g) {
+        return s + (g.checkOuts || 0);
+      }, 0);
+      /* include demo force checkouts done in session */
+      outToday += liveState.filter(function (v) { return v._checkedOut; }).length;
+      var blHits = (fx.reportsTodayByGate || []).reduce(function (s, g) {
+        return s + (g.blacklistHits || 0);
+      }, 0);
+      /* also count inside with blacklist */
+      var blInside = inside.filter(function (v) { return v.blacklistHit; }).length;
+      $('#stat-inside').textContent = String(inside.length);
+      $('#stat-overdue').textContent = String(overdue);
+      $('#stat-out').textContent = String(outToday);
+      $('#stat-bl').textContent = String(Math.max(blHits, blInside));
+    }
+
+    function flagsHtml(v) {
+      var bits = [];
+      if (isOverdue(v)) bits.push('<span class="flag flag-overdue">overdue</span>');
+      if (v.blacklistHit || (v.flags && v.flags.indexOf('blacklist-alert') !== -1)) {
+        bits.push('<span class="flag flag-bl">BL alert</span>');
+      }
+      return bits.join('') || '<span style="color:var(--text-dim)">—</span>';
+    }
+
+    function renderLive() {
+      var q = ($('#live-search').value || '').toLowerCase().trim();
+      var type = $('#live-type').value;
+      var gate = $('#live-gate').value;
+      var flag = $('#live-flag').value;
+      var rows = liveState.filter(function (v) {
+        if (v._checkedOut) return false;
+        if (type && v.type !== type) return false;
+        if (gate && v.gate !== gate) return false;
+        if (flag === 'overdue' && !isOverdue(v)) return false;
+        if (flag === 'blacklist' && !v.blacklistHit) return false;
+        if (q) {
+          var mobile = String(v.mobile || '');
+          var last4 = mobile.slice(-4);
+          var hay = [v.name, v.host, v.passId, v.visitId, mobile, last4, v.purpose]
+            .join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1) return false;
+        }
+        return true;
+      });
+      var tbody = $('#live-rows');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No visitors inside</td></tr>';
+        computeStats();
+        return;
+      }
+      tbody.innerHTML = rows.map(function (v) {
+        var dur = vmsDuration(v.timeIn);
+        var durCls = isOverdue(v) ? 'dur-overdue' : '';
+        return (
+          '<tr data-id="' + v.visitId + '">' +
+            '<td><div class="visitor-cell">' +
+              '<div class="avatar avatar-lg ' + vmsAvatarClass(v.type) + '">' + vmsInitials(v.name) + '</div>' +
+              '<div><strong>' + escapeHtml(v.name) + '</strong><span>' + escapeHtml(vmsFormatMobile(v.mobile)) + '</span></div>' +
+            '</div></td>' +
+            '<td><span class="' + vmsTypeClass(v.type) + '">' + escapeHtml(v.type) + '</span></td>' +
+            '<td>' + escapeHtml(v.host || '—') + '</td>' +
+            '<td><div class="purpose-cell" title="Click to expand">' + escapeHtml(v.purpose || '—') + '</div></td>' +
+            '<td>' + escapeHtml(v.gate) + '</td>' +
+            '<td>' + escapeHtml(vmsFormatTime(v.timeIn)) + '</td>' +
+            '<td class="' + durCls + '">' + escapeHtml(dur) + '</td>' +
+            '<td><code style="font-size:12px;color:var(--cyan-bright)">' + escapeHtml(v.passId || '—') + '</code></td>' +
+            '<td>' + flagsHtml(v) + '</td>' +
+            '<td><div class="action-btns">' +
+              '<button type="button" class="btn btn-ghost btn-checkout" data-co="' + escapeAttr(v.visitId) + '">Checkout</button>' +
+              (canForceCheckout()
+                ? '<button type="button" class="btn btn-danger btn-force" data-force="' + escapeAttr(v.visitId) + '">Force</button>'
+                : '<button type="button" class="btn btn-danger btn-force" disabled title="Admin or Security Head only">Force</button>') +
+            '</div></td>' +
+          '</tr>'
+        );
+      }).join('');
+      computeStats();
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+    function escapeAttr(s) { return escapeHtml(s).replace(/'/g, '&#39;'); }
+
+    function renderHistory() {
+      var q = ($('#hist-search').value || '').toLowerCase().trim();
+      var gate = $('#hist-gate').value;
+      var type = $('#hist-type').value;
+      var decision = $('#hist-decision').value;
+      var checkout = $('#hist-checkout').value;
+      var bl = $('#hist-bl').value;
+      var rows = (fx.history || []).filter(function (h) {
+        if (type && h.type !== type) return false;
+        if (gate && h.gateIn !== gate && h.gateOut !== gate) return false;
+        if (decision && h.decision !== decision) return false;
+        if (checkout && h.checkoutType !== checkout) return false;
+        if (bl === '1' && !h.blacklistHit) return false;
+        if (q) {
+          var hay = [h.name, h.mobile, h.visitId, h.host, h.purpose, h.notes]
+            .join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1) return false;
+        }
+        return true;
+      });
+      var tbody = $('#hist-rows');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="12">No matching visits</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function (h) {
+        var dec = h.decision || '—';
+        var decExtra = h.decisionReason ? '<div style="font-size:11px;color:var(--text-dim)">' + escapeHtml(h.decisionReason) + '</div>' : '';
+        var inCell = (h.gateIn || '—') + '<div style="font-size:11px;color:var(--text-dim)">' + escapeHtml(vmsFormatDateTime(h.timeIn)) + '</div>';
+        var outCell = h.timeOut
+          ? (h.gateOut || '—') + '<div style="font-size:11px;color:var(--text-dim)">' + escapeHtml(vmsFormatDateTime(h.timeOut)) + '</div>'
+          : '—';
+        var dur = h.durationMin != null ? (Math.floor(h.durationMin / 60) ? Math.floor(h.durationMin / 60) + 'h ' : '') + (h.durationMin % 60) + 'm' : '—';
+        return (
+          '<tr>' +
+            '<td><code style="font-size:11px">' + escapeHtml(h.visitId) + '</code></td>' +
+            '<td><div class="visitor-cell">' +
+              '<div class="avatar avatar-md ' + vmsAvatarClass(h.type) + '">' + vmsInitials(h.name) + '</div>' +
+              '<div><strong>' + escapeHtml(h.name) + '</strong><span>' + escapeHtml(vmsFormatMobile(h.mobile)) + '</span></div>' +
+            '</div></td>' +
+            '<td><span class="' + vmsTypeClass(h.type) + '">' + escapeHtml(h.type) + '</span></td>' +
+            '<td><div class="purpose-cell" title="Click to expand">' + escapeHtml(h.purpose || '—') + '</div></td>' +
+            '<td>' + escapeHtml(h.host || '—') + '</td>' +
+            '<td><span class="status-pill status-' + (dec === 'Approved' ? 'approved' : dec === 'Rejected' ? 'rejected' : 'pending') + '">' + escapeHtml(dec) + '</span>' + decExtra + '</td>' +
+            '<td>' + inCell + '</td>' +
+            '<td>' + outCell + '</td>' +
+            '<td>' + escapeHtml(h.checkoutType || '—') + '</td>' +
+            '<td>' + escapeHtml(dur) + '</td>' +
+            '<td>' + (h.blacklistHit ? '<span class="flag flag-bl">hit</span>' : '—') + '</td>' +
+            '<td><div class="notes-cell" title="Click to expand">' + escapeHtml(h.notes || '—') + '</div></td>' +
+          '</tr>'
+        );
+      }).join('');
+    }
+
+    function maskGovtId(value) {
+      var raw = String(value || '').trim();
+      if (!raw) return '—';
+      /* Preserve fixture masks; for new records expose only the last four characters. */
+      if (/[*Xx]/.test(raw)) return raw;
+      var compact = raw.replace(/\s+/g, '');
+      var last = compact.slice(-4);
+      return compact.length <= 4 ? last : '••••-' + last;
+    }
+
+    function renderBlacklist() {
+      var rows = fx.blacklist || [];
+      var tbody = $('#bl-rows');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="10">No blacklist entries</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function (b) {
+        var sevCls = b.severity === 'Block' ? 'sev-block' : 'sev-alert';
+        var idDisplay = b.idType && b.idNumber
+          ? escapeHtml(b.idType) + ' · <code style="font-size:11px">' + escapeHtml(maskGovtId(b.idNumber)) + '</code>'
+          : '—';
+        var action = canWriteBlacklist()
+          ? '<button type="button" class="btn btn-ghost btn-sm" data-bl-edit="' + escapeAttr(b.id) + '">Edit</button>'
+          : '<span style="font-size:10px;color:var(--text-dim);white-space:nowrap">Security Head only</span>';
+        return (
+          '<tr class="' + (b.active ? '' : 'bl-inactive') + '">' +
+            '<td><div class="visitor-cell">' +
+              '<div class="avatar avatar-md avatar-indigo">' + vmsInitials(b.name) + '</div>' +
+              '<strong>' + escapeHtml(b.name) + '</strong>' +
+            '</div></td>' +
+            '<td>' + escapeHtml(vmsFormatMobile(b.mobile)) + '</td>' +
+            '<td>' + idDisplay + '</td>' +
+            '<td><span class="tag ' + sevCls + '">' + escapeHtml(b.severity) + '</span></td>' +
+            '<td><div class="purpose-cell" title="Click to expand">' + escapeHtml(b.reason) + '</div></td>' +
+            '<td>' + (b.active ? '<span style="color:#4ade80">Yes</span>' : '<span style="color:var(--text-dim)">No</span>') + '</td>' +
+            '<td>' + escapeHtml(b.addedBy) + '<div style="font-size:11px;color:var(--text-dim)">' + escapeHtml(vmsFormatDateTime(b.addedAt)) + '</div></td>' +
+            '<td>' + escapeHtml(b.expiresOn || '—') + '</td>' +
+            '<td><div class="notes-cell" title="Click to expand">' + escapeHtml(b.notes || '—') + '</div></td>' +
+            '<td>' + action + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+    }
+
+    function isoIstNow() {
+      var parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Calcutta', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      }).formatToParts(new Date());
+      var m = {};
+      parts.forEach(function (x) { m[x.type] = x.value; });
+      var hour = m.hour === '24' ? '00' : m.hour;
+      return m.year + '-' + m.month + '-' + m.day + 'T' + hour + ':' + m.minute + ':' + m.second + '+05:30';
+    }
+
+    function nextBlacklistId() {
+      var max = (fx.blacklist || []).reduce(function (highest, b) {
+        var match = String(b.id || '').match(/(\d+)$/);
+        return match ? Math.max(highest, parseInt(match[1], 10)) : highest;
+      }, 0);
+      return 'BL-' + String(max + 1).padStart(2, '0');
+    }
+
+    function normalizeBlacklistMobile(value) {
+      var digits = String(value || '').replace(/\D/g, '');
+      if (digits.length === 12 && digits.slice(0, 2) === '91') digits = digits.slice(2);
+      return digits;
+    }
+
+    function closeBlacklistModal() {
+      $('#bl-modal').classList.remove('open');
+      $('#bl-edit-id').value = '';
+      $('#bl-hard-remove').classList.remove('visible');
+    }
+
+    function openBlacklistModal(id) {
+      if (!canWriteBlacklist()) {
+        showToast('Blacklist write is Security Head only', 'warning');
+        return;
+      }
+      var entry = id ? (fx.blacklist || []).find(function (b) { return b.id === id; }) : null;
+      if (id && !entry) return;
+      $('#bl-form').reset();
+      $('#bl-active').checked = entry ? !!entry.active : true;
+      $('#bl-edit-id').value = entry ? entry.id : '';
+      $('#bl-modal-title').textContent = entry ? 'Edit blacklist entry' : 'Add blacklist entry';
+      $('#bl-modal-sub').textContent = entry
+        ? entry.id + ' · uncheck Active to soft-deactivate'
+        : 'Security Head write · mobile or govt ID required';
+      $('#bl-save').textContent = entry ? 'Save changes' : 'Add entry';
+      $('#bl-hard-remove').classList.toggle('visible', !!entry);
+      $('#bl-name').value = entry ? (entry.name || '') : '';
+      $('#bl-mobile').value = entry ? (entry.mobile || '') : '';
+      $('#bl-id-type').value = entry ? (entry.idType || '') : '';
+      $('#bl-id-number').value = entry ? (entry.idNumber || '') : '';
+      $('#bl-reason').value = entry ? (entry.reason || '') : '';
+      $('#bl-severity').value = entry ? (entry.severity || 'Block') : 'Block';
+      $('#bl-expires').value = entry ? (entry.expiresOn || '') : '';
+      $('#bl-notes').value = entry ? (entry.notes || '') : '';
+      $('#bl-photo').value = entry ? (entry.photoUrl || '') : '';
+      $('#bl-modal').classList.add('open');
+      $('#bl-name').focus();
+    }
+
+    $('#bl-add-btn').addEventListener('click', function () { openBlacklistModal(null); });
+    $('#bl-cancel').addEventListener('click', closeBlacklistModal);
+    $('#bl-hard-remove').addEventListener('click', function () {
+      if (!canWriteBlacklist()) {
+        showToast('Blacklist write is Security Head only', 'warning');
+        closeBlacklistModal();
+        return;
+      }
+      var id = $('#bl-edit-id').value;
+      if (!id) return;
+      var idx = (fx.blacklist || []).findIndex(function (b) { return b.id === id; });
+      if (idx === -1) return;
+      var removed = fx.blacklist.splice(idx, 1)[0];
+      closeBlacklistModal();
+      renderBlacklist();
+      showToast('Removed permanently · ' + (removed && removed.name ? removed.name : id), 'warning');
+    });
+    $('#bl-rows').addEventListener('click', function (e) {
+      var edit = e.target.closest('[data-bl-edit]');
+      if (edit) openBlacklistModal(edit.getAttribute('data-bl-edit'));
+    });
+
+    $('#bl-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!canWriteBlacklist()) {
+        showToast('Blacklist write is Security Head only', 'warning');
+        closeBlacklistModal();
+        return;
+      }
+      var name = ($('#bl-name').value || '').trim();
+      var mobile = normalizeBlacklistMobile($('#bl-mobile').value);
+      var idType = $('#bl-id-type').value;
+      var idNumber = ($('#bl-id-number').value || '').replace(/\s+/g, '').toUpperCase();
+      var reason = ($('#bl-reason').value || '').trim();
+      var severity = $('#bl-severity').value;
+      if (!name || !reason || (severity !== 'Block' && severity !== 'Alert')) {
+        showToast('Full name, reason and severity are required', 'warning');
+        return;
+      }
+      if ($('#bl-mobile').value.trim() && mobile.length !== 10) {
+        showToast('Enter a valid 10-digit IN mobile', 'warning');
+        return;
+      }
+      if ((idType && !idNumber) || (!idType && idNumber)) {
+        showToast('Govt ID type and number must be entered together', 'warning');
+        return;
+      }
+      if (!mobile && !(idType && idNumber)) {
+        showToast('Enter a mobile or govt ID type and number', 'warning');
+        return;
+      }
+      var id = $('#bl-edit-id').value;
+      var existing = id ? (fx.blacklist || []).find(function (b) { return b.id === id; }) : null;
+      var values = {
+        name: name,
+        mobile: mobile,
+        idType: idType,
+        idNumber: idNumber,
+        reason: reason,
+        severity: severity,
+        active: $('#bl-active').checked,
+        expiresOn: $('#bl-expires').value || null,
+        notes: ($('#bl-notes').value || '').trim(),
+        photoUrl: ($('#bl-photo').value || '').trim() || null
+      };
+      if (existing) {
+        Object.assign(existing, values);
+        showToast('Blacklist entry updated' + (values.active ? '' : ' · deactivated'), values.active ? 'success' : 'warning');
+      } else {
+        values.id = nextBlacklistId();
+        values.addedBy = currentRole;
+        values.addedAt = isoIstNow();
+        fx.blacklist.push(values);
+        showToast('Blacklist entry added · ' + values.id, 'success');
+      }
+      closeBlacklistModal();
+      renderBlacklist();
+    });
+
+    function renderGates() {
+      var data = fx.reportsTodayByGate || [];
+      $('#gates-cards').innerHTML = data.map(function (g) {
+        return (
+          '<div class="report-card">' +
+            '<h3>' + escapeHtml(g.gate) + '</h3>' +
+            '<div class="metric"><span>Still inside</span><strong>' + g.stillInside + '</strong></div>' +
+            '<div class="metric"><span>Check-ins</span><strong>' + g.checkIns + '</strong></div>' +
+            '<div class="metric"><span>Check-outs</span><strong>' + g.checkOuts + '</strong></div>' +
+            '<div class="metric"><span>BL hits</span><strong>' + g.blacklistHits + '</strong></div>' +
+          '</div>'
+        );
+      }).join('');
+      $('#gates-rows').innerHTML = data.map(function (g) {
+        return (
+          '<tr>' +
+            '<td><strong>' + escapeHtml(g.gate) + '</strong></td>' +
+            '<td>' + g.checkIns + '</td>' +
+            '<td>' + g.checkOuts + '</td>' +
+            '<td>' + g.stillInside + '</td>' +
+            '<td>' + g.rejects + '</td>' +
+            '<td>' + g.blacklistHits + '</td>' +
+            '<td>' + g.forceCheckouts + '</td>' +
+            '<td>' + g.uniqueMobiles + '</td>' +
+            '<td>' + g.medianApprovalSec + 's</td>' +
+            '<td>' + g.peakInside + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+    }
+
+    function renderReports() {
+      var data = fx.reportsTodayByGate || [];
+      $('#report-gate-cards').innerHTML = data.map(function (g) {
+        return (
+          '<div class="report-card">' +
+            '<h3>' + escapeHtml(g.gate) + '</h3>' +
+            '<div class="metric"><span>Visits in</span><strong>' + g.checkIns + '</strong></div>' +
+            '<div class="metric"><span>Unique mobiles</span><strong>' + g.uniqueMobiles + '</strong></div>' +
+            '<div class="metric"><span>Median approve</span><strong>' + g.medianApprovalSec + 's</strong></div>' +
+            '<div class="metric"><span>Force CO</span><strong>' + g.forceCheckouts + '</strong></div>' +
+          '</div>'
+        );
+      }).join('');
+      var mix = {};
+      (fx.meta.visitorTypes || []).forEach(function (t) { mix[t] = 0; });
+      (fx.history || []).forEach(function (h) {
+        if (h.type) mix[h.type] = (mix[h.type] || 0) + 1;
+      });
+      (fx.inside || []).forEach(function (v) {
+        /* avoid double-count if also in history as open */
+        if (!mix[v.type]) mix[v.type] = 0;
+      });
+      /* Prefer history counts; add inside-only types already covered */
+      var total = Object.keys(mix).reduce(function (s, k) { return s + mix[k]; }, 0) || 1;
+      $('#type-mix').innerHTML = Object.keys(mix).map(function (t) {
+        return (
+          '<div class="bar-wrap">' +
+            '<span>' + escapeHtml(t) + '</span>' +
+            '<strong class="' + (t === 'Parent' ? 'cyan' : '') + '" style="color:var(--text)">' + mix[t] + '</strong>' +
+            '<div style="font-size:11px;color:var(--text-dim)">' + Math.round(100 * mix[t] / total) + '%</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    /* Expand purpose / notes on click */
+    document.addEventListener('click', function (e) {
+      var cell = e.target.closest('.purpose-cell, .notes-cell');
+      if (cell) cell.classList.toggle('expanded');
+
+      var co = e.target.closest('[data-co]');
+      if (co) {
+        var id = co.getAttribute('data-co');
+        var v = liveState.find(function (x) { return x.visitId === id; });
+        if (!v || v._checkedOut) return;
+        v._checkedOut = true;
+        v._checkoutType = 'Normal';
+        showToast(v.name + ' checked out', 'success');
+        renderLive();
+        return;
+      }
+
+      var fr = e.target.closest('[data-force]');
+      if (fr) {
+        if (!canForceCheckout()) {
+          showToast('Force checkout is Admin or Security Head only', 'warning');
+          return;
+        }
+        var fid = fr.getAttribute('data-force');
+        forceTarget = liveState.find(function (x) { return x.visitId === fid; });
+        if (!forceTarget || forceTarget._checkedOut) return;
+        $('#force-sub').textContent = forceTarget.name + ' · ' + (forceTarget.passId || '') + ' — reason required for Admin or Security Head';
+        $('#force-reason').value = '';
+        $('#force-modal').classList.add('open');
+        $('#force-reason').focus();
+      }
+    });
+
+    $('#force-cancel').addEventListener('click', function () {
+      $('#force-modal').classList.remove('open');
+      forceTarget = null;
+    });
+    $('#force-confirm').addEventListener('click', function () {
+      if (!canForceCheckout()) {
+        showToast('Force checkout is Admin or Security Head only', 'warning');
+        $('#force-modal').classList.remove('open');
+        forceTarget = null;
+        return;
+      }
+      var reason = ($('#force-reason').value || '').trim();
+      if (!reason) {
+        showToast('Enter a force-checkout reason', 'warning');
+        return;
+      }
+      if (!forceTarget) return;
+      forceTarget._checkedOut = true;
+      forceTarget._checkoutType = 'Force';
+      forceTarget._forceReason = reason;
+      $('#force-modal').classList.remove('open');
+      showToast('Force checkout: ' + forceTarget.name + ' — ' + reason, 'warning');
+      forceTarget = null;
+      renderLive();
+    });
+
+    ['live-search', 'live-type', 'live-gate', 'live-flag'].forEach(function (id) {
+      var el = $('#' + id);
+      el.addEventListener(id === 'live-search' ? 'input' : 'change', renderLive);
+    });
+    ['hist-search', 'hist-gate', 'hist-type', 'hist-decision', 'hist-checkout', 'hist-bl'].forEach(function (id) {
+      var el = $('#' + id);
+      el.addEventListener(id === 'hist-search' ? 'input' : 'change', renderHistory);
+    });
+
+    /* —— CSV export (AC-X1) —— */
+    var exportRole = currentRole;
+    var auditEntries = [];
+    var CSV_MAX = 10000;
+
+    function csvEscape(val) {
+      var s = String(val == null ? '' : val);
+      if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    function rowsToCsv(headers, rows) {
+      var lines = [headers.map(csvEscape).join(',')];
+      rows.forEach(function (r) {
+        lines.push(r.map(csvEscape).join(','));
+      });
+      return '\uFEFF' + lines.join('\r\n'); /* UTF-8 BOM */
+    }
+
+    function downloadCsv(filename, csvText) {
+      var blob = new Blob([csvText], { type: 'text/csv;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+    }
+
+    function istStamp() {
+      var d = new Date();
+      return d.toLocaleString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: true, timeZone: 'Asia/Calcutta'
+      }) + ' IST';
+    }
+
+    function istFileStamp() {
+      var d = new Date();
+      var parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Calcutta',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      }).formatToParts(d);
+      var map = {};
+      parts.forEach(function (p) { map[p.type] = p.value; });
+      return map.year + map.month + map.day + '-' + map.hour + map.minute;
+    }
+
+    function getFilteredInside() {
+      var q = ($('#live-search').value || '').toLowerCase().trim();
+      var type = $('#live-type').value;
+      var gate = $('#live-gate').value;
+      var flag = $('#live-flag').value;
+      return liveState.filter(function (v) {
+        if (v._checkedOut) return false;
+        if (type && v.type !== type) return false;
+        if (gate && v.gate !== gate) return false;
+        if (flag === 'overdue' && !isOverdue(v)) return false;
+        if (flag === 'blacklist' && !v.blacklistHit) return false;
+        if (q) {
+          var mobile = String(v.mobile || '');
+          var last4 = mobile.slice(-4);
+          var hay = [v.name, v.host, v.passId, v.visitId, mobile, last4, v.purpose]
+            .join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1) return false;
+        }
+        return true;
+      });
+    }
+
+    function getFilteredHistory() {
+      var q = ($('#hist-search').value || '').toLowerCase().trim();
+      var gate = $('#hist-gate').value;
+      var type = $('#hist-type').value;
+      var decision = $('#hist-decision').value;
+      var checkout = $('#hist-checkout').value;
+      var bl = $('#hist-bl').value;
+      return (fx.history || []).filter(function (h) {
+        if (type && h.type !== type) return false;
+        if (gate && h.gateIn !== gate && h.gateOut !== gate) return false;
+        if (decision && h.decision !== decision) return false;
+        if (checkout && h.checkoutType !== checkout) return false;
+        if (bl === '1' && !h.blacklistHit) return false;
+        if (q) {
+          var hay = [h.name, h.mobile, h.visitId, h.host, h.purpose, h.notes]
+            .join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1) return false;
+        }
+        return true;
+      });
+    }
+
+    function filterSummary(scope) {
+      if (scope === 'history') {
+        var bits = [];
+        if ($('#hist-gate').value) bits.push('gate=' + $('#hist-gate').value);
+        if ($('#hist-type').value) bits.push('type=' + $('#hist-type').value);
+        if ($('#hist-decision').value) bits.push('decision=' + $('#hist-decision').value);
+        if ($('#hist-checkout').value) bits.push('checkout=' + $('#hist-checkout').value);
+        if ($('#hist-bl').value) bits.push('blacklist=hit');
+        var q = ($('#hist-search').value || '').trim();
+        if (q) bits.push('search="' + q + '"');
+        return bits.length ? bits.join(', ') : 'all history (no filters)';
+      }
+      if (scope === 'inside') {
+        var bits2 = [];
+        if ($('#live-gate').value) bits2.push('gate=' + $('#live-gate').value);
+        if ($('#live-type').value) bits2.push('type=' + $('#live-type').value);
+        if ($('#live-flag').value) bits2.push('flag=' + $('#live-flag').value);
+        var q2 = ($('#live-search').value || '').trim();
+        if (q2) bits2.push('search="' + q2 + '"');
+        return bits2.length ? bits2.join(', ') : 'all currently inside';
+      }
+      if (scope === 'blacklist') return 'all blacklist entries';
+      if (scope === 'gates') return 'today-by-gate (fixture day)';
+      return '—';
+    }
+
+    function scopeLabel(scope) {
+      return ({
+        history: 'History (filtered)',
+        inside: 'Currently inside',
+        blacklist: 'Blacklist',
+        gates: 'Daily gate summary'
+      })[scope] || scope;
+    }
+
+    function buildCsv(scope) {
+      var watermark = (fx.meta && fx.meta.watermark) || 'DEMO';
+      var headers, rows;
+      if (scope === 'inside') {
+        headers = ['visitId', 'name', 'photoUrl', 'type', 'mobile', 'host', 'purpose', 'gate', 'timeIn_IST', 'passId', 'status', 'flags', 'blacklistHit', 'demo_watermark'];
+        rows = getFilteredInside().slice(0, CSV_MAX).map(function (v) {
+          return [
+            v.visitId, v.name, v.photoUrl || '', v.type, v.mobile, v.host, v.purpose,
+            v.gate, vmsFormatDateTime(v.timeIn) + ' IST', v.passId, v.status || 'Inside',
+            (v.flags || []).join('|'), v.blacklistHit ? 'Y' : 'N', watermark
+          ];
+        });
+      } else if (scope === 'history') {
+        headers = ['visitId', 'name', 'photoUrl', 'mobile', 'type', 'purpose', 'host', 'decision', 'decisionReason', 'decisionAt_IST', 'gateIn', 'timeIn_IST', 'gateOut', 'timeOut_IST', 'checkoutType', 'durationMin', 'blacklistHit', 'registeredBy', 'notes', 'demo_watermark'];
+        rows = getFilteredHistory().slice(0, CSV_MAX).map(function (h) {
+          return [
+            h.visitId, h.name, h.photoUrl || '', h.mobile, h.type, h.purpose, h.host,
+            h.decision, h.decisionReason || '', h.decisionAt ? vmsFormatDateTime(h.decisionAt) + ' IST' : '',
+            h.gateIn, h.timeIn ? vmsFormatDateTime(h.timeIn) + ' IST' : '',
+            h.gateOut || '', h.timeOut ? vmsFormatDateTime(h.timeOut) + ' IST' : '',
+            h.checkoutType || '', h.durationMin != null ? h.durationMin : '',
+            h.blacklistHit ? 'Y' : 'N', h.registeredBy || '', h.notes || '', watermark
+          ];
+        });
+      } else if (scope === 'blacklist') {
+        headers = ['id', 'name', 'mobile', 'idType', 'idNumber', 'reason', 'severity', 'active', 'addedBy', 'addedAt_IST', 'expiresOn', 'notes', 'photoUrl', 'demo_watermark'];
+        rows = (fx.blacklist || []).slice(0, CSV_MAX).map(function (b) {
+          return [
+            b.id, b.name, b.mobile, b.idType, maskGovtId(b.idNumber), b.reason, b.severity,
+            b.active ? 'Y' : 'N', b.addedBy, b.addedAt ? vmsFormatDateTime(b.addedAt) + ' IST' : '',
+            b.expiresOn || '', b.notes || '', b.photoUrl || '', watermark
+          ];
+        });
+      } else if (scope === 'gates') {
+        headers = ['gate', 'checkIns', 'checkOuts', 'stillInside', 'rejects', 'blacklistHits', 'forceCheckouts', 'uniqueMobiles', 'medianApprovalSec', 'peakInside', 'timezone', 'demo_watermark'];
+        rows = (fx.reportsTodayByGate || []).slice(0, CSV_MAX).map(function (g) {
+          return [
+            g.gate, g.checkIns, g.checkOuts, g.stillInside, g.rejects, g.blacklistHits,
+            g.forceCheckouts, g.uniqueMobiles, g.medianApprovalSec, g.peakInside,
+            'Asia/Calcutta', watermark
+          ];
+        });
+      } else {
+        throw new Error('Unknown scope');
+      }
+      return { headers: headers, rows: rows, count: rows.length };
+    }
+
+    function pushAudit(who, when, scope, filter) {
+      auditEntries.unshift({ who: who, when: when, scope: scope, filter: filter });
+      if (auditEntries.length > 12) auditEntries.pop();
+      var list = $('#export-audit-list');
+      list.innerHTML = auditEntries.map(function (e) {
+        return '<div class="audit-row"><strong>' + escapeHtml(e.who) + '</strong> · ' +
+          escapeHtml(e.when) + '<br/>Scope: <strong>' + escapeHtml(scopeLabel(e.scope)) +
+          '</strong> · Filter: ' + escapeHtml(e.filter) + '</div>';
+      }).join('');
+    }
+
+    function setExportScope(scope) {
+      $$('#export-scopes .scope-option').forEach(function (el) {
+        var on = el.getAttribute('data-scope') === scope;
+        el.classList.toggle('active', on);
+        var inp = el.querySelector('input');
+        if (inp) inp.checked = on;
+      });
+      $('#export-filter-summary').textContent = 'Filter: ' + filterSummary(scope);
+    }
+
+    function openExportModal(prefScope) {
+      if (!fx) {
+        showToast('Fixtures not loaded yet', 'warning');
+        return;
+      }
+      setExportScope(prefScope || 'history');
+      $('#export-modal').classList.add('open');
+    }
+
+    $$('[data-open-export]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openExportModal(btn.getAttribute('data-open-export'));
+      });
+    });
+
+    $$('#export-scopes .scope-option').forEach(function (el) {
+      el.addEventListener('click', function () {
+        setExportScope(el.getAttribute('data-scope'));
+      });
+    });
+
+    $$('#export-role-toggle button, #demo-role-toggle button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setDemoRole(btn.getAttribute('data-role'), true);
+      });
+    });
+
+    $('#export-cancel').addEventListener('click', function () {
+      $('#export-modal').classList.remove('open');
+    });
+
+    $('#export-confirm').addEventListener('click', function () {
+      var scopeEl = document.querySelector('input[name="export-scope"]:checked');
+      var scope = scopeEl ? scopeEl.value : 'history';
+      var built;
+      try {
+        built = buildCsv(scope);
+      } catch (err) {
+        showToast(err.message || 'Export failed', 'warning');
+        return;
+      }
+      if (!built.count) {
+        showToast('No rows to export for this scope/filter', 'warning');
+        return;
+      }
+      var when = istStamp();
+      var filter = filterSummary(scope);
+      var fname = 'satcop-vms-' + scope + '-' + istFileStamp() + '-IST.csv';
+      downloadCsv(fname, rowsToCsv(built.headers, built.rows));
+      pushAudit(exportRole, when, scope, filter + ' · ' + built.count + ' rows');
+      $('#export-modal').classList.remove('open');
+      showToast('CSV downloaded · ' + built.count + ' rows · audit logged', 'success');
+    });
+
+    try {
+      currentRole = sessionStorage.getItem(ROLE_KEY) || 'Security Head';
+    } catch (err) {
+      currentRole = 'Security Head';
+    }
+    setDemoRole(currentRole, false);
+
+    loadVmsFixtures().then(function (data) {
+      fx = data;
+      overdueHours = (fx.meta && fx.meta.overdueHoursDefault) || 4;
+      $('#school-name').textContent = (fx.meta && fx.meta.school) || 'Demo International School';
+      liveState = (fx.inside || []).map(function (v) {
+        return Object.assign({}, v);
+      });
+      var gates = (fx.meta && fx.meta.gates) || [];
+      var types = (fx.meta && fx.meta.visitorTypes) || [];
+      fillSelect('#live-gate', gates, 'All gates');
+      fillSelect('#live-type', types, 'All types');
+      fillSelect('#hist-gate', gates, 'All gates');
+      fillSelect('#hist-type', types, 'All types');
+      fillSelect('#bl-id-type', (fx.meta && fx.meta.idTypes) || [], '—');
+      $('#boot-msg').style.display = 'none';
+      showView('live');
+      renderLive();
+      renderHistory();
+      renderBlacklist();
+      renderGates();
+      renderReports();
+    }).catch(function (err) {
+      $('#boot-msg').textContent = 'Failed to load fixtures: ' + err.message;
+    });
+  })();
+  </script>
+</body>
+</html>
