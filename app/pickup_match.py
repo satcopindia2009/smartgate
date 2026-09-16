@@ -141,7 +141,16 @@ def denormalize_blocked_by_custody(student_id: str, school_id: str) -> None:
         store.put_authorized_person(person)
 
 
-def gate_prompt(status: str, flag: dict, student_name: str, collector_name: str, relation: str | None) -> str:
+def gate_prompt(
+    status: str,
+    flag: dict,
+    student_name: str,
+    collector_name: str,
+    relation: str | None,
+    override_requested: bool = False,
+) -> str:
+    if override_requested and status in ("BlockedNotAuthorized", "BlockedCustody", "Matching"):
+        return "Waiting for Security Head override…"
     if status == "BlockedNotAuthorized":
         return (
             "This person is not on the authorized pickup list. "
@@ -153,6 +162,4 @@ def gate_prompt(status: str, flag: dict, student_name: str, collector_name: str,
     if status in ("Released", "ReleasedWithOverride"):
         rel = f" ({relation})" if relation else ""
         return f"Release logged for {student_name} → {collector_name}{rel}."
-    if status == "Matching":
-        return "Waiting for Security Head override…"
     return ""

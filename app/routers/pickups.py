@@ -62,6 +62,7 @@ def _meta(row: dict, extra: Optional[dict] = None) -> dict:
         student["name"] if student else "",
         row.get("collectorName") or "",
         person.get("relation") if person else None,
+        override_requested=bool(row.get("_overrideRequested")),
     )
     if prompt:
         meta["gatePrompt"] = prompt
