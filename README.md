@@ -22,6 +22,8 @@ Walkthrough: **Priya Sharma** · pass **P-4F21** · **Main Gate** · host **Anit
 
 **Out of Day-1:** emergency blast, pickup/custody, access-rules. No production / no live school.
 
+Mobile kiosk lives under `kiosk/` when present — Admin Day-1 does not own, overwrite, or rewrite that tree.
+
 ---
 
 ## Stack

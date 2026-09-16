@@ -44,8 +44,11 @@ cd admin
 cp .env.example .env   # VITE_API_BASE_URL=https://weed-pumps-laura-upc.trycloudflare.com/v1
 npm install
 npm run dev            # http://127.0.0.1:5173
-npm run build && npm run preview   # http://127.0.0.1:4173          # tsc --noEmit && vite build
+npm run build          # tsc --noEmit && vite build
+npm run preview        # http://127.0.0.1:4173
 ```
+
+Override API with `VITE_API_BASE_URL` in `.env` if needed. Default (and `.env.example`) is the showable Cloudflare stub.
 
 If the API tunnel is unreachable, demo logins still work against bundled `public/data/admin-mvp-fixtures.json`.
 
