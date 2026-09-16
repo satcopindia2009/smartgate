@@ -3,6 +3,8 @@ export type DataSource = "api" | "fixtures";
 export type VisitorType = "Parent" | "Vendor" | "Guest" | "Official" | "Alumni";
 export type IdType = "Aadhaar" | "DL" | "Voter" | "Passport" | "Other";
 export type Severity = "Block" | "Alert";
+export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export type PolicyTrigger = "outside_hours" | "holiday" | "both";
 
 export interface AuthUser {
   id: string;
@@ -68,6 +70,10 @@ export interface ApiVisit {
   overdue?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  afterHours?: boolean;
+  policyTrigger?: PolicyTrigger | string | null;
+  afterHoursEvaluatedAt?: string | null;
+  afterHoursApproveReason?: string | null;
 }
 
 export interface LiveVisitor {
@@ -87,6 +93,9 @@ export interface LiveVisitor {
   flags: string[];
   blacklistHit: boolean;
   blacklistId?: string | null;
+  afterHours?: boolean;
+  policyTrigger?: PolicyTrigger | string | null;
+  afterHoursEvaluatedAt?: string | null;
 }
 
 export interface HistoryVisit {
@@ -109,6 +118,13 @@ export interface HistoryVisit {
   blacklistHit: boolean;
   registeredBy?: string;
   notes?: string;
+  passId?: string | null;
+  createdAt?: string | null;
+  afterHours?: boolean;
+  policyTrigger?: PolicyTrigger | string | null;
+  afterHoursEvaluatedAt?: string | null;
+  afterHoursApproveReason?: string | null;
+  hostId?: string;
 }
 
 export interface BlacklistEntry {
@@ -160,6 +176,31 @@ export interface FixturesFile {
   reportsTodayByGate: GateReport[];
   csvScopes?: string[];
   auditLog?: unknown[];
+  campusHours?: CampusHoursRow[];
+  holidays?: HolidayEntry[];
+}
+
+export interface CampusHoursRow {
+  schoolId?: string | null;
+  timezone?: string;
+  weekday: Weekday;
+  openTime?: string | null;
+  closeTime?: string | null;
+  closed: boolean;
+  overnight?: boolean | null;
+  updatedByUserId?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface HolidayEntry {
+  id: string;
+  schoolId?: string;
+  date: string;
+  label?: string | null;
+  createdByUserId?: string | null;
+  updatedByUserId?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface ApiList<T> {

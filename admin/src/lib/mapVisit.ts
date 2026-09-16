@@ -42,6 +42,7 @@ export function toLiveVisitor(
   const flags: string[] = [];
   if (visit.overdue || isOverdue(visit.timeIn)) flags.push("overdue");
   if (visit.blacklistHit) flags.push("blacklist-alert");
+  if (visit.afterHours) flags.push(visit.policyTrigger || "after_hours");
   return {
     visitId: visit.id,
     name: visit.visitorName,
@@ -58,6 +59,9 @@ export function toLiveVisitor(
     flags,
     blacklistHit: Boolean(visit.blacklistHit),
     blacklistId: visit.blacklistId,
+    afterHours: Boolean(visit.afterHours),
+    policyTrigger: visit.policyTrigger || null,
+    afterHoursEvaluatedAt: visit.afterHoursEvaluatedAt || null,
   };
 }
 
@@ -111,6 +115,13 @@ export function toHistoryVisit(
     blacklistHit: Boolean(visit.blacklistHit),
     registeredBy: "Gate — Ramesh",
     notes: visit.notes || (visit.forceCheckoutReason ? `Force checkout: ${visit.forceCheckoutReason}` : ""),
+    passId: visit.passId || null,
+    createdAt: visit.createdAt || null,
+    afterHours: Boolean(visit.afterHours),
+    policyTrigger: visit.policyTrigger || null,
+    afterHoursEvaluatedAt: visit.afterHoursEvaluatedAt || null,
+    afterHoursApproveReason: visit.afterHoursApproveReason || null,
+    hostId: visit.hostId,
   };
 }
 

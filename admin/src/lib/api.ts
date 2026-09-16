@@ -12,6 +12,8 @@ import type {
   PickupEvent,
   Staff,
   Student,
+  CampusHoursRow,
+  HolidayEntry,
 } from "./types";
 
 export class ApiError extends Error {
@@ -232,6 +234,73 @@ export function putCustodyFlag(
     method: "PUT",
     token,
     body: JSON.stringify(body),
+  });
+}
+
+function asList<T>(value: ApiList<T> | T[] | T): ApiList<T> {
+  if (Array.isArray(value)) return { data: value };
+  if (value && typeof value === "object" && Array.isArray((value as ApiList<T>).data)) {
+    return value as ApiList<T>;
+  }
+  return { data: value ? [value as T] : [] };
+}
+
+export async function getCampusHours(token: string) {
+  const res = await apiRequest<ApiList<CampusHoursRow> | CampusHoursRow[]>("/access-rules/hours", {
+    token,
+  });
+  return asList<CampusHoursRow>(res);
+}
+
+export async function putCampusHours(token: string, rows: CampusHoursRow[]) {
+  const res = await apiRequest<ApiList<CampusHoursRow> | CampusHoursRow[]>("/access-rules/hours", {
+    method: "PUT",
+    token,
+    body: JSON.stringify(rows),
+  });
+  return asList<CampusHoursRow>(res);
+}
+
+export async function listHolidays(token: string) {
+  const res = await apiRequest<ApiList<HolidayEntry> | HolidayEntry[]>("/access-rules/holidays", {
+    token,
+  });
+  return asList<HolidayEntry>(res);
+}
+
+export async function createHoliday(token: string, body: { date: string; label?: string | null }) {
+  const res = await apiRequest<HolidayEntry | ApiList<HolidayEntry>>("/access-rules/holidays", {
+    method: "POST",
+    token,
+    body: JSON.stringify(body),
+  });
+  if (res && typeof res === "object" && "id" in res) return res as HolidayEntry;
+  const list = asList<HolidayEntry>(res);
+  const created = list.data[list.data.length - 1];
+  if (!created) throw new ApiError(500, "ERROR", "Holiday create returned no row");
+  return created;
+}
+
+export async function deleteHoliday(token: string, id: string) {
+  return apiRequest<Record<string, unknown>>(`/access-rules/holidays/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function approveVisitApi(token: string, visitId: string, reason?: string) {
+  return apiRequest<ApiVisit>(`/visits/${encodeURIComponent(visitId)}/approve`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
+}
+
+export function rejectVisitApi(token: string, visitId: string, reason: string) {
+  return apiRequest<ApiVisit>(`/visits/${encodeURIComponent(visitId)}/reject`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ reason }),
   });
 }
 

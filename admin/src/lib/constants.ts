@@ -1,4 +1,5 @@
 export const SCHOOL_TZ = "Asia/Calcutta";
+export const CAMPUS_TZ = "Asia/Kolkata";
 export const SCHOOL_NAME = "Demo International School";
 export const OVERDUE_HOURS_DEFAULT = 4;
 export const LIVE_REFRESH_MS = 30_000;
@@ -26,6 +27,7 @@ export const ID_TYPES = ["Aadhaar", "DL", "Voter", "Passport", "Other"] as const
 export const AUTH_STORAGE_KEY = "satcop-admin-auth";
 export const FIXTURE_STATE_KEY = "satcop-admin-fixture-state";
 export const PICKUP_FIXTURE_STATE_KEY = "satcop-admin-pickup-fixture-state";
+export const AFTER_HOURS_FIXTURE_STATE_KEY = "satcop-admin-afterhours-fixture-state";
 export const PICKUP_CONSENT_VERSION = "pickup_notice_en_hi_v1";
 
 export const PICKUP_RELATIONS = ["parent", "guardian", "sibling", "relative", "other"] as const;

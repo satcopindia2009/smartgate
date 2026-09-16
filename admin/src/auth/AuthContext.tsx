@@ -167,3 +167,11 @@ export function canEditPickupList(role?: string | null) {
 export function canSetCourtOrder(role?: string | null) {
   return role === "security_head";
 }
+
+export function canEditCampusHours(role?: string | null) {
+  return role === "admin" || role === "security_head";
+}
+
+export function canApproveAfterHours(role?: string | null) {
+  return role === "security_head";
+}

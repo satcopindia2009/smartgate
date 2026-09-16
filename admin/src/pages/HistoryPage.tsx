@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAuth } from "../auth/AuthContext";
+import { canApproveAfterHours, useAuth } from "../auth/AuthContext";
+import { AfterHoursDecisionModal } from "../components/AfterHoursDecisionModal";
 import { useAudit } from "../components/AuditContext";
 import { ExportButton, ExportModal } from "../components/ExportModal";
 import { IconSearch } from "../components/Icons";
 import { useToast } from "../components/Toast";
-import { isNetworkError, listGates, listStaff, listVisits } from "../lib/api";
+import { ApiError, approveVisitApi, isNetworkError, listGates, listStaff, listVisits, rejectVisitApi } from "../lib/api";
+import { matchesAfterHoursFlag, policyTriggerLabel } from "../lib/afterHours";
 import { GATE_ENUMS, VISITOR_TYPES } from "../lib/constants";
-import { fixtureGates, fixtureStaff, getFixtureSession, loadFixtures } from "../lib/fixtures";
+import { applyAfterHoursDecisionLocal, fixtureGates, fixtureStaff, getFixtureSession, loadFixtures } from "../lib/fixtures";
 import { avatarClass, formatDateTime, formatDurationMin, formatMobile, initials, todayIso, typeClass } from "../lib/format";
 import { toHistoryVisit } from "../lib/mapVisit";
 import type { Gate, HistoryVisit, Staff } from "../lib/types";
 
 export function HistoryPage() {
-  const { token, source } = useAuth();
+  const { token, user, source } = useAuth();
   const { pushAudit } = useAudit();
   const { showToast } = useToast();
+  const canDecideAh = canApproveAfterHours(user?.role);
   const [rows, setRows] = useState<HistoryVisit[]>([]);
   const [gates, setGates] = useState<Gate[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -26,11 +29,14 @@ export function HistoryPage() {
   const [decision, setDecision] = useState("");
   const [checkout, setCheckout] = useState("");
   const [bl, setBl] = useState("");
+  const [ahFlag, setAhFlag] = useState("");
   const [dateFrom, setDateFrom] = useState(todayIso());
   const [dateTo, setDateTo] = useState(todayIso());
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [noteOpen, setNoteOpen] = useState<Record<string, boolean>>({});
   const [usingFixtures, setUsingFixtures] = useState(source === "fixtures");
+  const [decideTarget, setDecideTarget] = useState<HistoryVisit | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     const fx = await loadFixtures();
@@ -53,7 +59,13 @@ export function HistoryPage() {
       const [g, s, visits] = await Promise.all([
         listGates(token),
         listStaff(token),
-        listVisits(token, { dateFrom, dateTo }),
+        listVisits(token, {
+          dateFrom,
+          dateTo,
+          afterHours: ahFlag === "afterhours" || ahFlag === "pending_sh" || ahFlag === "holiday" ? true : undefined,
+          policyTrigger: ahFlag === "holiday" ? "holiday" : undefined,
+          status: ahFlag === "pending_sh" ? "pending" : undefined,
+        }),
       ]);
       setGates(g.data);
       setStaff(s.data);
@@ -68,21 +80,74 @@ export function HistoryPage() {
         /* fallback anyway */
       }
     }
-  }, [source, token, dateFrom, dateTo, showToast]);
+  }, [source, token, dateFrom, dateTo, ahFlag, showToast]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  async function confirmAhDecision(action: "approve" | "reject", reason: string) {
+    if (!decideTarget) return;
+    if (!canDecideAh) {
+      showToast("After-hours Approve is Security Head only", "warning");
+      return;
+    }
+    if (!reason.trim()) {
+      showToast("Decision reason is required", "warning");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (!usingFixtures && token && !token.startsWith("fixture:")) {
+        if (action === "approve") {
+          await approveVisitApi(token, decideTarget.visitId, reason);
+        } else {
+          await rejectVisitApi(token, decideTarget.visitId, reason);
+        }
+        showToast(
+          action === "approve"
+            ? `SH approved ${decideTarget.name}`
+            : `SH rejected ${decideTarget.name}`,
+          action === "approve" ? "success" : "warning",
+        );
+        setDecideTarget(null);
+        await load();
+      } else {
+        applyAfterHoursDecisionLocal(decideTarget.visitId, action, reason);
+        showToast(
+          action === "approve"
+            ? `SH approved ${decideTarget.name} (fixtures)`
+            : `SH rejected ${decideTarget.name} (fixtures)`,
+          "warning",
+        );
+        setDecideTarget(null);
+        const sess = await getFixtureSession();
+        setRows(sess.history);
+      }
+    } catch (err) {
+      applyAfterHoursDecisionLocal(decideTarget.visitId, action, reason);
+      const sess = await getFixtureSession();
+      setRows(sess.history);
+      setUsingFixtures(true);
+      setDecideTarget(null);
+      showToast(
+        err instanceof ApiError ? `Saved in fixtures fallback: ${err.message}` : "Decision saved in fixtures fallback",
+        "warning",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const filtered = useMemo(() => {
     return [...rows]
       .filter((h) => {
         if (usingFixtures && dateFrom) {
-          const d = (h.timeIn || h.decisionAt || "").slice(0, 10);
+          const d = (h.timeIn || h.decisionAt || h.afterHoursEvaluatedAt || h.createdAt || "").slice(0, 10);
           if (d && d < dateFrom) return false;
         }
         if (usingFixtures && dateTo) {
-          const d = (h.timeIn || h.decisionAt || "").slice(0, 10);
+          const d = (h.timeIn || h.decisionAt || h.afterHoursEvaluatedAt || h.createdAt || "").slice(0, 10);
           if (d && d > dateTo) return false;
         }
         if (hostId) {
@@ -94,16 +159,21 @@ export function HistoryPage() {
         if (decision && h.decision !== decision) return false;
         if (checkout && h.checkoutType !== checkout) return false;
         if (bl === "1" && !h.blacklistHit) return false;
+        if (!matchesAfterHoursFlag(h.afterHours, h.policyTrigger, ahFlag, h.decision)) return false;
         if (q) {
-          const hay = [h.name, h.mobile, h.visitId, h.host, h.purpose, h.notes]
+          const hay = [h.name, h.mobile, h.visitId, h.host, h.purpose, h.notes, h.passId, h.policyTrigger]
             .join(" ")
             .toLowerCase();
           if (!hay.includes(q.toLowerCase().trim())) return false;
         }
         return true;
       })
-      .sort((a, b) => String(b.timeIn || b.decisionAt || "").localeCompare(String(a.timeIn || a.decisionAt || "")));
-  }, [rows, usingFixtures, dateFrom, dateTo, type, gate, hostId, staff, decision, checkout, bl, q]);
+      .sort((a, b) =>
+        String(b.timeIn || b.decisionAt || b.afterHoursEvaluatedAt || b.createdAt || "").localeCompare(
+          String(a.timeIn || a.decisionAt || a.afterHoursEvaluatedAt || a.createdAt || ""),
+        ),
+      );
+  }, [rows, usingFixtures, dateFrom, dateTo, type, gate, hostId, staff, decision, checkout, bl, ahFlag, q]);
 
   return (
     <section className="view active">
@@ -111,7 +181,7 @@ export function HistoryPage() {
         <div>
           <h1>Visit history</h1>
           <p>
-            Default today · max 90 days · metadata long-retention
+            Default today · max 90 days · afterHours / policyTrigger filters
             {usingFixtures && <span className="source-inline"> · fixtures fallback</span>}
           </p>
         </div>
@@ -171,8 +241,18 @@ export function HistoryPage() {
           <option value="">Any blacklist</option>
           <option value="1">Blacklist hit only</option>
         </select>
+        <select value={ahFlag} onChange={(e) => setAhFlag(e.target.value)} aria-label="After-hours">
+          <option value="">Any hours</option>
+          <option value="afterhours">After-hours</option>
+          <option value="holiday">Holiday</option>
+          <option value="pending_sh">Pending SH</option>
+        </select>
         <ExportButton onClick={() => setExportOpen(true)} />
       </div>
+      <p className="form-hint">
+        Seed: Evening Vendor Ravi Deshmukh <code>V-AH-VENDOR</code> (today) · Holiday Parent Deepak Nair pass{" "}
+        <code>P-7K88</code> on 20 Oct 2026. Priya Sharma <code>P-4F21</code> unchanged.
+      </p>
       <div className="board">
         <table>
           <thead>
@@ -188,13 +268,15 @@ export function HistoryPage() {
               <th>Checkout</th>
               <th>Dur</th>
               <th>BL</th>
+              <th>Flags</th>
               <th>Notes</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr className="empty-row">
-                <td colSpan={12}>No matching visits</td>
+                <td colSpan={14}>No matching visits</td>
               </tr>
             ) : (
               filtered.map((h) => {
@@ -208,6 +290,7 @@ export function HistoryPage() {
                   <tr key={h.visitId}>
                     <td>
                       <code className="tiny">{h.visitId}</code>
+                      {h.passId ? <div className="subline">{h.passId}</div> : null}
                     </td>
                     <td>
                       <div className="visitor-cell">
@@ -252,12 +335,30 @@ export function HistoryPage() {
                     <td>{formatDurationMin(h.durationMin)}</td>
                     <td>{h.blacklistHit ? <span className="flag flag-bl">hit</span> : "—"}</td>
                     <td>
+                      {h.afterHours ? (
+                        <span className="flag flag-ah">{policyTriggerLabel(h.policyTrigger)}</span>
+                      ) : (
+                        <span className="dim">—</span>
+                      )}
+                    </td>
+                    <td>
                       <div
                         className={`notes-cell${noteOpen[h.visitId] ? " expanded" : ""}`}
                         onClick={() => setNoteOpen((p) => ({ ...p, [h.visitId]: !p[h.visitId] }))}
                       >
                         {h.notes || "—"}
                       </div>
+                    </td>
+                    <td>
+                      {h.afterHours && h.decision === "Pending" ? (
+                        canDecideAh ? (
+                          <button type="button" className="btn btn-primary btn-sm" onClick={() => setDecideTarget(h)}>
+                            SH decide
+                          </button>
+                        ) : (
+                          <span className="subline">SH only</span>
+                        )
+                      ) : null}
                     </td>
                   </tr>
                 );
@@ -288,6 +389,8 @@ export function HistoryPage() {
               "checkoutType",
               "durationMin",
               "blacklistHit",
+              "afterHours",
+              "policyTrigger",
               "notes",
               "demo_watermark",
             ],
@@ -306,15 +409,23 @@ export function HistoryPage() {
               h.checkoutType,
               h.durationMin,
               h.blacklistHit ? "Y" : "N",
+              h.afterHours ? "Y" : "N",
+              h.policyTrigger || "",
               h.notes,
               "DEMO",
             ]),
             filter:
-              [gate && `gate=${gate}`, type && `type=${type}`, decision && `decision=${decision}`, checkout && `checkout=${checkout}`, q && `q=${q}`]
+              [gate && `gate=${gate}`, type && `type=${type}`, decision && `decision=${decision}`, checkout && `checkout=${checkout}`, ahFlag && `ah=${ahFlag}`, q && `q=${q}`]
                 .filter(Boolean)
                 .join(", ") || "all history (no filters)",
           },
         }}
+      />
+      <AfterHoursDecisionModal
+        visit={decideTarget}
+        busy={busy}
+        onCancel={() => setDecideTarget(null)}
+        onDecide={(action, reason) => void confirmAhDecision(action, reason)}
       />
     </section>
   );

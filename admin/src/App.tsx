@@ -7,6 +7,7 @@ import { GatesPage } from "./pages/GatesPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { LivePage } from "./pages/LivePage";
 import { LoginPage } from "./pages/LoginPage";
+import { AccessRulesPage } from "./pages/AccessRulesPage";
 import { PickupHistoryPage } from "./pages/PickupHistoryPage";
 import { PickupListsPage } from "./pages/PickupListsPage";
 import { ReportsPage } from "./pages/ReportsPage";
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/pickup" element={<PickupListsPage />} />
         <Route path="/pickup-history" element={<PickupHistoryPage />} />
+        <Route path="/access-rules" element={<AccessRulesPage />} />
       </Route>
       <Route path="/" element={<Navigate to="/live" replace />} />
       <Route path="*" element={<Navigate to="/live" replace />} />

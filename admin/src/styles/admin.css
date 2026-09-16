@@ -475,6 +475,10 @@ body.admin-page,
   background: var(--red-dim);
   color: #f87171;
 }
+.flag-ah {
+  background: var(--orange-dim);
+  color: #fbbf24;
+}
 .sev-block {
   background: var(--red-dim);
   color: #f87171;
@@ -1133,6 +1137,113 @@ body.admin-page,
 
 .modal .req {
   color: #f87171;
+}
+
+.hours-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 960px) {
+  .hours-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hours-grid .table-wrap {
+  margin-top: 8px;
+}
+
+.hours-grid .table-wrap input[type="time"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  color: var(--text);
+  min-height: 40px;
+}
+
+.holiday-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.holiday-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.policy-lock {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--purple-dim);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  font-size: 12px;
+  color: var(--purple-bright);
+  line-height: 1.45;
+}
+
+.pending-sh-strip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.pending-sh-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fbbf24;
+  margin-bottom: 10px;
+}
+
+.pending-sh-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pending-sh-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.pending-sh-item strong {
+  display: block;
+}
+
+.ah-decision-modal {
+  max-width: 520px;
+}
+
+.ah-decision-modal .reason-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.ah-decision-modal .chip {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 12px;
 }
 
 @media (max-width: 800px) {

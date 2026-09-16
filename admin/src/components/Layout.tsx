@@ -2,13 +2,14 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { SCHOOL_NAME } from "../lib/constants";
 import { AuditPanel, AuditProvider } from "./AuditContext";
-import { IconBlacklist, IconGates, IconHistory, IconLive, IconPeople, IconPickupHistory, IconReports, IconShield } from "./Icons";
+import { IconBlacklist, IconGates, IconHistory, IconHours, IconLive, IconPeople, IconPickupHistory, IconReports, IconShield } from "./Icons";
 
 const NAV = [
   { to: "/live", label: "Live", icon: <IconLive /> },
   { to: "/history", label: "History", icon: <IconHistory /> },
   { to: "/pickup", label: "Students & lists", icon: <IconPeople /> },
   { to: "/pickup-history", label: "Pickup history", icon: <IconPickupHistory /> },
+  { to: "/access-rules", label: "Hours + holidays", icon: <IconHours /> },
   { to: "/blacklist", label: "Blacklist", icon: <IconBlacklist /> },
   { to: "/gates", label: "Gates", icon: <IconGates /> },
   { to: "/reports", label: "Reports", icon: <IconReports /> },
@@ -47,7 +48,7 @@ export function Layout() {
             Sign out
           </button>
         </div>
-        <div className="sidebar-foot">Day-1 MVP + P2 pickup · no live school</div>
+        <div className="sidebar-foot">Day-1 MVP + P2 pickup / after-hours · no live school</div>
       </aside>
       <main className="main">
         <AuditProvider>

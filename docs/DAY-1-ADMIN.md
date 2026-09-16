@@ -24,4 +24,4 @@ Priya Sharma is inside at Main Gate, pass `P-4F21`, host Anita Joshi (Primary Co
 
 ## Out
 
-Blast, access-rules. Pickup Admin CRUD/history is a later P2 wire (`/pickup`, `/pickup-history`) and does not change visit Live/History. `kiosk/` and Mobile paths untouched.
+Blast, escort/zones. Pickup Admin CRUD/history is a later P2 wire (`/pickup`, `/pickup-history`). After-hours Admin wire is `/access-rules` + Live/History `afterHours` flag (Hub A1–A6 / AC-C4). `kiosk/` and Mobile paths untouched.

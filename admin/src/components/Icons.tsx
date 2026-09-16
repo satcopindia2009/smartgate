@@ -88,6 +88,16 @@ export function IconPickupHistory() {
   );
 }
 
+export function IconHours() {
+  return (
+    <Svg>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l3 2" />
+      <path d="M8 3.5A12 12 0 003.5 8" />
+    </Svg>
+  );
+}
+
 export function IconShield() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">

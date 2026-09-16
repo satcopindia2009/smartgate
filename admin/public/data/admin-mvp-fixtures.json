@@ -274,6 +274,134 @@
       "blacklistHit": false,
       "registeredBy": "Gate — Ramesh",
       "notes": "Force checkout: school closing bell"
+    },
+    {
+      "visitId": "V-AH-VENDOR",
+      "name": "Ravi Deshmukh",
+      "photoUrl": null,
+      "mobile": "9822098801",
+      "type": "Vendor",
+      "purpose": "After-hours AC repair — Main Gate",
+      "host": "Anita Joshi",
+      "hostId": "H03",
+      "decision": "Pending",
+      "decisionReason": null,
+      "decisionAt": "2026-09-16T19:30:00+05:30",
+      "gateIn": "Main Gate",
+      "timeIn": null,
+      "gateOut": null,
+      "timeOut": null,
+      "checkoutType": "Never",
+      "durationMin": null,
+      "blacklistHit": false,
+      "registeredBy": "Gate — Ramesh",
+      "notes": "After-hours Vendor demo — SH approve required",
+      "passId": null,
+      "createdAt": "2026-09-16T19:30:00+05:30",
+      "afterHours": true,
+      "policyTrigger": "outside_hours",
+      "afterHoursEvaluatedAt": "2026-09-16T19:30:00+05:30"
+    },
+    {
+      "visitId": "V-AH-HOLIDAY",
+      "name": "Deepak Nair",
+      "photoUrl": null,
+      "mobile": "9822098802",
+      "type": "Parent",
+      "purpose": "Holiday walk-in — collect notebooks",
+      "host": "Meera Kulkarni",
+      "hostId": "H01",
+      "decision": "Approved",
+      "decisionReason": "Holiday walk-in verified by Security Head",
+      "decisionAt": "2026-10-20T10:40:00+05:30",
+      "gateIn": "Main Gate",
+      "timeIn": null,
+      "gateOut": null,
+      "timeOut": null,
+      "checkoutType": "Never",
+      "durationMin": null,
+      "blacklistHit": false,
+      "registeredBy": "Gate — Ramesh",
+      "notes": "Holiday Parent demo — SH approved; pass P-7K88",
+      "passId": "P-7K88",
+      "createdAt": "2026-10-20T10:30:00+05:30",
+      "afterHours": true,
+      "policyTrigger": "holiday",
+      "afterHoursEvaluatedAt": "2026-10-20T10:30:00+05:30",
+      "afterHoursApproveReason": "Holiday walk-in verified by Security Head"
+    }
+  ],
+  "campusHours": [
+    {
+      "schoolId": "SCH-DEMO-01",
+      "timezone": "Asia/Kolkata",
+      "weekday": "mon",
+      "openTime": "08:00",
+      "closeTime": "18:00",
+      "closed": false,
+      "overnight": false
+    },
+    {
+      "schoolId": "SCH-DEMO-01",
+      "timezone": "Asia/Kolkata",
+      "weekday": "tue",
+      "openTime": "08:00",
+      "closeTime": "18:00",
+      "closed": false,
+      "overnight": false
+    },
+    {
+      "schoolId": "SCH-DEMO-01",
+      "timezone": "Asia/Kolkata",
+      "weekday": "wed",
+      "openTime": "08:00",
+      "closeTime": "18:00",
+      "closed": false,
+      "overnight": false
+    },
+    {
+      "schoolId": "SCH-DEMO-01",
+      "timezone": "Asia/Kolkata",
+      "weekday": "thu",
+      "openTime": "08:00",
+      "closeTime": "18:00",
+      "closed": false,
+      "overnight": false
+    },
+    {
+      "schoolId": "SCH-DEMO-01",
+      "timezone": "Asia/Kolkata",
+      "weekday": "fri",
+      "openTime": "08:00",
+      "closeTime": "18:00",
+      "closed": false,
+      "overnight": false
+    },
+    {
+      "schoolId": "SCH-DEMO-01",
+      "timezone": "Asia/Kolkata",
+      "weekday": "sat",
+      "openTime": "08:00",
+      "closeTime": "13:00",
+      "closed": false,
+      "overnight": false
+    },
+    {
+      "schoolId": "SCH-DEMO-01",
+      "timezone": "Asia/Kolkata",
+      "weekday": "sun",
+      "openTime": null,
+      "closeTime": null,
+      "closed": true,
+      "overnight": false
+    }
+  ],
+  "holidays": [
+    {
+      "id": "HOL-DIWALI",
+      "schoolId": "SCH-DEMO-01",
+      "date": "2026-10-20",
+      "label": "Diwali"
     }
   ],
   "reportsTodayByGate": [

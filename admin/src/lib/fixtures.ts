@@ -10,6 +10,7 @@ import type {
   Staff,
 } from "./types";
 import { gateIdFromName } from "./mapVisit";
+import { seedCampusHours, seedHolidays } from "./afterHours";
 
 let cached: FixturesFile | null = null;
 let session: FixtureSession | null = null;
@@ -131,10 +132,35 @@ export function applyForceCheckoutLocal(visitId: string, reason: string): LiveVi
       checkoutType: "Force",
       blacklistHit: row.blacklistHit,
       notes: `Force checkout: ${reason}`,
+      afterHours: row.afterHours,
+      policyTrigger: row.policyTrigger,
+      afterHoursEvaluatedAt: row.afterHoursEvaluatedAt,
     });
   }
   persistFixtureSession();
   return row;
+}
+
+export function applyAfterHoursDecisionLocal(
+  visitId: string,
+  action: "approve" | "reject",
+  reason: string,
+): HistoryVisit | null {
+  if (!session) return null;
+  const hist = session.history.find((h) => h.visitId === visitId);
+  if (!hist) return null;
+  const now = new Date().toISOString();
+  hist.decision = action === "approve" ? "Approved" : "Rejected";
+  hist.decisionReason = reason;
+  hist.decisionAt = now;
+  hist.afterHoursApproveReason = reason;
+  if (action === "reject") {
+    hist.notes = [hist.notes, `SH reject: ${reason}`].filter(Boolean).join(" · ");
+  } else {
+    hist.notes = [hist.notes, `SH approve: ${reason}`].filter(Boolean).join(" · ");
+  }
+  persistFixtureSession();
+  return hist;
 }
 
 export function upsertBlacklistLocal(entry: BlacklistEntry, isNew: boolean): void {
@@ -190,7 +216,63 @@ function fallbackFixtures(): FixturesFile {
         blacklistHit: false,
       },
     ],
-    history: [],
+    history: [
+      {
+        visitId: "V-AH-VENDOR",
+        name: "Ravi Deshmukh",
+        mobile: "9822098801",
+        type: "Vendor",
+        purpose: "After-hours AC repair — Main Gate",
+        host: "Anita Joshi",
+        hostId: "H03",
+        decision: "Pending",
+        decisionReason: null,
+        decisionAt: "2026-09-16T19:30:00+05:30",
+        gateIn: "Main Gate",
+        timeIn: null,
+        gateOut: null,
+        timeOut: null,
+        checkoutType: "Never",
+        durationMin: null,
+        blacklistHit: false,
+        registeredBy: "Gate — Ramesh",
+        notes: "After-hours Vendor demo — SH approve required",
+        passId: null,
+        createdAt: "2026-09-16T19:30:00+05:30",
+        afterHours: true,
+        policyTrigger: "outside_hours",
+        afterHoursEvaluatedAt: "2026-09-16T19:30:00+05:30",
+      },
+      {
+        visitId: "V-AH-HOLIDAY",
+        name: "Deepak Nair",
+        mobile: "9822098802",
+        type: "Parent",
+        purpose: "Holiday walk-in — collect notebooks",
+        host: "Meera Kulkarni",
+        hostId: "H01",
+        decision: "Approved",
+        decisionReason: "Holiday walk-in verified by Security Head",
+        decisionAt: "2026-10-20T10:40:00+05:30",
+        gateIn: "Main Gate",
+        timeIn: null,
+        gateOut: null,
+        timeOut: null,
+        checkoutType: "Never",
+        durationMin: null,
+        blacklistHit: false,
+        registeredBy: "Gate — Ramesh",
+        notes: "Holiday Parent demo — SH approved; pass P-7K88",
+        passId: "P-7K88",
+        createdAt: "2026-10-20T10:30:00+05:30",
+        afterHours: true,
+        policyTrigger: "holiday",
+        afterHoursEvaluatedAt: "2026-10-20T10:30:00+05:30",
+        afterHoursApproveReason: "Holiday walk-in verified by Security Head",
+      },
+    ],
+    campusHours: seedCampusHours(),
+    holidays: seedHolidays(),
     reportsTodayByGate: GATE_ENUMS.map((gate) => ({
       gate,
       checkIns: 0,

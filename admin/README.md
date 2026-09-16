@@ -28,7 +28,7 @@ Walkthrough story: **Priya Sharma** → pass **`P-4F21`** → **Main Gate** → 
 
 ### Out of this slice
 
-- Emergency blast, access-rules (after-hours / escort zones)
+- Emergency blast, escort / zones
 - Production deploy, live school, kiosk / gate tablet pickup
 
 ## Pickup & custody (Priority P2)
@@ -39,6 +39,14 @@ Admin/Security Head surfaces only — no visit-flow or kiosk changes.
 - **Pickup history** (`/pickup-history`): searchable proof trail (student, collector, relation, gate, status, override) + purpose-required CSV.
 - Wire: `GET /students`, `GET|POST /students/{id}/authorized-pickup`, `PATCH .../authorized-pickup/{personId}`, `GET|PUT /students/{id}/custody-flag`, `GET /pickups`.
 - Seed: **Aarav Mehta · Class 5-B** with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** `court_order` demo. Fixtures fallback if the `/v1` tunnel is down.
+
+## After-hours / holidays (Priority P2 · Hub A1–A6 / AC-C4)
+
+Same Admin light/dark tokens — no alternate layout pack. Escort/zones and blast stay out.
+
+- **Hours + holidays** (`/access-rules`): 7-day campus hours + holiday calendar CRUD. Admin / Security Head write; Gate cannot. Policy copy locked **Security Head only** (not dual). Wire: `GET|PUT /access-rules/hours`, `GET|POST /access-rules/holidays`, `DELETE /access-rules/holidays/{id}`.
+- **Live / History**: `afterHours` + `policyTrigger` flag and filters (After-hours / Holiday / Pending SH). SH Approve/Reject with reason on pending after-hours; Host Approve is a no-op on the API. Sticky eval at registration.
+- Seed: weekday close **18:00 Asia/Kolkata**; holiday **Diwali 2026-10-20 `HOL-DIWALI`**; Evening Vendor **Ravi Deshmukh `V-AH-VENDOR`**; Holiday Parent **Deepak Nair / pass `P-7K88`**. **Priya Sharma `P-4F21` unchanged.**
 
 ## Run
 
@@ -72,6 +80,8 @@ Default `VITE_API_BASE_URL` is `https://weed-pumps-laura-upc.trycloudflare.com/v
 | Blacklist write   | view  | yes           |
 | Pickup list CRUD  | yes   | yes           |
 | Custody `court_order` | no | yes           |
+| Hours / holiday write | yes | yes           |
+| After-hours Approve | no | yes           |
 
 Gate / Host accounts are rejected at login on this surface.
 

@@ -6,7 +6,8 @@ import { ForceCheckoutModal } from "../components/ForceCheckoutModal";
 import { GateMultiSelect } from "../components/GateMultiSelect";
 import { IconSearch } from "../components/Icons";
 import { useToast } from "../components/Toast";
-import { forceCheckoutApi, isNetworkError, listGates, listInside, listStaff, todayByGate } from "../lib/api";
+import { forceCheckoutApi, isNetworkError, listGates, listInside, listStaff, listVisits, todayByGate } from "../lib/api";
+import { matchesAfterHoursFlag, policyTriggerLabel } from "../lib/afterHours";
 import { LIVE_REFRESH_MS, OVERDUE_HOURS_DEFAULT, SCHOOL_NAME, VISITOR_TYPES } from "../lib/constants";
 import {
   applyForceCheckoutLocal,
@@ -26,8 +27,8 @@ import {
   isOverdue,
   typeClass,
 } from "../lib/format";
-import { matchesLiveSearch, toLiveVisitor } from "../lib/mapVisit";
-import type { Gate, GateReport, LiveVisitor, Staff } from "../lib/types";
+import { matchesLiveSearch, toHistoryVisit, toLiveVisitor } from "../lib/mapVisit";
+import type { Gate, GateReport, HistoryVisit, LiveVisitor, Staff } from "../lib/types";
 
 export function LivePage() {
   const { token, user, source } = useAuth();
@@ -40,6 +41,7 @@ export function LivePage() {
   const [gates, setGates] = useState<Gate[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [rows, setRows] = useState<LiveVisitor[]>([]);
+  const [pendingAh, setPendingAh] = useState<HistoryVisit[]>([]);
   const [reports, setReports] = useState<GateReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingFixtures, setUsingFixtures] = useState(source === "fixtures");
@@ -59,21 +61,26 @@ export function LivePage() {
       setGates(fixtureGates());
       setStaff(fixtureStaff(fx));
       setRows(sess.inside);
+      setPendingAh(sess.history.filter((h) => h.afterHours && h.decision === "Pending"));
       setReports(fixtureReports(fx));
       setUsingFixtures(true);
       setLoading(false);
       return;
     }
     try {
-      const [g, s, inside, rep] = await Promise.all([
+      const [g, s, inside, pending, rep] = await Promise.all([
         listGates(token),
         listStaff(token),
         listInside(token),
+        listVisits(token, { afterHours: true, status: "pending", dateFrom: "2026-09-01", dateTo: "2026-12-31" }).catch(
+          () => ({ data: [] }),
+        ),
         todayByGate(token).catch(() => ({ data: [] as GateReport[] })),
       ]);
       setGates(g.data);
       setStaff(s.data);
       setRows(inside.data.map((v) => toLiveVisitor(v, g.data, s.data)));
+      setPendingAh(pending.data.map((v) => toHistoryVisit(v, g.data, s.data)));
       setReports(rep.data.length ? rep.data : fixtureReports(fx));
       setUsingFixtures(false);
     } catch (err) {
@@ -81,6 +88,7 @@ export function LivePage() {
       setGates(fixtureGates());
       setStaff(fixtureStaff(fx));
       setRows(sess.inside);
+      setPendingAh(sess.history.filter((h) => h.afterHours && h.decision === "Pending"));
       setReports(fixtureReports(fx));
       setUsingFixtures(true);
       if (isNetworkError(err)) {
@@ -119,6 +127,7 @@ export function LivePage() {
       }
       if (flag === "overdue" && !isOverdue(v.timeIn, v.flags)) return false;
       if (flag === "blacklist" && !v.blacklistHit) return false;
+      if (!matchesAfterHoursFlag(v.afterHours, v.policyTrigger, flag, v.status)) return false;
       if (!matchesLiveSearch(v, q)) return false;
       return true;
     });
@@ -237,6 +246,8 @@ export function LivePage() {
           <option value="">All flags</option>
           <option value="overdue">Overdue only</option>
           <option value="blacklist">Blacklist flag</option>
+          <option value="afterhours">After-hours</option>
+          <option value="holiday">Holiday</option>
         </select>
         <ExportButton
           onClick={() => {
@@ -245,6 +256,29 @@ export function LivePage() {
           }}
         />
       </div>
+
+      {pendingAh.length > 0 && (
+        <div className="pending-sh-strip">
+          <div className="pending-sh-head">
+            Pending after-hours · Security Head only · Host Approve is a no-op
+          </div>
+          <div className="pending-sh-list">
+            {pendingAh.map((p) => (
+              <div className="pending-sh-item" key={p.visitId}>
+                <div>
+                  <strong>{p.name}</strong>
+                  <div className="subline">
+                    {p.visitId}
+                    {p.passId ? ` · ${p.passId}` : ""} · {p.type} · {p.host}
+                  </div>
+                </div>
+                <span className="flag flag-ah">{policyTriggerLabel(p.policyTrigger)}</span>
+                <span className="status-pill status-pending">Pending · SH</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="board">
         <table>
@@ -309,7 +343,10 @@ export function LivePage() {
                     <td>
                       {overdue && <span className="flag flag-overdue">overdue</span>}
                       {v.blacklistHit && <span className="flag flag-bl">BL alert</span>}
-                      {!overdue && !v.blacklistHit && <span className="dim">—</span>}
+                      {v.afterHours && (
+                        <span className="flag flag-ah">{policyTriggerLabel(v.policyTrigger)}</span>
+                      )}
+                      {!overdue && !v.blacklistHit && !v.afterHours && <span className="dim">—</span>}
                     </td>
                     <td>
                       <div className="action-btns">
@@ -355,6 +392,8 @@ export function LivePage() {
               "timeIn",
               "passId",
               "blacklistHit",
+              "afterHours",
+              "policyTrigger",
               "demo_watermark",
             ],
             rows: filtered.map((v) => [
@@ -368,6 +407,8 @@ export function LivePage() {
               v.timeIn,
               v.passId,
               v.blacklistHit ? "Y" : "N",
+              v.afterHours ? "Y" : "N",
+              v.policyTrigger || "",
               "DEMO",
             ]),
             filter: [type && `type=${type}`, hostId && `host=${hostId}`, flag && `flag=${flag}`, q && `q=${q}`]
