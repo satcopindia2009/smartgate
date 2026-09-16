@@ -1,0 +1,477 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+from typing import Optional
+from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, Depends, Query
+
+from app.auth import CurrentUser, require_roles
+from app.config import SCHOOL_TZ, WATERMARK
+from app.errors import AppError
+from app.models import (
+    CheckInBody,
+    ForceCheckoutBody,
+    RejectBody,
+    Role,
+    VisitCreate,
+)
+from app.util import (
+    gen_pass_id,
+    gen_qr_token,
+    gen_visit_id,
+    normalize_id,
+    normalize_mobile,
+    now_iso,
+    parse_iso,
+)
+from app import store
+from app.blacklist_match import match_blacklist as match_blacklist_internal
+
+router = APIRouter(prefix="/visits", tags=["visits"])
+TZ = ZoneInfo(SCHOOL_TZ)
+
+
+def _meta_visit(v: dict) -> dict:
+    out = dict(v)
+    out["meta"] = {"watermark": WATERMARK}
+    return out
+
+
+def _emit(event: str, visit: dict, extra: Optional[dict] = None) -> None:
+    host = store.get_staff(visit["hostId"])
+    payload = {
+        "visitorName": visit["visitorName"],
+        "purpose": visit["purpose"],
+        "hostId": visit["hostId"],
+        "hostPhone": host.get("mobile") if host else None,
+        "passId": visit.get("passId"),
+        "status": visit["status"],
+    }
+    if extra:
+        payload.update(extra)
+    store.add_outbox(
+        {
+            "schoolId": visit["schoolId"],
+            "event": event,
+            "visitId": visit["id"],
+            "payload": payload,
+            "channelHints": ["in_app"],
+            "status": "pending",
+            "createdAt": now_iso(),
+        }
+    )
+
+
+def _host_owns(user: dict, visit: dict) -> bool:
+    return user["role"] == "host" and user.get("staffId") == visit["hostId"]
+
+
+def _can_view_visit(user: dict, visit: dict) -> bool:
+    if visit["schoolId"] != user["schoolId"]:
+        return False
+    if user["role"] in ("admin", "security_head", "gate"):
+        return True
+    if user["role"] == "host":
+        return _host_owns(user, visit)
+    return False
+
+
+def _require_id_fields(body: VisitCreate) -> None:
+    if not body.idNumber and not body.idImageKey:
+        raise AppError(
+            "VALIDATION",
+            "One of idNumber or idImageKey is required",
+            400,
+        )
+
+
+@router.get("/inside")
+def visits_inside(
+    user: CurrentUser,
+    gateId: Optional[str] = None,
+    visitorType: Optional[str] = None,
+    hostId: Optional[str] = None,
+    overdueOnly: bool = False,
+    q: Optional[str] = None,
+):
+    school = store.school()
+    overdue_h = school.get("overdueHoursDefault", 4) if school else 4
+    now = datetime.now(TZ)
+    rows = []
+    for v in store.list_visits(user["schoolId"]):
+        if v["status"] != "inside":
+            continue
+        if user["role"] == "host" and not _host_owns(user, v):
+            continue
+        if gateId and v.get("gateInId") != gateId and v.get("gateId") != gateId:
+            continue
+        if visitorType and v.get("visitorType") != visitorType:
+            continue
+        if hostId and v.get("hostId") != hostId:
+            continue
+        if q:
+            ql = q.lower()
+            blob = " ".join(
+                [
+                    v.get("visitorName") or "",
+                    v.get("mobile") or "",
+                    v.get("passId") or "",
+                    v.get("id") or "",
+                ]
+            ).lower()
+            if ql not in blob:
+                continue
+        tin = parse_iso(v.get("timeIn"))
+        overdue = False
+        if tin:
+            overdue = now - tin >= timedelta(hours=overdue_h)
+        if overdueOnly and not overdue:
+            continue
+        item = dict(v)
+        item["overdue"] = overdue
+        rows.append(item)
+    rows.sort(key=lambda x: x.get("timeIn") or "", reverse=True)
+    return {"data": rows, "meta": {"watermark": WATERMARK}}
+
+
+@router.get("")
+def list_visits(
+    user: CurrentUser,
+    dateFrom: Optional[str] = None,
+    dateTo: Optional[str] = None,
+    gateId: Optional[str] = None,
+    visitorType: Optional[str] = None,
+    hostId: Optional[str] = None,
+    status: Optional[str] = None,
+    checkoutStatus: Optional[str] = None,
+    blacklistHit: Optional[bool] = None,
+    q: Optional[str] = None,
+):
+    today = datetime.now(TZ).date()
+    if not dateFrom:
+        dateFrom = today.isoformat()
+    if not dateTo:
+        dateTo = today.isoformat()
+    try:
+        d0 = datetime.fromisoformat(dateFrom).date()
+        d1 = datetime.fromisoformat(dateTo).date()
+    except ValueError as e:
+        raise AppError("VALIDATION", "Invalid dateFrom/dateTo", 400) from e
+    if (d1 - d0).days > 90:
+        raise AppError("VALIDATION", "Date range max 90 days", 400)
+
+    rows = []
+    for v in store.list_visits(user["schoolId"]):
+        if user["role"] == "host" and not _host_owns(user, v):
+            continue
+        created = parse_iso(v.get("createdAt"))
+        if created:
+            cd = created.astimezone(TZ).date()
+            if cd < d0 or cd > d1:
+                continue
+        if gateId and v.get("gateId") != gateId and v.get("gateInId") != gateId:
+            continue
+        if visitorType and v.get("visitorType") != visitorType:
+            continue
+        if hostId and v.get("hostId") != hostId:
+            continue
+        if status and v.get("status") != status:
+            continue
+        if checkoutStatus:
+            ct = v.get("checkoutType")
+            if checkoutStatus == "never" and ct not in (None, "never"):
+                continue
+            if checkoutStatus != "never" and ct != checkoutStatus:
+                continue
+        if blacklistHit is not None and bool(v.get("blacklistHit")) != blacklistHit:
+            continue
+        if q:
+            ql = q.lower()
+            blob = " ".join(
+                [
+                    v.get("visitorName") or "",
+                    v.get("mobile") or "",
+                    v.get("passId") or "",
+                    v.get("id") or "",
+                ]
+            ).lower()
+            if ql not in blob:
+                continue
+        rows.append(v)
+    rows.sort(key=lambda x: x.get("createdAt") or "", reverse=True)
+    return {"data": rows, "meta": {"watermark": WATERMARK}}
+
+
+@router.get("/{visit_id}")
+def get_visit(visit_id: str, user: CurrentUser):
+    v = store.get_visit(visit_id)
+    if not v or not _can_view_visit(user, v):
+        raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
+    return _meta_visit(v)
+
+
+@router.post("")
+def create_visit(
+    body: VisitCreate,
+    user: dict = Depends(require_roles(Role.gate)),
+):
+    _require_id_fields(body)
+    if not store.get_gate(body.gateId):
+        raise AppError("VALIDATION", f"Unknown gateId {body.gateId}", 400)
+    if not store.get_staff(body.hostId):
+        raise AppError("VALIDATION", f"Unknown hostId {body.hostId}", 400)
+
+    mobile = normalize_mobile(body.mobile)
+    if not mobile:
+        raise AppError("VALIDATION", "Invalid mobile", 400)
+
+    hit = match_blacklist_internal(
+        user["schoolId"], mobile, body.idType.value if body.idType else None, body.idNumber
+    )
+
+    if hit and hit["severity"] == "Block" and not body.blacklistOverride:
+        raise AppError(
+            "BLACKLIST_BLOCK",
+            "Visitor matches blacklist Block entry; override required",
+            403,
+            {"blacklistId": hit["id"], "severity": hit["severity"]},
+        )
+    if hit and hit["severity"] == "Block" and body.blacklistOverride:
+        if user["role"] != "security_head":
+            # Gate cannot self-override Block; SH must approve separately.
+            # For MVP stub: allow only if caller is SH — gate must not set override alone.
+            raise AppError(
+                "FORBIDDEN",
+                "Blacklist Block override requires security_head",
+                403,
+            )
+
+    seq = store.next_seq("visit_seq")
+    ts = now_iso()
+    vid = gen_visit_id(seq)
+    visit = {
+        "id": vid,
+        "schoolId": user["schoolId"],
+        "visitorName": body.visitorName,
+        "mobile": mobile,
+        "visitorType": body.visitorType.value,
+        "purpose": body.purpose,
+        "hostId": body.hostId,
+        "livePhotoKey": body.livePhotoKey,
+        "idType": body.idType.value,
+        "idNumber": body.idNumber,
+        "idImageKey": body.idImageKey,
+        "vehicleNumber": body.vehicleNumber,
+        "accompanyingCount": body.accompanyingCount,
+        "notes": body.notes,
+        "signatureKey": body.signatureKey,
+        "gateId": body.gateId,
+        "registeredByUserId": user["id"],
+        "status": "pending",
+        "rejectReason": None,
+        "decidedAt": None,
+        "decidedByUserId": None,
+        "passId": None,
+        "qrToken": None,
+        "timeIn": None,
+        "timeOut": None,
+        "gateInId": None,
+        "gateOutId": None,
+        "checkoutType": None,
+        "forceCheckoutReason": None,
+        "forceCheckoutByUserId": None,
+        "blacklistHit": bool(hit),
+        "blacklistId": hit["id"] if hit else None,
+        "blacklistOverrideByUserId": user["id"]
+        if hit and hit["severity"] == "Block" and body.blacklistOverride
+        else None,
+        "meetingDoneAt": None,
+        "createdAt": ts,
+        "updatedAt": ts,
+    }
+    store.put_visit(visit)
+    _emit("visit.pending", visit, {"blacklistHit": bool(hit)})
+    if hit:
+        _emit("blacklist.hit", visit, {"blacklistId": hit["id"], "severity": hit["severity"]})
+    return _meta_visit(visit)
+
+
+@router.post("/{visit_id}/approve")
+def approve_visit(
+    visit_id: str,
+    user: dict = Depends(require_roles(Role.host, Role.admin, Role.security_head)),
+):
+    v = store.get_visit(visit_id)
+    if not v or v["schoolId"] != user["schoolId"]:
+        raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
+    if user["role"] == "host" and not _host_owns(user, v):
+        raise AppError("FORBIDDEN", "Host may only approve own visits", 403)
+    if v["status"] != "pending":
+        raise AppError("INVALID_STATE", f"Cannot approve from status {v['status']}", 409)
+
+    # Block without override cannot leave pending into pass issuance
+    if v.get("blacklistHit") and v.get("blacklistId"):
+        bl = store.get_blacklist(v["blacklistId"])
+        if bl and bl.get("severity") == "Block" and not v.get("blacklistOverrideByUserId"):
+            raise AppError(
+                "BLACKLIST_BLOCK",
+                "Cannot approve Block hit without security_head override on visit",
+                403,
+            )
+
+    ts = now_iso()
+    pass_id = gen_pass_id()
+    # Walkthrough convenience: if this is a Priya-like create, keep story — but seed already has P-4F21
+    token = gen_qr_token()
+    v["status"] = "approved"
+    v["decidedAt"] = ts
+    v["decidedByUserId"] = user["id"]
+    v["passId"] = pass_id
+    v["qrToken"] = token
+    v["updatedAt"] = ts
+    store.put_visit(v)
+    store.put_pass(
+        {
+            "passId": pass_id,
+            "token": token,
+            "visitId": v["id"],
+            "schoolId": v["schoolId"],
+            "issuedAt": ts,
+            "expiresAt": None,
+            "revoked": False,
+        }
+    )
+    _emit("visit.approved", v)
+    return _meta_visit(v)
+
+
+@router.post("/{visit_id}/reject")
+def reject_visit(
+    visit_id: str,
+    body: RejectBody,
+    user: dict = Depends(require_roles(Role.host, Role.admin, Role.security_head)),
+):
+    v = store.get_visit(visit_id)
+    if not v or v["schoolId"] != user["schoolId"]:
+        raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
+    if user["role"] == "host" and not _host_owns(user, v):
+        raise AppError("FORBIDDEN", "Host may only reject own visits", 403)
+    if v["status"] != "pending":
+        raise AppError("INVALID_STATE", f"Cannot reject from status {v['status']}", 409)
+    ts = now_iso()
+    v["status"] = "rejected"
+    v["rejectReason"] = body.reason
+    v["decidedAt"] = ts
+    v["decidedByUserId"] = user["id"]
+    v["checkoutType"] = "never"
+    v["updatedAt"] = ts
+    store.put_visit(v)
+    _emit("visit.rejected", v, {"reason": body.reason})
+    return _meta_visit(v)
+
+
+@router.post("/{visit_id}/check-in")
+def check_in(
+    visit_id: str,
+    body: CheckInBody = CheckInBody(),
+    user: dict = Depends(require_roles(Role.gate)),
+):
+    return _do_check_in(visit_id, user, body.gateId)
+
+
+def _do_check_in(visit_id: str, user: dict, gate_id: Optional[str] = None) -> dict:
+    v = store.get_visit(visit_id)
+    if not v or v["schoolId"] != user["schoolId"]:
+        raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
+    if v["status"] != "approved":
+        raise AppError("INVALID_STATE", f"Cannot check-in from status {v['status']}", 409)
+    if v.get("blacklistHit") and v.get("blacklistId"):
+        bl = store.get_blacklist(v["blacklistId"])
+        if bl and bl.get("severity") == "Block" and not v.get("blacklistOverrideByUserId"):
+            raise AppError("BLACKLIST_BLOCK", "Block hit — check-in denied", 403)
+    gid = gate_id or v["gateId"]
+    if not store.get_gate(gid):
+        raise AppError("VALIDATION", f"Unknown gateId {gid}", 400)
+    ts = now_iso()
+    v["status"] = "inside"
+    v["timeIn"] = ts
+    v["gateInId"] = gid
+    v["updatedAt"] = ts
+    store.put_visit(v)
+    _emit("visit.checked_in", v)
+    return _meta_visit(v)
+
+
+@router.post("/{visit_id}/check-out")
+def check_out(
+    visit_id: str,
+    user: dict = Depends(require_roles(Role.gate)),
+):
+    return _do_check_out(visit_id, user, None)
+
+
+def _do_check_out(visit_id: str, user: dict, gate_id: Optional[str] = None) -> dict:
+    v = store.get_visit(visit_id)
+    if not v or v["schoolId"] != user["schoolId"]:
+        raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
+    if v["status"] != "inside":
+        raise AppError("INVALID_STATE", f"Cannot check-out from status {v['status']}", 409)
+    gid = gate_id or v.get("gateInId") or v["gateId"]
+    ts = now_iso()
+    v["status"] = "completed"
+    v["timeOut"] = ts
+    v["gateOutId"] = gid
+    v["checkoutType"] = "normal"
+    v["updatedAt"] = ts
+    store.put_visit(v)
+    _emit("visit.checked_out", v)
+    return _meta_visit(v)
+
+
+@router.post("/{visit_id}/force-checkout")
+def force_checkout(
+    visit_id: str,
+    body: ForceCheckoutBody,
+    user: dict = Depends(require_roles(Role.admin, Role.security_head)),
+):
+    v = store.get_visit(visit_id)
+    if not v or v["schoolId"] != user["schoolId"]:
+        raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
+    if v["status"] != "inside":
+        raise AppError("INVALID_STATE", f"Cannot force-checkout from status {v['status']}", 409)
+    ts = now_iso()
+    v["status"] = "force_completed"
+    v["timeOut"] = ts
+    v["gateOutId"] = v.get("gateInId") or v["gateId"]
+    v["checkoutType"] = "force"
+    v["forceCheckoutReason"] = body.reason
+    v["forceCheckoutByUserId"] = user["id"]
+    v["updatedAt"] = ts
+    store.put_visit(v)
+    _emit("visit.force_checkout", v, {"reason": body.reason})
+    return _meta_visit(v)
+
+
+@router.post("/{visit_id}/meeting-done")
+def meeting_done(
+    visit_id: str,
+    user: dict = Depends(require_roles(Role.host, Role.admin, Role.security_head)),
+):
+    v = store.get_visit(visit_id)
+    if not v or v["schoolId"] != user["schoolId"]:
+        raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
+    if user["role"] == "host" and not _host_owns(user, v):
+        raise AppError("FORBIDDEN", "Host may only mark own visits", 403)
+    if v["status"] not in ("approved", "inside"):
+        raise AppError("INVALID_STATE", f"Cannot meeting-done from status {v['status']}", 409)
+    ts = now_iso()
+    v["meetingDoneAt"] = ts
+    v["updatedAt"] = ts
+    store.put_visit(v)
+    return _meta_visit(v)
+
+
+# Export helpers for passes router
+do_check_in = _do_check_in
+do_check_out = _do_check_out
