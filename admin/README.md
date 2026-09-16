@@ -28,7 +28,7 @@ Walkthrough story: **Priya Sharma** → pass **`P-4F21`** → **Main Gate** → 
 
 ### Out of this slice
 
-- Emergency blast, escort / zones
+- Emergency blast
 - Production deploy, live school, kiosk / gate tablet pickup
 
 ## Pickup & custody (Priority P2)
@@ -48,6 +48,14 @@ Same Admin light/dark tokens — no alternate layout pack. Escort/zones and blas
 - **Live / History**: `afterHours` + `policyTrigger` flag and filters (After-hours / Holiday / Pending SH). SH Approve/Reject with reason on pending after-hours; Host Approve is a no-op on the API. Sticky eval at registration.
 - Seed: weekday close **18:00 Asia/Kolkata**; holiday **Diwali 2026-10-20 `HOL-DIWALI`**; Evening Vendor **Ravi Deshmukh `V-AH-VENDOR`**; Holiday Parent **Deepak Nair / pass `P-7K88`**. **Priya Sharma `P-4F21` unchanged.**
 
+## Escort / zones (Priority P2 · B4)
+
+Same Access Rules page. Keys fixed; labels school-renamable. Admin / Security Head write.
+
+- `GET /zones` · `PATCH /zones/{key}` `{ label }`
+- `GET|PUT /access-rules/escort` (Vendor default escort ON · reception + admin)
+- Live / History escort name + allowed-zones columns (Priya: escort no · reception)
+
 ## Run
 
 ```bash
@@ -58,7 +66,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080
 
 # admin UI
 cd admin
-cp .env.example .env   # VITE_API_BASE_URL=https://weed-pumps-laura-upc.trycloudflare.com/v1
+cp .env.example .env   # VITE_API_BASE_URL=https://pensions-usb-loops-direction.trycloudflare.com/v1
 npm install
 npm run dev            # http://127.0.0.1:5173
 npm run build          # tsc --noEmit && vite build
@@ -69,7 +77,7 @@ Override API with `VITE_API_BASE_URL` in `.env` if needed. Default (and `.env.ex
 
 If the API tunnel is unreachable, demo logins still work against bundled `public/data/admin-mvp-fixtures.json`.
 
-Default `VITE_API_BASE_URL` is `https://weed-pumps-laura-upc.trycloudflare.com/v1`. `vite preview` allows tunnel hosts (`allowedHosts: true`) so a temporary `*.trycloudflare.com` can be shown to Hub/Viren.
+Default `VITE_API_BASE_URL` is `https://pensions-usb-loops-direction.trycloudflare.com/v1`. `vite preview` allows tunnel hosts (`allowedHosts: true`) so a temporary `*.trycloudflare.com` can be shown to Hub/Viren.
 
 ## Roles
 

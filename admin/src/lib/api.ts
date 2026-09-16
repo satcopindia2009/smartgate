@@ -14,6 +14,8 @@ import type {
   Student,
   CampusHoursRow,
   HolidayEntry,
+  ZoneLabel,
+  EscortZoneRule,
 } from "./types";
 
 export class ApiError extends Error {
@@ -286,6 +288,48 @@ export async function deleteHoliday(token: string, id: string) {
     method: "DELETE",
     token,
   });
+}
+
+export async function listZones(token: string) {
+  const res = await apiRequest<ApiList<ZoneLabel> | ZoneLabel[]>("/zones", { token });
+  return asList<ZoneLabel>(res);
+}
+
+export function patchZone(token: string, key: string, label: string) {
+  return apiRequest<ZoneLabel>(`/zones/${encodeURIComponent(key)}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ label }),
+  });
+}
+
+export async function getEscortRules(token: string) {
+  const res = await apiRequest<ApiList<EscortZoneRule> | EscortZoneRule[]>(
+    "/access-rules/escort",
+    { token },
+  );
+  return asList<EscortZoneRule>(res);
+}
+
+export async function putEscortRules(token: string, rows: EscortZoneRule[]) {
+  const payload = rows.map((r) => ({
+    visitorType: r.visitorType,
+    escortRequired: r.escortRequired,
+    allowedZones: r.allowedZones,
+  }));
+  const res = await apiRequest<ApiList<EscortZoneRule> | EscortZoneRule[]>(
+    "/access-rules/escort",
+    {
+      method: "PUT",
+      token,
+      body: JSON.stringify(payload),
+    },
+  );
+  return asList<EscortZoneRule>(res);
+}
+
+export function getVisit(token: string, visitId: string) {
+  return apiRequest<ApiVisit>(`/visits/${encodeURIComponent(visitId)}`, { token });
 }
 
 export function approveVisitApi(token: string, visitId: string, reason?: string) {

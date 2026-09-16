@@ -5,7 +5,7 @@ export const OVERDUE_HOURS_DEFAULT = 4;
 export const LIVE_REFRESH_MS = 30_000;
 export const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
-  "https://weed-pumps-laura-upc.trycloudflare.com/v1";
+  "https://pensions-usb-loops-direction.trycloudflare.com/v1";
 
 export const GATE_ENUMS = [
   "Main Gate",

@@ -8,6 +8,7 @@ import { IconSearch } from "../components/Icons";
 import { useToast } from "../components/Toast";
 import { forceCheckoutApi, isNetworkError, listGates, listInside, listStaff, listVisits, todayByGate } from "../lib/api";
 import { matchesAfterHoursFlag, policyTriggerLabel } from "../lib/afterHours";
+import { escortCell, formatAllowedZones } from "../lib/escort";
 import { LIVE_REFRESH_MS, OVERDUE_HOURS_DEFAULT, SCHOOL_NAME, VISITOR_TYPES } from "../lib/constants";
 import {
   applyForceCheckoutLocal,
@@ -25,9 +26,10 @@ import {
   formatTime,
   initials,
   isOverdue,
+  todayIso,
   typeClass,
 } from "../lib/format";
-import { matchesLiveSearch, toHistoryVisit, toLiveVisitor } from "../lib/mapVisit";
+import { matchesLiveSearch, mergeVisitsById, toHistoryVisit, toLiveVisitor } from "../lib/mapVisit";
 import type { Gate, GateReport, HistoryVisit, LiveVisitor, Staff } from "../lib/types";
 
 export function LivePage() {
@@ -68,19 +70,22 @@ export function LivePage() {
       return;
     }
     try {
-      const [g, s, inside, pending, rep] = await Promise.all([
+      const today = todayIso();
+      const [g, s, inside, pendingToday, pendingAhOpen, rep] = await Promise.all([
         listGates(token),
         listStaff(token),
         listInside(token),
-        listVisits(token, { afterHours: true, status: "pending", dateFrom: "2026-09-01", dateTo: "2026-12-31" }).catch(
-          () => ({ data: [] }),
-        ),
+        listVisits(token, { afterHours: true, dateFrom: today, dateTo: today }).catch(() => ({ data: [] })),
+        listVisits(token, { afterHours: true }).catch(() => ({ data: [] })),
         todayByGate(token).catch(() => ({ data: [] as GateReport[] })),
       ]);
       setGates(g.data);
       setStaff(s.data);
       setRows(inside.data.map((v) => toLiveVisitor(v, g.data, s.data)));
-      setPendingAh(pending.data.map((v) => toHistoryVisit(v, g.data, s.data)));
+      const pendingMerged = mergeVisitsById([pendingToday.data, pendingAhOpen.data])
+        .map((v) => toHistoryVisit(v, g.data, s.data))
+        .filter((h) => h.afterHours && h.decision === "Pending");
+      setPendingAh(pendingMerged);
       setReports(rep.data.length ? rep.data : fixtureReports(fx));
       setUsingFixtures(false);
     } catch (err) {
@@ -293,17 +298,19 @@ export function LivePage() {
               <th>Duration</th>
               <th>Pass</th>
               <th>Flags</th>
+              <th>Escort</th>
+              <th>Zones</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr className="empty-row">
-                <td colSpan={10}>Loading {SCHOOL_NAME}…</td>
+                <td colSpan={12}>Loading {SCHOOL_NAME}…</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr className="empty-row">
-                <td colSpan={10}>No visitors inside</td>
+                <td colSpan={12}>No visitors inside</td>
               </tr>
             ) : (
               filtered.map((v) => {
@@ -348,6 +355,8 @@ export function LivePage() {
                       )}
                       {!overdue && !v.blacklistHit && !v.afterHours && <span className="dim">—</span>}
                     </td>
+                    <td>{escortCell(v.escortRequired, v.escortName, v.escortWaived)}</td>
+                    <td className="zones-cell">{formatAllowedZones(v.allowedZones)}</td>
                     <td>
                       <div className="action-btns">
                         <button
@@ -394,6 +403,8 @@ export function LivePage() {
               "blacklistHit",
               "afterHours",
               "policyTrigger",
+              "escort",
+              "allowedZones",
               "demo_watermark",
             ],
             rows: filtered.map((v) => [
@@ -409,6 +420,8 @@ export function LivePage() {
               v.blacklistHit ? "Y" : "N",
               v.afterHours ? "Y" : "N",
               v.policyTrigger || "",
+              escortCell(v.escortRequired, v.escortName, v.escortWaived),
+              (v.allowedZones || []).join("|"),
               "DEMO",
             ]),
             filter: [type && `type=${type}`, hostId && `host=${hostId}`, flag && `flag=${flag}`, q && `q=${q}`]

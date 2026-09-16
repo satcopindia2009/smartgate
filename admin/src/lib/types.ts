@@ -74,6 +74,14 @@ export interface ApiVisit {
   policyTrigger?: PolicyTrigger | string | null;
   afterHoursEvaluatedAt?: string | null;
   afterHoursApproveReason?: string | null;
+  escortRequired?: boolean;
+  allowedZones?: string[];
+  escortStaffId?: string | null;
+  escortName?: string | null;
+  escortSuggestedByHost?: string | null;
+  escortWaived?: boolean;
+  escortWaiveReason?: string | null;
+  escortClearedAt?: string | null;
 }
 
 export interface LiveVisitor {
@@ -96,6 +104,11 @@ export interface LiveVisitor {
   afterHours?: boolean;
   policyTrigger?: PolicyTrigger | string | null;
   afterHoursEvaluatedAt?: string | null;
+  escortRequired?: boolean;
+  allowedZones?: string[];
+  escortStaffId?: string | null;
+  escortName?: string | null;
+  escortWaived?: boolean;
 }
 
 export interface HistoryVisit {
@@ -125,6 +138,11 @@ export interface HistoryVisit {
   afterHoursEvaluatedAt?: string | null;
   afterHoursApproveReason?: string | null;
   hostId?: string;
+  escortRequired?: boolean;
+  allowedZones?: string[];
+  escortStaffId?: string | null;
+  escortName?: string | null;
+  escortWaived?: boolean;
 }
 
 export interface BlacklistEntry {
@@ -178,6 +196,8 @@ export interface FixturesFile {
   auditLog?: unknown[];
   campusHours?: CampusHoursRow[];
   holidays?: HolidayEntry[];
+  zones?: ZoneLabel[];
+  escortRules?: EscortZoneRule[];
 }
 
 export interface CampusHoursRow {
@@ -200,6 +220,32 @@ export interface HolidayEntry {
   createdByUserId?: string | null;
   updatedByUserId?: string | null;
   createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export type ZoneKey =
+  | "reception"
+  | "admin"
+  | "classroom"
+  | "sports"
+  | "lab"
+  | "restricted"
+  | "parking";
+
+export interface ZoneLabel {
+  key: ZoneKey | string;
+  label: string;
+  schoolId?: string;
+  updatedByUserId?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface EscortZoneRule {
+  schoolId?: string;
+  visitorType: string;
+  escortRequired: boolean;
+  allowedZones: string[];
+  updatedByUserId?: string | null;
   updatedAt?: string | null;
 }
 

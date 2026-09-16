@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { gateIdFromName } from "./mapVisit";
 import { seedCampusHours, seedHolidays } from "./afterHours";
+import { seedEscortRules, seedZones } from "./escort";
 
 let cached: FixturesFile | null = null;
 let session: FixtureSession | null = null;
@@ -273,6 +274,8 @@ function fallbackFixtures(): FixturesFile {
     ],
     campusHours: seedCampusHours(),
     holidays: seedHolidays(),
+    zones: seedZones(),
+    escortRules: seedEscortRules(),
     reportsTodayByGate: GATE_ENUMS.map((gate) => ({
       gate,
       checkIns: 0,

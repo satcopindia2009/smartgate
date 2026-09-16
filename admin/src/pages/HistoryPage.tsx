@@ -5,13 +5,14 @@ import { useAudit } from "../components/AuditContext";
 import { ExportButton, ExportModal } from "../components/ExportModal";
 import { IconSearch } from "../components/Icons";
 import { useToast } from "../components/Toast";
-import { ApiError, approveVisitApi, isNetworkError, listGates, listStaff, listVisits, rejectVisitApi } from "../lib/api";
+import { ApiError, approveVisitApi, getVisit, isNetworkError, listGates, listStaff, listVisits, rejectVisitApi } from "../lib/api";
 import { matchesAfterHoursFlag, policyTriggerLabel } from "../lib/afterHours";
+import { escortCell, formatAllowedZones } from "../lib/escort";
 import { GATE_ENUMS, VISITOR_TYPES } from "../lib/constants";
 import { applyAfterHoursDecisionLocal, fixtureGates, fixtureStaff, getFixtureSession, loadFixtures } from "../lib/fixtures";
 import { avatarClass, formatDateTime, formatDurationMin, formatMobile, initials, todayIso, typeClass } from "../lib/format";
-import { toHistoryVisit } from "../lib/mapVisit";
-import type { Gate, HistoryVisit, Staff } from "../lib/types";
+import { mergeVisitsById, toHistoryVisit } from "../lib/mapVisit";
+import type { ApiVisit, Gate, HistoryVisit, Staff } from "../lib/types";
 
 export function HistoryPage() {
   const { token, user, source } = useAuth();
@@ -56,20 +57,29 @@ export function HistoryPage() {
       return;
     }
     try {
-      const [g, s, visits] = await Promise.all([
+      const extra: Promise<{ data: ApiVisit[] }>[] = [];
+      if (ahFlag === "afterhours" || ahFlag === "pending_sh") {
+        extra.push(listVisits(token, { afterHours: true }));
+        extra.push(listVisits(token, { afterHours: true, dateFrom, dateTo }));
+      }
+      if (ahFlag === "holiday") {
+        extra.push(listVisits(token, { dateFrom: "2026-10-20", dateTo: "2026-10-20" }));
+        extra.push(
+          getVisit(token, "V-AH-HOLIDAY")
+            .then((v) => ({ data: [v] }))
+            .catch(() => ({ data: [] })),
+        );
+      }
+      const [g, s, visits, ...more] = await Promise.all([
         listGates(token),
         listStaff(token),
-        listVisits(token, {
-          dateFrom,
-          dateTo,
-          afterHours: ahFlag === "afterhours" || ahFlag === "pending_sh" || ahFlag === "holiday" ? true : undefined,
-          policyTrigger: ahFlag === "holiday" ? "holiday" : undefined,
-          status: ahFlag === "pending_sh" ? "pending" : undefined,
-        }),
+        listVisits(token, { dateFrom, dateTo }),
+        ...extra,
       ]);
       setGates(g.data);
       setStaff(s.data);
-      setRows(visits.data.map((v) => toHistoryVisit(v, g.data, s.data as Staff[])));
+      const merged = mergeVisitsById([visits.data, ...more.map((m) => m.data)]);
+      setRows(merged.map((v) => toHistoryVisit(v, g.data, s.data as Staff[])));
       setUsingFixtures(false);
     } catch (err) {
       const sess = await getFixtureSession();
@@ -269,6 +279,8 @@ export function HistoryPage() {
               <th>Dur</th>
               <th>BL</th>
               <th>Flags</th>
+              <th>Escort</th>
+              <th>Zones</th>
               <th>Notes</th>
               <th></th>
             </tr>
@@ -276,7 +288,7 @@ export function HistoryPage() {
           <tbody>
             {filtered.length === 0 ? (
               <tr className="empty-row">
-                <td colSpan={14}>No matching visits</td>
+                <td colSpan={16}>No matching visits</td>
               </tr>
             ) : (
               filtered.map((h) => {
@@ -341,6 +353,8 @@ export function HistoryPage() {
                         <span className="dim">—</span>
                       )}
                     </td>
+                    <td>{escortCell(h.escortRequired, h.escortName, h.escortWaived)}</td>
+                    <td className="zones-cell">{formatAllowedZones(h.allowedZones)}</td>
                     <td>
                       <div
                         className={`notes-cell${noteOpen[h.visitId] ? " expanded" : ""}`}
@@ -391,6 +405,8 @@ export function HistoryPage() {
               "blacklistHit",
               "afterHours",
               "policyTrigger",
+              "escort",
+              "allowedZones",
               "notes",
               "demo_watermark",
             ],
@@ -411,6 +427,8 @@ export function HistoryPage() {
               h.blacklistHit ? "Y" : "N",
               h.afterHours ? "Y" : "N",
               h.policyTrigger || "",
+              escortCell(h.escortRequired, h.escortName, h.escortWaived),
+              (h.allowedZones || []).join("|"),
               h.notes,
               "DEMO",
             ]),

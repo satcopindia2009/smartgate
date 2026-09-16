@@ -62,6 +62,11 @@ export function toLiveVisitor(
     afterHours: Boolean(visit.afterHours),
     policyTrigger: visit.policyTrigger || null,
     afterHoursEvaluatedAt: visit.afterHoursEvaluatedAt || null,
+    escortRequired: Boolean(visit.escortRequired),
+    allowedZones: visit.allowedZones || [],
+    escortStaffId: visit.escortStaffId || null,
+    escortName: visit.escortName || null,
+    escortWaived: Boolean(visit.escortWaived),
   };
 }
 
@@ -122,7 +127,21 @@ export function toHistoryVisit(
     afterHoursEvaluatedAt: visit.afterHoursEvaluatedAt || null,
     afterHoursApproveReason: visit.afterHoursApproveReason || null,
     hostId: visit.hostId,
+    escortRequired: Boolean(visit.escortRequired),
+    allowedZones: visit.allowedZones || [],
+    escortStaffId: visit.escortStaffId || null,
+    escortName: visit.escortName || (visit.escortStaffId ? hostShort(staff, visit.escortStaffId) : null),
+    escortWaived: Boolean(visit.escortWaived),
   };
+}
+
+export function mergeVisitsById<T extends { visitId?: string; id?: string }>(lists: T[][]): T[] {
+  const out = new Map<string, T>();
+  lists.flat().forEach((row) => {
+    const id = row.visitId || row.id;
+    if (id) out.set(id, row);
+  });
+  return [...out.values()];
 }
 
 export function matchesLiveSearch(v: LiveVisitor, q: string): boolean {

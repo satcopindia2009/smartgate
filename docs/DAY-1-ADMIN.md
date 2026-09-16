@@ -14,7 +14,7 @@
 6. Auto-refresh every 30s
 7. Force checkout with required reason → `POST /visits/{id}/force-checkout`
 8. Directory: `GET /gates`, `GET /staff?active=true`
-9. Default API tunnel: `https://weed-pumps-laura-upc.trycloudflare.com/v1` (fixtures fallback if it drops)
+9. Default API tunnel: `https://pensions-usb-loops-direction.trycloudflare.com/v1` (fixtures fallback if it drops)
 10. History + Blacklist (SH write) + Gates/Reports + CSV export (4 scopes)
 11. Multi-gate enums: Main Gate, Pedestrian Gate, Staff Gate, Bus Bay
 
@@ -24,4 +24,4 @@ Priya Sharma is inside at Main Gate, pass `P-4F21`, host Anita Joshi (Primary Co
 
 ## Out
 
-Blast, escort/zones. Pickup Admin CRUD/history is a later P2 wire (`/pickup`, `/pickup-history`). After-hours Admin wire is `/access-rules` + Live/History `afterHours` flag (Hub A1–A6 / AC-C4). `kiosk/` and Mobile paths untouched.
+Blast. Pickup Admin CRUD/history is a later P2 wire (`/pickup`, `/pickup-history`). After-hours + escort/zones Admin wire is `/access-rules` + Live/History flags (Hub A1–A6 / AC-C4 / B4). `kiosk/` and Mobile paths untouched.

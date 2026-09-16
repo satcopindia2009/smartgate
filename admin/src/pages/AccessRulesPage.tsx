@@ -6,9 +6,13 @@ import {
   createHoliday,
   deleteHoliday,
   getCampusHours,
+  getEscortRules,
   isNetworkError,
   listHolidays,
+  listZones,
+  patchZone,
   putCampusHours,
+  putEscortRules,
 } from "../lib/api";
 import {
   addHolidayLocal,
@@ -23,9 +27,17 @@ import {
   WEEKDAY_LABELS,
   WEEKDAYS,
 } from "../lib/afterHours";
-import { CAMPUS_TZ } from "../lib/constants";
+import { CAMPUS_TZ, VISITOR_TYPES } from "../lib/constants";
+import {
+  getEscortFixtureSession,
+  saveRulesLocal,
+  saveZonesLocal,
+  seedEscortRules,
+  seedZones,
+  ZONE_KEYS,
+} from "../lib/escort";
 import { loadFixtures } from "../lib/fixtures";
-import type { CampusHoursRow, HolidayEntry, Weekday } from "../lib/types";
+import type { CampusHoursRow, EscortZoneRule, HolidayEntry, Weekday, ZoneLabel } from "../lib/types";
 
 function emptyHours(): CampusHoursRow[] {
   return WEEKDAYS.map((weekday) => ({
@@ -58,6 +70,9 @@ export function AccessRulesPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [date, setDate] = useState("");
   const [label, setLabel] = useState("");
+  const [zones, setZones] = useState<ZoneLabel[]>(seedZones());
+  const [rules, setRules] = useState<EscortZoneRule[]>(seedEscortRules());
+  const [savingEscort, setSavingEscort] = useState(false);
 
   const useLocal = usingFixtures || source === "fixtures" || !token || Boolean(token?.startsWith("fixture:"));
 
@@ -65,21 +80,34 @@ export function AccessRulesPage() {
     const fx = await loadFixtures();
     if (source === "fixtures" || !token || token.startsWith("fixture:")) {
       const sess = getAfterHoursFixtureSession(fx.campusHours, fx.holidays);
+      const escort = getEscortFixtureSession(fx.zones, fx.escortRules);
       setHours(mergeHours(sess.hours));
       setHolidays([...sess.holidays].sort((a, b) => a.date.localeCompare(b.date)));
+      setZones(escort.zones);
+      setRules(escort.rules);
       setUsingFixtures(true);
       setLoading(false);
       return;
     }
     try {
-      const [h, hol] = await Promise.all([getCampusHours(token), listHolidays(token)]);
+      const [h, hol, z, er] = await Promise.all([
+        getCampusHours(token),
+        listHolidays(token),
+        listZones(token),
+        getEscortRules(token),
+      ]);
       setHours(mergeHours(h.data.length ? h.data : seedCampusHours()));
       setHolidays([...(hol.data || [])].sort((a, b) => a.date.localeCompare(b.date)));
+      setZones(z.data.length ? z.data : seedZones());
+      setRules(er.data.length ? er.data : seedEscortRules());
       setUsingFixtures(false);
     } catch (err) {
       const sess = getAfterHoursFixtureSession(fx.campusHours || seedCampusHours(), fx.holidays || seedHolidays());
+      const escort = getEscortFixtureSession(fx.zones || seedZones(), fx.escortRules || seedEscortRules());
       setHours(mergeHours(sess.hours));
       setHolidays([...sess.holidays].sort((a, b) => a.date.localeCompare(b.date)));
+      setZones(escort.zones);
+      setRules(escort.rules);
       setUsingFixtures(true);
       if (!isNetworkError(err) && err instanceof Error) {
         showToast(err.message, "warning");
@@ -173,6 +201,71 @@ export function AccessRulesPage() {
     }
   }
 
+  async function saveZones() {
+    if (!canWrite) {
+      showToast("Zone labels are Admin or Security Head only", "warning");
+      return;
+    }
+    setSavingEscort(true);
+    try {
+      if (!useLocal && token) {
+        const updated = await Promise.all(zones.map((z) => patchZone(token, z.key, z.label.trim() || z.key)));
+        setZones(updated);
+        setUsingFixtures(false);
+      } else {
+        setZones(saveZonesLocal(zones));
+      }
+      showToast("Zone labels saved", "success");
+    } catch (err) {
+      setZones(saveZonesLocal(zones));
+      setUsingFixtures(true);
+      showToast(
+        err instanceof ApiError ? `Saved in fixtures fallback: ${err.message}` : "Zone labels saved in fixtures fallback",
+        "warning",
+      );
+    } finally {
+      setSavingEscort(false);
+    }
+  }
+
+  async function saveRules() {
+    if (!canWrite) {
+      showToast("Escort rules are Admin or Security Head only", "warning");
+      return;
+    }
+    const payload = VISITOR_TYPES.map((vt) => {
+      const row = rules.find((r) => r.visitorType === vt) || {
+        visitorType: vt,
+        escortRequired: vt === "Vendor",
+        allowedZones: ["reception"],
+      };
+      return {
+        ...row,
+        escortRequired: row.allowedZones.includes("restricted") ? true : row.escortRequired,
+      };
+    });
+    setSavingEscort(true);
+    try {
+      if (!useLocal && token) {
+        const res = await putEscortRules(token, payload);
+        setRules(res.data.length ? res.data : payload);
+        setUsingFixtures(false);
+      } else {
+        setRules(saveRulesLocal(payload));
+      }
+      showToast("Escort rules saved", "success");
+    } catch (err) {
+      setRules(saveRulesLocal(payload));
+      setUsingFixtures(true);
+      showToast(
+        err instanceof ApiError ? `Saved in fixtures fallback: ${err.message}` : "Escort rules saved in fixtures fallback",
+        "warning",
+      );
+    } finally {
+      setSavingEscort(false);
+    }
+  }
+
   async function onRemoveHoliday(id: string) {
     if (!canWrite) {
       showToast("Holiday calendar is Admin or Security Head only", "warning");
@@ -201,9 +294,9 @@ export function AccessRulesPage() {
     <section className="view active">
       <div className="topbar">
         <div>
-          <h1>Campus hours + holidays</h1>
+          <h1>Access rules</h1>
           <p>
-            Per-campus · {CAMPUS_TZ} · Admin / Security Head write · Gate cannot
+            Hours + holidays · escort / zones · {CAMPUS_TZ} · Admin / SH write · Gate cannot
             {usingFixtures && <span className="source-inline"> · fixtures fallback</span>}
           </p>
         </div>
@@ -332,6 +425,114 @@ export function AccessRulesPage() {
       <div className="policy-lock">
         After-hours / holiday Approve policy: <strong>Security Head only</strong> (not dual host+SH) · Priority-P2 lock
         A4. Host Approve is a no-op. Evaluation is sticky at registration.
+      </div>
+
+      <div className="hours-grid" style={{ marginTop: 16 }}>
+        <div className="detail-card">
+          <div className="detail-head">
+            <h2 className="section-title" style={{ marginTop: 0 }}>
+              Zone labels
+            </h2>
+            {canWrite && (
+              <button type="button" className="btn btn-primary btn-sm" disabled={savingEscort} onClick={() => void saveZones()}>
+                Save labels
+              </button>
+            )}
+          </div>
+          <p className="form-hint">Keys fixed · school-renamable only · adding keys = Later</p>
+          <div className="holiday-list">
+            {zones.map((z) => (
+              <div className="holiday-item" key={z.key}>
+                <div>
+                  <code className="tiny">{z.key}</code>
+                  <div className="subline">system key</div>
+                </div>
+                <input
+                  type="text"
+                  aria-label={`Label for ${z.key}`}
+                  value={z.label}
+                  disabled={!canWrite}
+                  onChange={(e) =>
+                    setZones((prev) => prev.map((row) => (row.key === z.key ? { ...row, label: e.target.value } : row)))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="detail-card">
+          <div className="detail-head">
+            <h2 className="section-title" style={{ marginTop: 0 }}>
+              Escort rules
+            </h2>
+            {canWrite && (
+              <button type="button" className="btn btn-primary btn-sm" disabled={savingEscort} onClick={() => void saveRules()}>
+                Save rules
+              </button>
+            )}
+          </div>
+          <p className="form-hint">Vendor default ON · restricted zone forces escort. Gate cannot edit.</p>
+          {VISITOR_TYPES.map((vt) => {
+            const rule = rules.find((r) => r.visitorType === vt) || {
+              visitorType: vt,
+              escortRequired: vt === "Vendor",
+              allowedZones: ["reception"],
+            };
+            return (
+              <div className="escort-rule" key={vt}>
+                <div className="escort-rule-head">
+                  <strong>{vt}</strong>
+                  <label className="field-check" style={{ margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={rule.escortRequired || rule.allowedZones.includes("restricted")}
+                      disabled={!canWrite}
+                      onChange={(e) =>
+                        setRules((prev) => {
+                          const next = prev.some((r) => r.visitorType === vt)
+                            ? prev.map((r) => (r.visitorType === vt ? { ...r, escortRequired: e.target.checked } : r))
+                            : [...prev, { ...rule, escortRequired: e.target.checked }];
+                          return next;
+                        })
+                      }
+                    />
+                    Escort required
+                  </label>
+                </div>
+                <div className="zone-picks">
+                  {ZONE_KEYS.map((key) => {
+                    const on = rule.allowedZones.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        className={`chip${on ? " active" : ""}`}
+                        disabled={!canWrite}
+                        onClick={() =>
+                          setRules((prev) => {
+                            const current = prev.find((r) => r.visitorType === vt) || rule;
+                            const allowed = on
+                              ? current.allowedZones.filter((z) => z !== key)
+                              : [...current.allowedZones, key];
+                            const escortRequired = allowed.includes("restricted") ? true : current.escortRequired;
+                            const row = { ...current, allowedZones: allowed, escortRequired };
+                            if (prev.some((r) => r.visitorType === vt)) {
+                              return prev.map((r) => (r.visitorType === vt ? row : r));
+                            }
+                            return [...prev, row];
+                          })
+                        }
+                      >
+                        {zones.find((z) => z.key === key)?.label || key}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {addOpen && (
