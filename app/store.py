@@ -23,6 +23,8 @@ _state: dict[str, Any] = {
     "pickups": {},
     "campus_hours": {},  # (schoolId, weekday) -> row
     "holidays": {},
+    "zone_labels": {},  # (schoolId, key) -> row
+    "escort_rules": {},  # (schoolId, visitorType) -> row
     "counters": {
         "visit_seq": 40,
         "staff_seq": 10,
@@ -57,6 +59,8 @@ def reset() -> None:
         "pickups": {},
         "campus_hours": {},
         "holidays": {},
+        "zone_labels": {},
+        "escort_rules": {},
         "counters": {
             "visit_seq": 40,
             "staff_seq": 10,
@@ -145,6 +149,17 @@ def put_visit(v: dict) -> None:
     v.setdefault("policyTrigger", None)
     v.setdefault("afterHoursEvaluatedAt", v.get("createdAt"))
     v.setdefault("afterHoursApproveReason", None)
+    if "escortRequired" not in v:
+        from app.escort import stamp_escort_zones
+
+        stamp_escort_zones(v)
+    v.setdefault("escortRequired", False)
+    v.setdefault("allowedZones", [])
+    v.setdefault("escortStaffId", None)
+    v.setdefault("escortSuggestedByHost", None)
+    v.setdefault("escortWaived", False)
+    v.setdefault("escortWaiveReason", None)
+    v.setdefault("escortClearedAt", None)
     _state["visits"][v["id"]] = v
 
 
@@ -340,3 +355,44 @@ def holiday_on_date(school_id: str, day: str) -> Optional[dict]:
         if h["schoolId"] == school_id and h["date"] == day:
             return h
     return None
+
+
+# --- zones / escort rules (P2 B4) ---
+
+
+def put_zone(row: dict) -> None:
+    _state["zone_labels"][(row["schoolId"], row["key"])] = row
+
+
+def get_zone(school_id: str, key: str) -> Optional[dict]:
+    return _state["zone_labels"].get((school_id, key))
+
+
+def list_zones(school_id: str) -> list[dict]:
+    from app.escort import ZONE_KEYS
+
+    index = {
+        key: row
+        for (sid, key), row in _state["zone_labels"].items()
+        if sid == school_id
+    }
+    return [index[key] for key in ZONE_KEYS if key in index]
+
+
+def put_escort_rule(row: dict) -> None:
+    _state["escort_rules"][(row["schoolId"], row["visitorType"])] = row
+
+
+def get_escort_rule(school_id: str, visitor_type: str) -> Optional[dict]:
+    return _state["escort_rules"].get((school_id, visitor_type))
+
+
+def list_escort_rules(school_id: str) -> list[dict]:
+    from app.escort import VISITOR_TYPES
+
+    index = {
+        vt: row
+        for (sid, vt), row in _state["escort_rules"].items()
+        if sid == school_id
+    }
+    return [index[vt] for vt in VISITOR_TYPES if vt in index]

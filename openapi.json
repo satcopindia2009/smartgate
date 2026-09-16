@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Satcop Smart Visitor API",
-    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours Access Rules (A1\u2013A6). Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. Escort/zones/blast not in this slice. Demo watermark; no production / live-school deploy.",
-    "version": "0.4.0"
+    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours (A1\u2013A6) + escort/zones Access Rules (B4). Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. Blast not in this slice. Demo watermark; no production / live-school deploy.",
+    "version": "0.5.0"
   },
   "paths": {
     "/v1/auth/login": {
@@ -1066,6 +1066,116 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/assign-escort": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Assign Escort",
+        "operationId": "assign_escort_v1_visits__visit_id__assign_escort_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignEscortBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/waive-escort": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Waive Escort",
+        "operationId": "waive_escort_v1_visits__visit_id__waive_escort_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaiveEscortBody"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2806,6 +2916,155 @@
         }
       }
     },
+    "/v1/access-rules/escort": {
+      "get": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Get Escort Rules",
+        "operationId": "get_escort_rules_v1_access_rules_escort_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Put Escort Rules",
+        "operationId": "put_escort_rules_v1_access_rules_escort_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/EscortZoneRuleIn"
+                },
+                "type": "array",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/zones": {
+      "get": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "List Zones",
+        "operationId": "list_zones_v1_zones_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/zones/{key}": {
+      "patch": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Patch Zone",
+        "operationId": "patch_zone_v1_zones__key__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneLabelPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -2858,6 +3117,34 @@
         "type": "object",
         "title": "ApproveBody",
         "description": "Optional for in-hours Host Approve; required non-blank reason when afterHours (A6)."
+      },
+      "AssignEscortBody": {
+        "properties": {
+          "escortStaffId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escortstaffid"
+          },
+          "escortSuggestedByHost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escortsuggestedbyhost"
+          }
+        },
+        "type": "object",
+        "title": "AssignEscortBody"
       },
       "AuthorizedPickupCreate": {
         "properties": {
@@ -3534,6 +3821,30 @@
         ],
         "title": "CustodyFlagPut"
       },
+      "EscortZoneRuleIn": {
+        "properties": {
+          "visitorType": {
+            "$ref": "#/components/schemas/VisitorType"
+          },
+          "escortRequired": {
+            "type": "boolean",
+            "title": "Escortrequired"
+          },
+          "allowedZones": {
+            "items": {
+              "$ref": "#/components/schemas/ZoneKey"
+            },
+            "type": "array",
+            "title": "Allowedzones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "visitorType",
+          "escortRequired"
+        ],
+        "title": "EscortZoneRuleIn"
+      },
       "ExportRequest": {
         "properties": {
           "scope": {
@@ -3919,6 +4230,45 @@
             "type": "boolean",
             "title": "Revoked",
             "default": false
+          },
+          "escortRequired": {
+            "type": "boolean",
+            "title": "Escortrequired",
+            "default": false
+          },
+          "escortName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escortname"
+          },
+          "allowedZoneLabels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowedzonelabels"
+          },
+          "afterHours": {
+            "type": "boolean",
+            "title": "Afterhours",
+            "default": false
+          },
+          "policyTrigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policytrigger"
           },
           "meta": {
             "anyOf": [
@@ -4935,6 +5285,20 @@
         ],
         "title": "VisitorType"
       },
+      "WaiveEscortBody": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "WaiveEscortBody"
+      },
       "Weekday": {
         "type": "string",
         "enum": [
@@ -4947,6 +5311,33 @@
           "sun"
         ],
         "title": "Weekday"
+      },
+      "ZoneKey": {
+        "type": "string",
+        "enum": [
+          "reception",
+          "admin",
+          "classroom",
+          "sports",
+          "lab",
+          "restricted",
+          "parking"
+        ],
+        "title": "ZoneKey"
+      },
+      "ZoneLabelPatch": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "ZoneLabelPatch"
       }
     },
     "securitySchemes": {

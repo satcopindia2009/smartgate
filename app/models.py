@@ -23,6 +23,16 @@ class VisitorType(str, Enum):
     Alumni = "Alumni"
 
 
+class ZoneKey(str, Enum):
+    reception = "reception"
+    admin = "admin"
+    classroom = "classroom"
+    sports = "sports"
+    lab = "lab"
+    restricted = "restricted"
+    parking = "parking"
+
+
 class IdType(str, Enum):
     Aadhaar = "Aadhaar"
     DL = "DL"
@@ -208,6 +218,13 @@ class VisitCreate(BaseModel):
     gateId: str = Field(min_length=1)
     blacklistOverride: bool = False
 
+    @field_validator("visitorType", mode="before")
+    @classmethod
+    def contractor_maps_to_vendor(cls, v):
+        if isinstance(v, str) and v.strip().lower() == "contractor":
+            return VisitorType.Vendor
+        return v
+
     @field_validator("visitorName", "purpose", "hostId", "livePhotoKey", "gateId")
     @classmethod
     def strip_required(cls, v: str) -> str:
@@ -294,6 +311,14 @@ class VisitOut(BaseModel):
     policyTrigger: Optional[str] = None
     afterHoursEvaluatedAt: Optional[str] = None
     afterHoursApproveReason: Optional[str] = None
+    escortRequired: bool = False
+    allowedZones: list[str] = Field(default_factory=list)
+    escortStaffId: Optional[str] = None
+    escortSuggestedByHost: Optional[str] = None
+    escortWaived: bool = False
+    escortWaiveReason: Optional[str] = None
+    escortClearedAt: Optional[str] = None
+    escortName: Optional[str] = None
     createdAt: str
     updatedAt: str
     meta: Optional[dict] = None
@@ -334,6 +359,11 @@ class PassOut(BaseModel):
     issuedAt: Optional[str] = None
     expiresAt: Optional[str] = None
     revoked: bool = False
+    escortRequired: bool = False
+    escortName: Optional[str] = None
+    allowedZoneLabels: list[str] = Field(default_factory=list)
+    afterHours: bool = False
+    policyTrigger: Optional[str] = None
     meta: Optional[dict] = None
 
 
@@ -630,6 +660,76 @@ class PickupOut(BaseModel):
     createdAt: str
     updatedAt: str
     meta: Optional[dict] = None
+
+
+# --- Access Rules: escort / zones (P2 B4) ---
+
+
+class ZoneLabelOut(BaseModel):
+    key: str
+    label: str
+    schoolId: str
+    updatedByUserId: Optional[str] = None
+    updatedAt: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+class ZoneLabelPatch(BaseModel):
+    label: str = Field(min_length=1)
+
+    @field_validator("label")
+    @classmethod
+    def label_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("label is required")
+        return v
+
+
+class EscortZoneRuleIn(BaseModel):
+    visitorType: VisitorType
+    escortRequired: bool
+    allowedZones: list[ZoneKey] = Field(default_factory=list)
+
+    @field_validator("visitorType", mode="before")
+    @classmethod
+    def contractor_maps_to_vendor(cls, v):
+        if isinstance(v, str) and v.strip().lower() == "contractor":
+            return VisitorType.Vendor
+        return v
+
+
+class EscortZoneRuleOut(BaseModel):
+    schoolId: str
+    visitorType: str
+    escortRequired: bool
+    allowedZones: list[str]
+    updatedByUserId: Optional[str] = None
+    updatedAt: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+class AssignEscortBody(BaseModel):
+    escortStaffId: Optional[str] = None
+    escortSuggestedByHost: Optional[str] = None
+
+    @field_validator("escortStaffId", "escortSuggestedByHost")
+    @classmethod
+    def strip_ids(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+    @model_validator(mode="after")
+    def require_staff_or_suggest(self) -> "AssignEscortBody":
+        if not self.escortStaffId and not self.escortSuggestedByHost:
+            raise ValueError("escortStaffId is required")
+        return self
+
+
+class WaiveEscortBody(ReasonBody):
+    pass
 
 
 # --- Access Rules: hours + holidays (P2 after-hours A1–A2) ---

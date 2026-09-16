@@ -28,6 +28,7 @@ from app.routers import (
     staff,
     students,
     visits,
+    zones,
 )
 
 
@@ -39,10 +40,11 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="Satcop Smart Visitor API",
-    version="0.4.0",
+    version="0.5.0",
     description=(
-        "MVP FastAPI stub + Priority P2 Pickup (P1–P6+H1) + after-hours Access Rules (A1–A6). "
-        "Contract §§0–5 visit lifecycle unchanged. Escort/zones/blast not in this slice. "
+        "MVP FastAPI stub + Priority P2 Pickup (P1–P6+H1) + after-hours (A1–A6) "
+        "+ escort/zones Access Rules (B4). "
+        "Contract §§0–5 visit lifecycle unchanged. Blast not in this slice. "
         "Demo watermark; no production / live-school deploy."
     ),
     lifespan=lifespan,
@@ -73,6 +75,7 @@ app.include_router(outbox.router, prefix="/v1")
 app.include_router(students.router, prefix="/v1")
 app.include_router(pickups.router, prefix="/v1")
 app.include_router(access_rules.router, prefix="/v1")
+app.include_router(zones.router, prefix="/v1")
 
 
 @app.get("/health")

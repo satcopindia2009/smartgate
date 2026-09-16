@@ -46,6 +46,8 @@ def seed() -> None:
         ("H03", "Anita Joshi", "Primary Coordinator", "9000000003", "U-HOST"),
         ("H04", "Sanjay Patil", "Accounts", "9000000004", None),
         ("G01", "Gate — Ramesh", "Guard", "9000000010", "U-GATE"),
+        # Escort staff (distinct from blacklist visitor Vikram More / BL-01)
+        ("E01", "Vikram More", "Escort staff", "9000000015", None),
     ]
     for sid, name, role_title, mobile, user_id in staff_rows:
         store.put_staff(
@@ -129,6 +131,10 @@ def seed() -> None:
     ]
     for u in users:
         store.put_user(u)
+
+    from app.escort import seed_school_defaults
+
+    seed_school_defaults(SCHOOL_ID, updated_by="U-ADMIN")
 
     # Blacklist from fixtures
     store.put_blacklist(
@@ -713,6 +719,13 @@ def _seed_after_hours(ts: str) -> None:
             "policyTrigger": "outside_hours",
             "afterHoursEvaluatedAt": "2026-09-16T19:30:00+05:30",
             "afterHoursApproveReason": None,
+            "escortRequired": True,
+            "allowedZones": ["reception", "admin"],
+            "escortStaffId": None,
+            "escortSuggestedByHost": None,
+            "escortWaived": False,
+            "escortWaiveReason": None,
+            "escortClearedAt": None,
             "createdAt": "2026-09-16T19:30:00+05:30",
             "updatedAt": "2026-09-16T19:30:00+05:30",
         }
@@ -778,6 +791,13 @@ def _seed_after_hours(ts: str) -> None:
             "policyTrigger": "holiday",
             "afterHoursEvaluatedAt": "2026-10-20T10:30:00+05:30",
             "afterHoursApproveReason": "Holiday walk-in verified by Security Head",
+            "escortRequired": False,
+            "allowedZones": ["reception"],
+            "escortStaffId": None,
+            "escortSuggestedByHost": None,
+            "escortWaived": False,
+            "escortWaiveReason": None,
+            "escortClearedAt": None,
             "createdAt": "2026-10-20T10:30:00+05:30",
             "updatedAt": "2026-10-20T10:40:00+05:30",
         }
