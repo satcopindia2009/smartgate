@@ -128,9 +128,9 @@ def seed() -> None:
             "password": DEMO_PASSWORDS["security"],
             "schoolId": SCHOOL_ID,
             "role": "security_head",
-            "staffId": None,
+            "staffId": "H01",
             "gateIds": None,
-            "displayName": "Meera — Security Head",
+            "displayName": "Meera Kulkarni",
             "phone": "9000000098",
             "email": "security@demo.school",
             "active": True,
@@ -1063,140 +1063,223 @@ def _seed_blast_inside(visit: dict) -> None:
 
 
 def _seed_emergency_blast(ts: str) -> None:
-    """E3 demo — Meera SH on the live board, separate from Priya walkthrough.
+    """Consume notifications/blast-seed-demo.json on SCH-DEMO-01.
 
-    Existing inside (Priya / Arjun / Neha) plus three blast-only visitors so
-    preview count is 6 and matches GET /v1/visits/inside. Seed blast B-20260916-03.
+    Meera Kulkarni SH · 6 blast-story inside (plus Priya MVP still inside).
+    Seed blast B-20260916-03 is the pack snapshot (5 sent / 1 failed / WA hold).
+    P-7K88 stays Deepak Nair (after-hours); blast Ravi uses vis_p7k88 / P-7B88.
+    Pending escort Ravi V-AH-VENDOR is unchanged.
     """
-    from app.inside import list_inside_visits
     from app.util import mask_mobile
 
-    _seed_blast_inside(
+    pack_inside = [
         {
-            "id": "V-BL-LEELA",
-            "visitorName": "Leela Iyer",
-            "mobile": "9822098809",
-            "visitorType": "Parent",
-            "purpose": "Evening notebook pickup — blast demo",
-            "hostId": "H03",
-            "idType": "Aadhaar",
-            "idNumber": "880088008800",
+            "id": "vis_p7k88",
+            "visitorName": "Ravi Deshmukh",
+            "mobile": "9822094442",
+            "visitorType": "Vendor",
+            "purpose": "Blast demo — currently inside (not V-AH-VENDOR pending)",
+            "hostId": "H04",
+            "idType": "DL",
+            "idNumber": "MH12BL4442",
             "gateId": "G-MAIN",
-            "decidedAt": "2026-09-16T19:05:00+05:30",
+            "decidedAt": "2026-09-16T09:08:00+05:30",
             "decidedByUserId": "U-SH",
-            "passId": "P-BL01",
-            "timeIn": "2026-09-16T19:08:00+05:30",
-            "timeOut": None,
+            "passId": "P-7B88",
+            "timeIn": "2026-09-16T09:12:00+05:30",
             "gateInId": "G-MAIN",
-            "afterHours": True,
-            "policyTrigger": "outside_hours",
-            "afterHoursEvaluatedAt": "2026-09-16T19:00:00+05:30",
-            "createdAt": "2026-09-16T19:00:00+05:30",
-            "updatedAt": "2026-09-16T19:08:00+05:30",
-        }
-    )
-    _seed_blast_inside(
+            "createdAt": "2026-09-16T09:05:00+05:30",
+            "updatedAt": "2026-09-16T09:12:00+05:30",
+        },
         {
-            "id": "V-BL-FARHAN",
-            "visitorName": "Farhan Qureshi",
-            "mobile": "9822098810",
+            "id": "vis_p7m12",
+            "visitorName": "Sonal Kapoor",
+            "mobile": "9822092018",
             "visitorType": "Guest",
-            "purpose": "PTA volunteer — blast demo",
+            "purpose": "Blast demo — guest inside",
             "hostId": "H02",
             "idType": "Voter",
-            "idNumber": "MH/88/0000888",
+            "idNumber": "MH/88/2018",
             "gateId": "G-PED",
-            "decidedAt": "2026-09-16T11:20:00+05:30",
+            "decidedAt": "2026-09-16T09:24:00+05:30",
             "decidedByUserId": "U-HOST-H02",
-            "passId": "P-BL02",
-            "timeIn": "2026-09-16T11:25:00+05:30",
-            "timeOut": None,
+            "passId": "P-7M12",
+            "timeIn": "2026-09-16T09:28:00+05:30",
             "gateInId": "G-PED",
-            "createdAt": "2026-09-16T11:15:00+05:30",
-            "updatedAt": "2026-09-16T11:25:00+05:30",
-        }
-    )
-    _seed_blast_inside(
+            "createdAt": "2026-09-16T09:20:00+05:30",
+            "updatedAt": "2026-09-16T09:28:00+05:30",
+        },
         {
-            "id": "V-BL-SONAL",
-            "visitorName": "Sonal Banerjee",
-            "mobile": "9822098811",
+            "id": "vis_p7m19",
+            "visitorName": "Neha Malhotra",
+            "mobile": "9822091187",
+            "visitorType": "Parent",
+            "purpose": "Blast demo — parent inside",
+            "hostId": "H03",
+            "idType": "Aadhaar",
+            "idNumber": "118711871187",
+            "gateId": "G-MAIN",
+            "decidedAt": "2026-09-16T09:38:00+05:30",
+            "decidedByUserId": "U-HOST",
+            "passId": "P-7M19",
+            "timeIn": "2026-09-16T09:41:00+05:30",
+            "gateInId": "G-MAIN",
+            "createdAt": "2026-09-16T09:35:00+05:30",
+            "updatedAt": "2026-09-16T09:41:00+05:30",
+        },
+        {
+            "id": "vis_p7m22",
+            "visitorName": "Omar Jain",
+            "mobile": "9822093340",
             "visitorType": "Official",
-            "purpose": "Block education office — blast demo",
+            "purpose": "Blast demo — official inside",
             "hostId": "H01",
             "idType": "Other",
-            "idNumber": "EDU-8811",
+            "idNumber": "OFF-3340",
             "gateId": "G-MAIN",
-            "decidedAt": "2026-09-16T12:10:00+05:30",
+            "decidedAt": "2026-09-16T10:01:00+05:30",
             "decidedByUserId": "U-ADMIN",
-            "passId": "P-BL03",
-            "timeIn": "2026-09-16T12:15:00+05:30",
-            "timeOut": None,
+            "passId": "P-7M22",
+            "timeIn": "2026-09-16T10:05:00+05:30",
             "gateInId": "G-MAIN",
-            "createdAt": "2026-09-16T12:05:00+05:30",
-            "updatedAt": "2026-09-16T12:15:00+05:30",
-        }
-    )
+            "createdAt": "2026-09-16T09:58:00+05:30",
+            "updatedAt": "2026-09-16T10:05:00+05:30",
+        },
+        {
+            "id": "vis_p7m28",
+            "visitorName": "Leena Bhat",
+            "mobile": "9822095501",
+            "visitorType": "Alumni",
+            "purpose": "Blast demo — alumni inside",
+            "hostId": "H02",
+            "idType": "Passport",
+            "idNumber": "Z5501123",
+            "gateId": "G-PED",
+            "decidedAt": "2026-09-16T10:14:00+05:30",
+            "decidedByUserId": "U-HOST-H02",
+            "passId": "P-7M28",
+            "timeIn": "2026-09-16T10:18:00+05:30",
+            "gateInId": "G-PED",
+            "createdAt": "2026-09-16T10:10:00+05:30",
+            "updatedAt": "2026-09-16T10:18:00+05:30",
+        },
+        {
+            "id": "vis_p7m31",
+            "visitorName": "Varun Kulkarni",
+            "mobile": "9822097799",
+            "visitorType": "Vendor",
+            "purpose": "Blast demo — failed SMS recipient",
+            "hostId": "H04",
+            "idType": "DL",
+            "idNumber": "MH12BL7799",
+            "gateId": "G-STAFF",
+            "decidedAt": "2026-09-16T10:29:00+05:30",
+            "decidedByUserId": "U-ADMIN",
+            "passId": "P-7M31",
+            "timeIn": "2026-09-16T10:33:00+05:30",
+            "gateInId": "G-STAFF",
+            "createdAt": "2026-09-16T10:25:00+05:30",
+            "updatedAt": "2026-09-16T10:33:00+05:30",
+        },
+    ]
+    for row in pack_inside:
+        _seed_blast_inside(row)
 
+    evac_instruction = (
+        "Demo International School: Please proceed to the assembly ground now. "
+        "Follow staff instructions. Do not leave campus until cleared."
+    )
     store.put_blast_template(
         {
-            "id": "T-EVAC-01",
+            "id": "tpl_evac_assembly",
             "schoolId": SCHOOL_ID,
             "name": "Evacuation — assembly ground",
-            "instruction": "Evacuate to the assembly ground. Follow staff. Do not use lifts.",
+            "instruction": evac_instruction,
             "channel": "sms",
             "active": True,
             "updatedByUserId": "U-SH",
-            "updatedAt": "2026-09-16T09:10:00+05:30",
-            "createdAt": "2026-09-16T09:10:00+05:30",
+            "updatedAt": "2026-09-16T08:00:00+05:30",
+            "createdAt": "2026-09-16T08:00:00+05:30",
+        }
+    )
+    store.put_blast_template(
+        {
+            "id": "tpl_shelter_in_place",
+            "schoolId": SCHOOL_ID,
+            "name": "Shelter in place",
+            "instruction": (
+                "Demo International School: Shelter in place. Stay where you are "
+                "and await staff direction. Do not move between buildings."
+            ),
+            "channel": "sms",
+            "active": True,
+            "updatedByUserId": "U-SH",
+            "updatedAt": "2026-09-16T08:00:00+05:30",
+            "createdAt": "2026-09-16T08:00:00+05:30",
         }
     )
 
-    inside = list_inside_visits(SCHOOL_ID)
     blast_id = "B-20260916-03"
-    triggered_at = "2026-09-16T16:45:00+05:30"
-    instruction = "Evacuate to the assembly ground. Follow staff. Do not use lifts."
+    triggered_at = "2026-09-16T11:04:12+05:30"
+    confirm_at = "2026-09-16T11:04:18+05:30"
     store.put_blast(
         {
             "blastId": blast_id,
             "schoolId": SCHOOL_ID,
             "triggeredByUserId": "U-SH",
             "triggeredAt": triggered_at,
-            "templateId": "T-EVAC-01",
-            "instruction": instruction,
-            "insideCount": len(inside),
-            "recipientCount": len(inside),
-            "status": "completed",
-            "confirmAt": triggered_at,
+            "templateId": "tpl_evac_assembly",
+            "instruction": evac_instruction,
+            "insideCount": 6,
+            "recipientCount": 6,
+            "status": "partial",
+            "confirmAt": confirm_at,
             "createdAt": triggered_at,
-            "updatedAt": triggered_at,
+            "updatedAt": "2026-09-16T11:04:23+05:30",
         }
     )
+    sms_rows = [
+        ("vis_p7k88", "sent", "mock_sms_001", None, "2026-09-16T11:04:20+05:30"),
+        ("vis_p7m12", "sent", "mock_sms_002", None, "2026-09-16T11:04:21+05:30"),
+        ("vis_p7m19", "sent", "mock_sms_003", None, "2026-09-16T11:04:21+05:30"),
+        ("vis_p7m22", "sent", "mock_sms_004", None, "2026-09-16T11:04:22+05:30"),
+        ("vis_p7m28", "sent", "mock_sms_005", None, "2026-09-16T11:04:22+05:30"),
+        ("vis_p7m31", "failed", None, "MOCK_PROVIDER_UNREACHABLE", "2026-09-16T11:04:23+05:30"),
+    ]
     refs = []
-    for visit in inside:
-        rid = f"BR-SEED-{visit['id']}"
-        masked = mask_mobile(visit.get("mobile"))
+    for visit_id, status, provider_id, error, attempted in sms_rows:
+        visit = store.get_visit(visit_id)
+        masked = mask_mobile(visit.get("mobile") if visit else None)
         store.put_blast_recipient(
             {
-                "id": rid,
+                "id": f"BR-SEED-{visit_id}-sms",
                 "blastId": blast_id,
                 "schoolId": SCHOOL_ID,
-                "visitId": visit["id"],
+                "visitId": visit_id,
                 "mobileMasked": masked,
                 "channel": "sms",
-                "status": "sent",
-                "providerMessageId": f"mock-sms-seed-{visit['id'][-3:]}",
-                "attemptedAt": triggered_at,
-                "errorCode": None,
+                "status": status,
+                "providerMessageId": provider_id,
+                "attemptedAt": attempted,
+                "errorCode": error,
             }
         )
-        refs.append(
-            {
-                "visitId": visit["id"],
-                "mobileMasked": masked,
-                "channel": "sms",
-            }
-        )
+        refs.append({"visitId": visit_id, "mobileMasked": masked, "channel": "sms"})
+    ravi = store.get_visit("vis_p7k88")
+    store.put_blast_recipient(
+        {
+            "id": "BR-SEED-vis_p7k88-wa",
+            "blastId": blast_id,
+            "schoolId": SCHOOL_ID,
+            "visitId": "vis_p7k88",
+            "mobileMasked": mask_mobile(ravi.get("mobile") if ravi else None),
+            "channel": "whatsapp",
+            "status": "skipped_hold",
+            "providerMessageId": None,
+            "attemptedAt": "2026-09-16T11:04:20+05:30",
+            "errorCode": "WA_HOLD",
+        }
+    )
     store.add_outbox(
         {
             "schoolId": SCHOOL_ID,
@@ -1205,9 +1288,9 @@ def _seed_emergency_blast(ts: str) -> None:
             "blastId": blast_id,
             "payload": {
                 "blastId": blast_id,
-                "insideCount": len(inside),
-                "instruction": instruction,
-                "templateId": "T-EVAC-01",
+                "insideCount": 6,
+                "instruction": evac_instruction,
+                "templateId": "tpl_evac_assembly",
                 "schoolId": SCHOOL_ID,
                 "triggeredByUserId": "U-SH",
                 "channels": ["sms"],
@@ -1216,6 +1299,6 @@ def _seed_emergency_blast(ts: str) -> None:
             },
             "channelHints": ["sms"],
             "status": "pending",
-            "createdAt": triggered_at,
+            "createdAt": confirm_at,
         }
     )

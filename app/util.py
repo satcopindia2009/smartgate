@@ -71,15 +71,20 @@ def gen_blast_template_id(seq: int) -> str:
 
 
 def mask_mobile(mobile: str | None) -> str:
-    """Visitor SMS never carries a full number (AC-E3g)."""
+    """Visitor SMS never carries a full number (AC-E3g).
+
+    Seed/demo shape matches notifications/blast-seed-demo.json: +91-9xxx-xx4442.
+    """
     if not mobile:
-        return "******"
+        return "+91-9xxx-xx****"
     digits = re.sub(r"\D", "", mobile)
     if digits.startswith("91") and len(digits) == 12:
         digits = digits[2:]
+    if len(digits) == 10:
+        return f"+91-{digits[0]}xxx-xx{digits[-4:]}"
     if len(digits) >= 4:
-        return "*" * 6 + digits[-4:]
-    return "******"
+        return f"+91-9xxx-xx{digits[-4:]}"
+    return "+91-9xxx-xx****"
 
 
 def last4(value: str | None) -> str | None:

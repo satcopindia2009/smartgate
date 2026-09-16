@@ -45,7 +45,7 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 | `host`     | `host123` | host           | Anita Joshi (H03)              |
 | `rahul`    | `host123` | host           | Rahul Deshpande (H02)          |
 | `admin`    | `admin123`| admin          | Office Admin                   |
-| `security` | `sh123`   | security_head  | **Meera — Security Head**; blacklist + force + blast |
+| `security` | `sh123`   | security_head  | **Meera Kulkarni** (SH); blacklist + force + blast |
 
 ### Seed highlights
 
@@ -60,7 +60,7 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 - **After-hours demos (separate from Priya):** evening Vendor **Ravi Deshmukh** `V-AH-VENDOR` pending SH (host Anita / H03); holiday Parent **Deepak Nair** → **Meera Kulkarni** (H01) → pass **`P-7K88`** (`V-AH-HOLIDAY`)
 - **Escort / zones (B4):** Vendor default `escortRequired=true` zones `reception`+`admin`; Parent/Guest/Alumni reception only (no escort); Official reception+admin (no escort). **Ravi** is assignable to **Vikram More** (`E01`). P-7K88 / Meera and Priya MVP unchanged.
 - **Pickup (P6, separate from Priya):** student **Aarav Mehta · 5-B** (`STU-AARAV`) with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** (`STU-KABIR`) `court_order` blocking **Rajesh Singh**, allow-list **Sunita Singh**
-- **Emergency blast (E3, Meera SH story — not Priya walkthrough):** `emergencyBlastEnabled=true` on **SCH-DEMO-01** only; template **Evacuation — assembly ground** (`T-EVAC-01`); seed blast **`B-20260916-03`**. Inside set = existing Priya / Arjun / Neha **plus** blast-only **Leela Iyer** (after-hours), **Farhan Qureshi**, **Sonal Banerjee** — preview count **6**, same as `GET /v1/visits/inside`. Staff lane default OFF. WhatsApp HOLD.
+- **Emergency blast (E3, Meera Kulkarni SH — `notifications/blast-seed-demo.json`):** `emergencyBlastEnabled=true` on **SCH-DEMO-01** only. Templates `tpl_evac_assembly` + `tpl_shelter_in_place`. Seed blast **`B-20260916-03`** is the pack snapshot (6 story visitors, 5 SMS sent / 1 failed / WA `skipped_hold` on Ravi). Live preview = **`GET /v1/visits/inside`** (Priya MVP still inside + pack six). Pack `P-7K88` is **not** reused — Deepak holiday pass stays `P-7K88`; blast Ravi is `vis_p7k88` / `P-7B88`. Pending escort Ravi `V-AH-VENDOR` unchanged. Staff lane default OFF. WhatsApp HOLD.
 
 ## Visit lifecycle (contract §2)
 
@@ -236,11 +236,11 @@ SH=$(curl -s -X POST "$BASE/auth/login" \
   -H 'Content-Type: application/json' \
   -d '{"username":"security","password":"sh123"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
 
-curl -s "$BASE/emergency/blasts/preview?templateId=T-EVAC-01" -H "Authorization: Bearer $SH" | python3 -m json.tool
+curl -s "$BASE/emergency/blasts/preview?templateId=tpl_evac_assembly" -H "Authorization: Bearer $SH" | python3 -m json.tool
 curl -s "$BASE/visits/inside" -H "Authorization: Bearer $SH" | python3 -c 'import sys,json; print(len(json.load(sys.stdin)["data"]))'
 curl -s -X POST "$BASE/emergency/blasts" \
   -H "Authorization: Bearer $SH" -H 'Content-Type: application/json' \
-  -d '{"templateId":"T-EVAC-01","confirm":true}' | python3 -m json.tool
+  -d '{"templateId":"tpl_evac_assembly","confirm":true}' | python3 -m json.tool
 curl -s "$BASE/emergency/blasts/B-20260916-03" -H "Authorization: Bearer $SH" | python3 -m json.tool
 # Board still inside — blast does not checkout:
 curl -s "$BASE/visits/inside" -H "Authorization: Bearer $SH" | python3 -c 'import sys,json; print([v["id"] for v in json.load(sys.stdin)["data"]])'

@@ -1,0 +1,1007 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Satcop Smart Visitor \u2014 Emergency Blast slice (DRAFT)",
+    "version": "0.0.1-blast-draft",
+    "description": "DEMO/SEED draft ONLY for Priority P2 Emergency Visitor Blast (E3). Not merged into satcop-smart-visitor-api / main OpenAPI yet. No live SMS/WhatsApp provider; WA HOLD \u2192 skipped_hold. Hub B1\u2013B6 LOCKED (confirm-only, not L8 dual-control). Consume with notifications/prd-emergency-blast-priority-p2.md + blast-seed-demo.json."
+  },
+  "tags": [
+    {
+      "name": "blast-config",
+      "description": "School blast toggles (Admin/SH)"
+    },
+    {
+      "name": "blast-templates",
+      "description": "CRUD BlastTemplate (Admin/SH)"
+    },
+    {
+      "name": "emergency-blasts",
+      "description": "Preview/confirm/retry blast (Admin/SH)"
+    }
+  ],
+  "paths": {
+    "/v1/schools/me/blast-config": {
+      "get": {
+        "tags": [
+          "blast-config"
+        ],
+        "summary": "Get school blast config",
+        "operationId": "getSchoolBlastConfig",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "School blast config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolBlastConfig"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not Admin or Security Head"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "blast-config"
+        ],
+        "summary": "Update school blast config",
+        "operationId": "putSchoolBlastConfig",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolBlastConfigUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolBlastConfig"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not Admin or Security Head"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/v1/emergency/blast-templates": {
+      "get": {
+        "tags": [
+          "blast-templates"
+        ],
+        "summary": "List blast templates",
+        "operationId": "listBlastTemplates",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/BlastTemplate"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not Admin or Security Head"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "blast-templates"
+        ],
+        "summary": "Create blast template",
+        "operationId": "createBlastTemplate",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastTemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlastTemplate"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not Admin or Security Head"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/v1/emergency/blast-templates/{template_id}": {
+      "get": {
+        "tags": [
+          "blast-templates"
+        ],
+        "summary": "Get blast template",
+        "operationId": "getBlastTemplate",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlastTemplate"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "blast-templates"
+        ],
+        "summary": "Replace blast template",
+        "operationId": "putBlastTemplate",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastTemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlastTemplate"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "blast-templates"
+        ],
+        "summary": "Patch blast template (e.g. active flag)",
+        "operationId": "patchBlastTemplate",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastTemplatePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Patched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlastTemplate"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "blast-templates"
+        ],
+        "summary": "Deactivate or delete template (prefer soft-deactivate)",
+        "operationId": "deleteBlastTemplate",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted / deactivated"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts": {
+      "post": {
+        "tags": [
+          "emergency-blasts"
+        ],
+        "summary": "Preview or create pending_confirm blast",
+        "description": "Admin/SH only (B2). With mode=preview (default) returns insideCount + instruction preview without persisting. With mode=pending_confirm creates EmergencyBlast status=pending_confirm from live inside snapshot (B1); does NOT enqueue until confirm. Requires emergencyBlastEnabled=true else 404. Template-only body (B4).",
+        "operationId": "createOrPreviewEmergencyBlast",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmergencyBlastCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview response (no row persisted)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmergencyBlastPreview"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "pending_confirm blast created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmergencyBlast"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Gate/Host or wrong role"
+          },
+          "404": {
+            "description": "Blast disabled for school"
+          },
+          "422": {
+            "description": "Validation / missing template"
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts/{blast_id}/confirm": {
+      "post": {
+        "tags": [
+          "emergency-blasts"
+        ],
+        "summary": "Confirm pending blast \u2192 enqueue outbox",
+        "description": "Explicit confirm (B2 confirm-only). Snapshots inside set at confirm time if not already; creates BlastRecipient[]; emits outbox emergency.blast; fan-out stub SMS; WA \u2192 skipped_hold. Does NOT change visit status (B6).",
+        "operationId": "confirmEmergencyBlast",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "blast_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmergencyBlastConfirmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Confirmed and queued/sending",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmergencyBlast"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not pending_confirm or confirm!=true"
+          },
+          "403": {
+            "description": "Not Admin or Security Head"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts/{blast_id}": {
+      "get": {
+        "tags": [
+          "emergency-blasts"
+        ],
+        "summary": "Get blast + per-recipient statuses",
+        "operationId": "getEmergencyBlast",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "blast_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blast audit detail (B5)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmergencyBlastDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts/{blast_id}/retry-failed": {
+      "post": {
+        "tags": [
+          "emergency-blasts"
+        ],
+        "summary": "Retry failed recipients only",
+        "description": "Re-queues recipients with status=failed only. Skipped_hold / skipped_no_mobile are not retried as SMS failures.",
+        "operationId": "retryFailedEmergencyBlast",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "blast_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retry accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmergencyBlastDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not Admin or Security Head"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "BlastChannel": {
+        "type": "string",
+        "enum": [
+          "sms",
+          "push",
+          "in_app",
+          "whatsapp"
+        ]
+      },
+      "BlastRecipientStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "sent",
+          "failed",
+          "skipped_no_mobile",
+          "skipped_hold"
+        ]
+      },
+      "EmergencyBlastStatus": {
+        "type": "string",
+        "enum": [
+          "pending_confirm",
+          "queued",
+          "sending",
+          "completed",
+          "partial",
+          "failed",
+          "cancelled"
+        ]
+      },
+      "SchoolBlastConfig": {
+        "type": "object",
+        "required": [
+          "emergencyBlastEnabled",
+          "blastStaffLaneEnabled",
+          "blastChannelsVisitor",
+          "blastChannelsStaff"
+        ],
+        "properties": {
+          "emergencyBlastEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Default OFF (AC-E3e)"
+          },
+          "blastStaffLaneEnabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "blastChannelsVisitor": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            },
+            "default": [
+              "sms"
+            ]
+          },
+          "blastChannelsStaff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            },
+            "default": [
+              "in_app",
+              "push"
+            ]
+          }
+        }
+      },
+      "SchoolBlastConfigUpdate": {
+        "type": "object",
+        "properties": {
+          "emergencyBlastEnabled": {
+            "type": "boolean"
+          },
+          "blastStaffLaneEnabled": {
+            "type": "boolean"
+          },
+          "blastChannelsVisitor": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            }
+          },
+          "blastChannelsStaff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            }
+          }
+        }
+      },
+      "BlastTemplate": {
+        "type": "object",
+        "required": [
+          "id",
+          "schoolId",
+          "name",
+          "instruction",
+          "channel",
+          "active"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "Evacuation \u2014 assembly ground"
+            ]
+          },
+          "instruction": {
+            "type": "string",
+            "description": "SMS-safe short instruction; snapshot at confirm"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "updatedByUserId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BlastTemplateCreate": {
+        "type": "object",
+        "required": [
+          "name",
+          "instruction",
+          "channel"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel"
+          },
+          "active": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "BlastTemplatePatch": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "EmergencyBlastCreateRequest": {
+        "type": "object",
+        "required": [
+          "templateId"
+        ],
+        "properties": {
+          "templateId": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "preview",
+              "pending_confirm"
+            ],
+            "default": "preview",
+            "description": "preview = no persist; pending_confirm = create row awaiting confirm"
+          }
+        }
+      },
+      "EmergencyBlastConfirmRequest": {
+        "type": "object",
+        "required": [
+          "confirm"
+        ],
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "description": "Must be true (B2 explicit confirm)"
+          }
+        }
+      },
+      "EmergencyBlastPreview": {
+        "type": "object",
+        "required": [
+          "insideCount",
+          "templateId",
+          "instruction",
+          "channelsSummary"
+        ],
+        "properties": {
+          "insideCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "channelsSummary": {
+            "type": "object",
+            "properties": {
+              "visitor": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BlastChannel"
+                }
+              },
+              "staffLaneEnabled": {
+                "type": "boolean"
+              },
+              "whatsappHold": {
+                "type": "boolean",
+                "default": true
+              }
+            }
+          }
+        }
+      },
+      "EmergencyBlast": {
+        "type": "object",
+        "required": [
+          "blast_id",
+          "schoolId",
+          "triggeredByUserId",
+          "triggeredAt",
+          "templateId",
+          "instruction",
+          "insideCount",
+          "recipientCount",
+          "status"
+        ],
+        "properties": {
+          "blast_id": {
+            "type": "string",
+            "description": "Primary audit key (B5)",
+            "examples": [
+              "B-20260916-03"
+            ]
+          },
+          "schoolId": {
+            "type": "string"
+          },
+          "triggeredByUserId": {
+            "type": "string"
+          },
+          "triggeredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string",
+            "description": "Snapshot at confirm"
+          },
+          "insideCount": {
+            "type": "integer"
+          },
+          "recipientCount": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EmergencyBlastStatus"
+          },
+          "confirmAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "BlastRecipient": {
+        "type": "object",
+        "required": [
+          "blast_id",
+          "mobileMasked",
+          "channel",
+          "status"
+        ],
+        "properties": {
+          "blast_id": {
+            "type": "string"
+          },
+          "visitId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mobileMasked": {
+            "type": "string",
+            "examples": [
+              "+91-9xxx-xx4442"
+            ]
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BlastRecipientStatus"
+          },
+          "providerMessageId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attemptedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "EmergencyBlastDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EmergencyBlast"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "recipients": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BlastRecipient"
+                }
+              },
+              "counts": {
+                "type": "object",
+                "properties": {
+                  "sent": {
+                    "type": "integer"
+                  },
+                  "failed": {
+                    "type": "integer"
+                  },
+                  "queued": {
+                    "type": "integer"
+                  },
+                  "skipped_hold": {
+                    "type": "integer"
+                  },
+                  "skipped_no_mobile": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EmergencyBlastOutboxPayload": {
+        "type": "object",
+        "description": "Outbox event name emergency.blast \u2014 DEMO/SEED draft enrichment (MVP SoT today is name-only until implemented)",
+        "required": [
+          "blastId",
+          "insideCount",
+          "instruction",
+          "templateId",
+          "schoolId",
+          "triggeredByUserId",
+          "channels",
+          "recipientRefs"
+        ],
+        "properties": {
+          "blastId": {
+            "type": "string"
+          },
+          "insideCount": {
+            "type": "integer"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "string"
+          },
+          "triggeredByUserId": {
+            "type": "string"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            }
+          },
+          "recipientRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "visitId",
+                "mobileMasked",
+                "channel"
+              ],
+              "properties": {
+                "visitId": {
+                  "type": "string"
+                },
+                "mobileMasked": {
+                  "type": "string"
+                },
+                "channel": {
+                  "$ref": "#/components/schemas/BlastChannel"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

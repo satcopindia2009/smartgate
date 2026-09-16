@@ -1,0 +1,231 @@
+{
+  "_meta": {
+    "purpose": "DEMO/SEED only — Emergency visitor blast (E3) Priority P2",
+    "blast_id": "B-20260916-03",
+    "demo_story": "Meera Kulkarni SH · 6 inside · evacuation template · 5 sent / 1 failed · WA skipped_hold",
+    "constraints": [
+      "No live SMS/WhatsApp",
+      "WA HOLD → skipped_hold",
+      "B1–B6 LOCKED",
+      "No visit-status change / no auto-checkout",
+      "Phones are masked demo placeholders only"
+    ],
+    "prd": "notifications/prd-emergency-blast-priority-p2.md",
+    "demos": "demos/emergency-blast/",
+    "generatedAt": "2026-09-17T02:29:00+05:30"
+  },
+  "school": {
+    "schoolId": "sch_demo_international",
+    "name": "Demo International School",
+    "timezone": "Asia/Kolkata",
+    "blastConfig": {
+      "emergencyBlastEnabled": true,
+      "blastStaffLaneEnabled": false,
+      "blastChannelsVisitor": ["sms"],
+      "blastChannelsStaff": ["in_app", "push"]
+    }
+  },
+  "actors": {
+    "triggeredBy": {
+      "userId": "usr_meera_kulkarni",
+      "name": "Meera Kulkarni",
+      "role": "security_head"
+    }
+  },
+  "insideVisitorsSnapshot": [
+    {
+      "visitId": "vis_p7k88",
+      "passId": "P-7K88",
+      "displayName": "Ravi Deshmukh",
+      "visitorType": "Vendor",
+      "mobileMasked": "+91-9xxx-xx4442",
+      "timeIn": "2026-09-16T09:12:00+05:30",
+      "timeOut": null
+    },
+    {
+      "visitId": "vis_p7m12",
+      "passId": "P-7M12",
+      "displayName": "Sonal Kapoor",
+      "visitorType": "Guest",
+      "mobileMasked": "+91-9xxx-xx2018",
+      "timeIn": "2026-09-16T09:28:00+05:30",
+      "timeOut": null
+    },
+    {
+      "visitId": "vis_p7m19",
+      "passId": "P-7M19",
+      "displayName": "Neha Malhotra",
+      "visitorType": "Parent",
+      "mobileMasked": "+91-9xxx-xx1187",
+      "timeIn": "2026-09-16T09:41:00+05:30",
+      "timeOut": null
+    },
+    {
+      "visitId": "vis_p7m22",
+      "passId": "P-7M22",
+      "displayName": "Omar Jain",
+      "visitorType": "Official",
+      "mobileMasked": "+91-9xxx-xx3340",
+      "timeIn": "2026-09-16T10:05:00+05:30",
+      "timeOut": null
+    },
+    {
+      "visitId": "vis_p7m28",
+      "passId": "P-7M28",
+      "displayName": "Leena Bhat",
+      "visitorType": "Alumni",
+      "mobileMasked": "+91-9xxx-xx5501",
+      "timeIn": "2026-09-16T10:18:00+05:30",
+      "timeOut": null
+    },
+    {
+      "visitId": "vis_p7m31",
+      "passId": "P-7M31",
+      "displayName": "Varun Kulkarni",
+      "visitorType": "Vendor",
+      "mobileMasked": "+91-9xxx-xx7799",
+      "timeIn": "2026-09-16T10:33:00+05:30",
+      "timeOut": null
+    }
+  ],
+  "BlastTemplate": [
+    {
+      "id": "tpl_evac_assembly",
+      "schoolId": "sch_demo_international",
+      "name": "Evacuation — assembly ground",
+      "instruction": "Demo International School: Please proceed to the assembly ground now. Follow staff instructions. Do not leave campus until cleared.",
+      "channel": "sms",
+      "active": true,
+      "updatedByUserId": "usr_meera_kulkarni",
+      "updatedAt": "2026-09-16T08:00:00+05:30"
+    },
+    {
+      "id": "tpl_shelter_in_place",
+      "schoolId": "sch_demo_international",
+      "name": "Shelter in place",
+      "instruction": "Demo International School: Shelter in place. Stay where you are and await staff direction. Do not move between buildings.",
+      "channel": "sms",
+      "active": true,
+      "updatedByUserId": "usr_meera_kulkarni",
+      "updatedAt": "2026-09-16T08:00:00+05:30"
+    }
+  ],
+  "EmergencyBlast": {
+    "blast_id": "B-20260916-03",
+    "schoolId": "sch_demo_international",
+    "triggeredByUserId": "usr_meera_kulkarni",
+    "triggeredAt": "2026-09-16T11:04:12+05:30",
+    "templateId": "tpl_evac_assembly",
+    "instruction": "Demo International School: Please proceed to the assembly ground now. Follow staff instructions. Do not leave campus until cleared.",
+    "insideCount": 6,
+    "recipientCount": 6,
+    "status": "partial",
+    "confirmAt": "2026-09-16T11:04:18+05:30",
+    "counts": {
+      "sent": 5,
+      "failed": 1,
+      "skipped_hold": 0,
+      "skipped_no_mobile": 0,
+      "queued": 0
+    },
+    "notes": "Demo results after SMS mock fan-out. One WA attempt on first recipient logs skipped_hold separately (see BlastRecipient + outbox). Board who's-inside unchanged (B6)."
+  },
+  "BlastRecipient": [
+    {
+      "blast_id": "B-20260916-03",
+      "visitId": "vis_p7k88",
+      "mobileMasked": "+91-9xxx-xx4442",
+      "channel": "sms",
+      "status": "sent",
+      "providerMessageId": "mock_sms_001",
+      "attemptedAt": "2026-09-16T11:04:20+05:30",
+      "errorCode": null
+    },
+    {
+      "blast_id": "B-20260916-03",
+      "visitId": "vis_p7k88",
+      "mobileMasked": "+91-9xxx-xx4442",
+      "channel": "whatsapp",
+      "status": "skipped_hold",
+      "providerMessageId": null,
+      "attemptedAt": "2026-09-16T11:04:20+05:30",
+      "errorCode": "WA_HOLD"
+    },
+    {
+      "blast_id": "B-20260916-03",
+      "visitId": "vis_p7m12",
+      "mobileMasked": "+91-9xxx-xx2018",
+      "channel": "sms",
+      "status": "sent",
+      "providerMessageId": "mock_sms_002",
+      "attemptedAt": "2026-09-16T11:04:21+05:30",
+      "errorCode": null
+    },
+    {
+      "blast_id": "B-20260916-03",
+      "visitId": "vis_p7m19",
+      "mobileMasked": "+91-9xxx-xx1187",
+      "channel": "sms",
+      "status": "sent",
+      "providerMessageId": "mock_sms_003",
+      "attemptedAt": "2026-09-16T11:04:21+05:30",
+      "errorCode": null
+    },
+    {
+      "blast_id": "B-20260916-03",
+      "visitId": "vis_p7m22",
+      "mobileMasked": "+91-9xxx-xx3340",
+      "channel": "sms",
+      "status": "sent",
+      "providerMessageId": "mock_sms_004",
+      "attemptedAt": "2026-09-16T11:04:22+05:30",
+      "errorCode": null
+    },
+    {
+      "blast_id": "B-20260916-03",
+      "visitId": "vis_p7m28",
+      "mobileMasked": "+91-9xxx-xx5501",
+      "channel": "sms",
+      "status": "sent",
+      "providerMessageId": "mock_sms_005",
+      "attemptedAt": "2026-09-16T11:04:22+05:30",
+      "errorCode": null
+    },
+    {
+      "blast_id": "B-20260916-03",
+      "visitId": "vis_p7m31",
+      "mobileMasked": "+91-9xxx-xx7799",
+      "channel": "sms",
+      "status": "failed",
+      "providerMessageId": null,
+      "attemptedAt": "2026-09-16T11:04:23+05:30",
+      "errorCode": "MOCK_PROVIDER_UNREACHABLE"
+    }
+  ],
+  "outboxEvent": {
+    "event": "emergency.blast",
+    "emittedAt": "2026-09-16T11:04:18+05:30",
+    "payload": {
+      "blastId": "B-20260916-03",
+      "insideCount": 6,
+      "instruction": "Demo International School: Please proceed to the assembly ground now. Follow staff instructions. Do not leave campus until cleared.",
+      "templateId": "tpl_evac_assembly",
+      "schoolId": "sch_demo_international",
+      "triggeredByUserId": "usr_meera_kulkarni",
+      "channels": ["sms"],
+      "recipientRefs": [
+        { "visitId": "vis_p7k88", "mobileMasked": "+91-9xxx-xx4442", "channel": "sms" },
+        { "visitId": "vis_p7m12", "mobileMasked": "+91-9xxx-xx2018", "channel": "sms" },
+        { "visitId": "vis_p7m19", "mobileMasked": "+91-9xxx-xx1187", "channel": "sms" },
+        { "visitId": "vis_p7m22", "mobileMasked": "+91-9xxx-xx3340", "channel": "sms" },
+        { "visitId": "vis_p7m28", "mobileMasked": "+91-9xxx-xx5501", "channel": "sms" },
+        { "visitId": "vis_p7m31", "mobileMasked": "+91-9xxx-xx7799", "channel": "sms" }
+      ]
+    },
+    "fanOutStub": {
+      "sms": "mock_sent_or_failed",
+      "whatsapp": "skipped_hold",
+      "liveProvider": false
+    }
+  }
+}

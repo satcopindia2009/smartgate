@@ -39,7 +39,7 @@ def test_ac_e3b_admin_sh_confirm_only_gate_host_forbidden(client):
     no_confirm = client.post(
         "/v1/emergency/blasts",
         headers=auth(atoken),
-        json={"templateId": "T-EVAC-01", "confirm": False},
+        json={"templateId": "tpl_evac_assembly", "confirm": False},
     )
     assert no_confirm.status_code == 400
 
@@ -143,4 +143,4 @@ def test_ac_e3g_masked_mobile_no_board_pii_in_sms_outbox(client):
     assert "Neha Salunkhe" not in blob
     for ref in payload["recipientRefs"]:
         assert set(ref) <= {"visitId", "mobileMasked", "channel"}
-        assert ref["mobileMasked"].startswith("******")
+        assert "xxx" in ref["mobileMasked"]

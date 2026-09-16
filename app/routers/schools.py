@@ -56,6 +56,14 @@ def get_blast_config(user: dict = Depends(require_roles(*_BLAST_ROLES))):
     return _config_public(school)
 
 
+@router.put("/me/blast-config")
+def put_blast_config(
+    body: BlastConfigPatch,
+    user: dict = Depends(require_roles(*_BLAST_ROLES)),
+):
+    return patch_blast_config(body, user)
+
+
 @router.patch("/me/blast-config")
 def patch_blast_config(
     body: BlastConfigPatch,

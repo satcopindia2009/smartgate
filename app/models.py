@@ -858,10 +858,11 @@ class BlastTemplateOut(BaseModel):
 
 
 class BlastConfirmBody(BaseModel):
-    """B2 confirm-only; B4 template-only (+ optional school-editable instruction)."""
+    """Locked one-shot confirm `{ templateId, confirm: true }` plus draft modes."""
 
     templateId: str = Field(min_length=1)
-    confirm: bool
+    confirm: Optional[bool] = None
+    mode: Optional[Literal["preview", "pending_confirm"]] = None
     instruction: Optional[str] = Field(default=None, max_length=160)
 
     @field_validator("templateId")
@@ -879,6 +880,17 @@ class BlastConfirmBody(BaseModel):
             return None
         v = v.strip()
         return v or None
+
+
+class BlastConfirmOnlyBody(BaseModel):
+    confirm: bool
+
+    @field_validator("confirm")
+    @classmethod
+    def must_confirm(cls, v: bool) -> bool:
+        if v is not True:
+            raise ValueError("confirm must be true")
+        return v
 
 
 class BlastRecipientOut(BaseModel):

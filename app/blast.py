@@ -71,6 +71,7 @@ def template_public(row: dict) -> dict:
 def recipient_public(row: dict) -> dict:
     return {
         "blastId": row["blastId"],
+        "blast_id": row["blastId"],
         "visitId": row.get("visitId"),
         "mobileMasked": row["mobileMasked"],
         "channel": row["channel"],
@@ -117,6 +118,7 @@ def blast_public(blast: dict) -> dict:
     return _meta(
         {
             "blastId": blast["blastId"],
+            "blast_id": blast["blastId"],
             "schoolId": blast["schoolId"],
             "triggeredByUserId": blast["triggeredByUserId"],
             "triggeredAt": blast["triggeredAt"],
@@ -195,6 +197,9 @@ def channels_summary(cfg: dict, inside: list[dict], template_channel: Optional[s
         summary["staff"] = {"channels": staff_ch, "enabled": True}
     else:
         summary["staff"] = {"enabled": False}
+    summary["visitor"] = channels
+    summary["staffLaneEnabled"] = bool(cfg.get("blastStaffLaneEnabled"))
+    summary["whatsappHold"] = True
     return summary
 
 
@@ -233,23 +238,18 @@ def _new_recipient(
     return row
 
 
-def confirm_blast(
+def create_pending_blast(
     *,
     school: dict,
     user: dict,
     template: dict,
     instruction: str,
 ) -> dict:
-    """Snapshot inside set at confirm (B1). Never mutates visit rows (B6)."""
-    cfg = school_blast_config(school)
+    """Draft mode=pending_confirm — row only; snapshot/enqueue happens on confirm (B1)."""
     inside = list_inside_visits(user["schoolId"])
     ts = now_iso()
-    blast_id = store.next_blast_id()
-    visitor_ch = visitor_channels_for(cfg, template["channel"])
-    staff_ch = staff_channels_for(cfg)
-
     blast = {
-        "blastId": blast_id,
+        "blastId": store.next_blast_id(),
         "schoolId": user["schoolId"],
         "triggeredByUserId": user["id"],
         "triggeredAt": ts,
@@ -257,11 +257,59 @@ def confirm_blast(
         "instruction": instruction,
         "insideCount": len(inside),
         "recipientCount": 0,
-        "status": "sending",
-        "confirmAt": ts,
+        "status": "pending_confirm",
+        "confirmAt": None,
         "createdAt": ts,
         "updatedAt": ts,
     }
+    store.put_blast(blast)
+    return blast
+
+
+def confirm_blast(
+    *,
+    school: dict,
+    user: dict,
+    template: dict,
+    instruction: str,
+    existing: Optional[dict] = None,
+) -> dict:
+    """Snapshot inside set at confirm (B1). Never mutates visit rows (B6)."""
+    cfg = school_blast_config(school)
+    inside = list_inside_visits(user["schoolId"])
+    ts = now_iso()
+    visitor_ch = visitor_channels_for(cfg, template["channel"])
+    staff_ch = staff_channels_for(cfg)
+
+    if existing:
+        if existing.get("status") not in (None, "pending_confirm"):
+            raise AppError(
+                "VALIDATION",
+                f"Cannot confirm blast in status {existing.get('status')}",
+                400,
+            )
+        blast = existing
+        blast["instruction"] = instruction
+        blast["templateId"] = template["id"]
+        blast["triggeredByUserId"] = user["id"]
+        blast_id = blast["blastId"]
+    else:
+        blast_id = store.next_blast_id()
+        blast = {
+            "blastId": blast_id,
+            "schoolId": user["schoolId"],
+            "triggeredByUserId": user["id"],
+            "triggeredAt": ts,
+            "templateId": template["id"],
+            "instruction": instruction,
+            "createdAt": ts,
+        }
+
+    blast["insideCount"] = len(inside)
+    blast["recipientCount"] = 0
+    blast["status"] = "sending"
+    blast["confirmAt"] = ts
+    blast["updatedAt"] = ts
     store.put_blast(blast)
 
     recipients: list[dict] = []
