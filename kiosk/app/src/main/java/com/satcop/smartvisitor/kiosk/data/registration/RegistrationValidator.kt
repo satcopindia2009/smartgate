@@ -7,6 +7,9 @@ object FieldKeys {
     const val HOST_ID = "hostId"
     const val VISITOR_TYPE = "visitorType"
     const val ACCOMPANYING = "accompanyingCount"
+    const val LIVE_PHOTO = "livePhotoKey"
+    const val ID = "idNumber"
+    const val ID_TYPE = "idType"
 }
 
 object MobileIndia {
@@ -64,12 +67,28 @@ object RegistrationValidator {
         return errors
     }
 
+    /** Wave 2: live photo required; V1 = ID number OR ID image (number preferred). */
+    fun validateStep3(draft: RegistrationDraft): Map<String, String> {
+        val errors = linkedMapOf<String, String>()
+        if (!draft.livePhotoCaptured) {
+            errors[FieldKeys.LIVE_PHOTO] = "Live photo is required"
+        }
+        if (draft.idType.isBlank()) {
+            errors[FieldKeys.ID_TYPE] = "Select an ID type"
+        }
+        if (draft.idNumber.trim().isEmpty() && !draft.idImageCaptured) {
+            errors[FieldKeys.ID] = "Enter an ID number or attach an ID image"
+        }
+        return errors
+    }
+
     fun toastMessage(errors: Map<String, String>): String {
         val required = listOf(FieldKeys.VISITOR_NAME, FieldKeys.MOBILE, FieldKeys.PURPOSE, FieldKeys.HOST_ID)
-        return if (required.any { it in errors }) {
-            "Please fill name, mobile, purpose, and host"
-        } else {
-            errors.values.firstOrNull() ?: "Please check the form"
+        return when {
+            FieldKeys.LIVE_PHOTO in errors -> "Please capture a live photo"
+            FieldKeys.ID in errors -> "ID number or ID image is required"
+            required.any { it in errors } -> "Please fill name, mobile, purpose, and host"
+            else -> errors.values.firstOrNull() ?: "Please check the form"
         }
     }
 }

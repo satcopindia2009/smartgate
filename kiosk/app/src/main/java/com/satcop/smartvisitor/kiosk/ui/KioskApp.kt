@@ -41,9 +41,11 @@ import com.satcop.smartvisitor.kiosk.ui.components.GatePill
 import com.satcop.smartvisitor.kiosk.ui.components.ShieldMark
 import com.satcop.smartvisitor.kiosk.ui.components.StepDots
 import com.satcop.smartvisitor.kiosk.ui.components.ToastBanner
+import com.satcop.smartvisitor.kiosk.data.model.DataSource
+import com.satcop.smartvisitor.kiosk.ui.steps.OutcomeStep
+import com.satcop.smartvisitor.kiosk.ui.steps.PhotoIdStep
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorDetailsStep
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorTypeStep
-import com.satcop.smartvisitor.kiosk.ui.steps.WaveHoldStep
 import com.satcop.smartvisitor.kiosk.ui.theme.CardShape
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
@@ -73,6 +75,7 @@ fun KioskApp(
                 gateName = state.selectedGate?.name ?: "Main Gate",
                 gates = state.gates,
                 clockLabel = state.clockLabel,
+                dataSource = state.dataSource,
                 onSelectGate = viewModel::selectGate,
             )
             Box(
@@ -120,11 +123,32 @@ fun KioskApp(
                                 onBack = viewModel::back,
                                 onContinue = viewModel::continueFromStep2,
                             )
-                            else -> WaveHoldStep(
+                            3 -> PhotoIdStep(
                                 draft = state.draft,
+                                livePhoto = state.livePhoto,
+                                idImage = state.idImage,
+                                errors = state.fieldErrors,
+                                submitting = state.submitting,
+                                blocked = state.blocked,
+                                blacklistHit = state.blacklistHit,
+                                onIdType = viewModel::selectIdType,
+                                onIdNumber = viewModel::updateIdNumber,
+                                onLivePhoto = viewModel::setLivePhoto,
+                                onIdImage = viewModel::setIdImage,
+                                onSignature = viewModel::setSignature,
+                                onClearSignature = viewModel::clearSignature,
+                                onBlockSample = viewModel::applyBlockSample,
+                                onAlertSample = viewModel::applyAlertSample,
+                                onBack = viewModel::back,
+                                onSubmit = viewModel::submitRegistration,
+                            )
+                            else -> OutcomeStep(
+                                draft = state.draft,
+                                visit = state.createdVisit,
                                 hosts = state.hosts,
                                 gates = state.gates,
-                                onBack = viewModel::back,
+                                blacklistHit = state.blacklistHit,
+                                onNewVisitor = viewModel::registerAnother,
                             )
                         }
                     }
@@ -158,6 +182,7 @@ private fun KioskHeader(
     gateName: String,
     gates: List<com.satcop.smartvisitor.kiosk.data.model.Gate>,
     clockLabel: String,
+    dataSource: DataSource,
     onSelectGate: (String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -193,6 +218,10 @@ private fun KioskHeader(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            GatePill(
+                name = if (dataSource == DataSource.LIVE) "LIVE mock" else "FIXTURES",
+                onClick = {},
+            )
             Box {
                 GatePill(name = gateName, onClick = { menuOpen = true })
                 DropdownMenu(

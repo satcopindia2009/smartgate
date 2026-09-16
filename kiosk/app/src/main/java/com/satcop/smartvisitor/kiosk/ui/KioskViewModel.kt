@@ -1,18 +1,25 @@
 package com.satcop.smartvisitor.kiosk.ui
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.satcop.smartvisitor.kiosk.data.fixture.DemoFixtures
-import com.satcop.smartvisitor.kiosk.data.fixture.FixtureDirectoryRepository
+import com.satcop.smartvisitor.kiosk.data.fixture.HybridKioskRepository
+import com.satcop.smartvisitor.kiosk.data.model.ApiException
+import com.satcop.smartvisitor.kiosk.data.model.BlacklistEntry
+import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.data.model.DemoStory
 import com.satcop.smartvisitor.kiosk.data.model.Gate
 import com.satcop.smartvisitor.kiosk.data.model.InsideVisit
 import com.satcop.smartvisitor.kiosk.data.model.Staff
+import com.satcop.smartvisitor.kiosk.data.model.VisitCreate
+import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import com.satcop.smartvisitor.kiosk.data.registration.MobileIndia
 import com.satcop.smartvisitor.kiosk.data.registration.RegistrationDraft
 import com.satcop.smartvisitor.kiosk.data.registration.RegistrationValidator
-import com.satcop.smartvisitor.kiosk.data.repository.DirectoryRepository
+import com.satcop.smartvisitor.kiosk.data.repository.KioskRepository
+import com.satcop.smartvisitor.kiosk.ui.media.PlaceholderBitmap
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -30,6 +37,7 @@ data class KioskUiState(
     val timezone: String = DemoFixtures.SCHOOL_TZ,
     val clockLabel: String = "",
     val watermark: String = DemoFixtures.WATERMARK,
+    val dataSource: DataSource = DataSource.FIXTURES,
     val meDisplayName: String = "",
     val gates: List<Gate> = emptyList(),
     val hosts: List<Staff> = emptyList(),
@@ -39,13 +47,20 @@ data class KioskUiState(
     val toast: String? = null,
     val story: DemoStory = DemoFixtures.demoStory,
     val loaded: Boolean = false,
+    val submitting: Boolean = false,
+    val livePhoto: Bitmap? = null,
+    val idImage: Bitmap? = null,
+    val signature: Bitmap? = null,
+    val blacklistHit: BlacklistEntry? = null,
+    val blocked: Boolean = false,
+    val createdVisit: VisitOut? = null,
 ) {
     val selectedGate: Gate?
         get() = gates.firstOrNull { it.id == draft.gateId } ?: gates.firstOrNull()
 }
 
 class KioskViewModel(
-    private val directory: DirectoryRepository = FixtureDirectoryRepository(),
+    private val repository: KioskRepository = HybridKioskRepository(),
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(KioskUiState())
@@ -62,12 +77,13 @@ class KioskViewModel(
     }
 
     private suspend fun load() {
-        val me = directory.me()
-        val school = directory.school()
-        val staff = directory.listStaff(active = true)
-        val gates = directory.listGates()
-        val inside = directory.listInside()
-        val story = directory.demoStory()
+        repository.warmup()
+        val me = repository.me()
+        val school = repository.school()
+        val staff = repository.listStaff(active = true)
+        val gates = repository.listGates()
+        val inside = repository.listInside()
+        val story = repository.demoStory()
         val allowedGateIds = me.gateIds?.toSet()
         val visibleGates = gates.data.filter { allowedGateIds == null || it.id in allowedGateIds }
         val defaultGateId = story.gateId.takeIf { id -> visibleGates.any { it.id == id } }
@@ -76,11 +92,13 @@ class KioskViewModel(
         val watermark = me.meta?.watermark
             ?: staff.meta?.watermark
             ?: DemoFixtures.WATERMARK
+        val source = repository.dataSource
         _state.update {
             it.copy(
                 schoolName = school.name,
                 timezone = school.timezone,
                 watermark = watermark,
+                dataSource = source,
                 meDisplayName = me.displayName,
                 gates = visibleGates,
                 hosts = staff.data.filter { row -> row.roleTitle != "Guard" },
@@ -91,6 +109,11 @@ class KioskViewModel(
                     gateId = defaultGateId,
                 ),
                 loaded = true,
+                toast = if (source == DataSource.LIVE) {
+                    "Live mock connected"
+                } else {
+                    "Fixtures fallback · tunnel unreachable"
+                },
             )
         }
     }
@@ -134,18 +157,77 @@ class KioskViewModel(
 
     fun updateNotes(value: String) = patchDraft { copy(notes = value) }
 
+    fun selectIdType(apiValue: String) = patchDraft { copy(idType = apiValue) }
+
+    fun updateIdNumber(value: String) = patchDraft { copy(idNumber = value) }
+
+    fun setLivePhoto(bitmap: Bitmap?) {
+        val bmp = bitmap ?: PlaceholderBitmap.livePhoto(_state.value.draft.visitorName)
+        _state.update {
+            it.copy(
+                livePhoto = bmp,
+                draft = it.draft.copy(livePhotoCaptured = true),
+                fieldErrors = it.fieldErrors - "livePhotoKey",
+                toast = if (bitmap == null) "Live photo captured (demo placeholder)" else "Live photo captured",
+            )
+        }
+    }
+
+    fun setIdImage(bitmap: Bitmap?) {
+        val bmp = bitmap ?: PlaceholderBitmap.idCard(_state.value.draft)
+        _state.update {
+            it.copy(
+                idImage = bmp,
+                draft = it.draft.copy(idImageCaptured = true),
+                fieldErrors = it.fieldErrors - "idNumber",
+                toast = if (bitmap == null) "ID image attached (demo)" else "ID image attached",
+            )
+        }
+    }
+
+    fun setSignature(bitmap: Bitmap?) {
+        _state.update {
+            it.copy(
+                signature = bitmap,
+                draft = it.draft.copy(signatureCaptured = bitmap != null),
+            )
+        }
+    }
+
+    fun clearSignature() {
+        _state.update {
+            it.copy(signature = null, draft = it.draft.copy(signatureCaptured = false, signatureKey = null))
+        }
+    }
+
     private fun patchDraft(block: RegistrationDraft.() -> RegistrationDraft) {
         _state.update { it.copy(draft = it.draft.block(), fieldErrors = emptyMap()) }
     }
 
     fun prefillSample() {
-        val story = _state.value.story
+        applyDraft(RegistrationDraft.fromStory(_state.value.story), "Sample parent visit loaded (fixture)")
+    }
+
+    fun applyBlockSample() {
+        applyDraft(RegistrationDraft.blockSample(), "Block sample loaded · Vikram More")
+    }
+
+    fun applyAlertSample() {
+        applyDraft(RegistrationDraft.alertSample(), "Alert sample loaded · Neha Salunkhe")
+    }
+
+    private fun applyDraft(draft: RegistrationDraft, toast: String) {
         _state.update {
             it.copy(
-                draft = RegistrationDraft.fromStory(story),
+                draft = draft,
                 fieldErrors = emptyMap(),
-                toast = "Sample parent visit loaded (fixture)",
-                step = 1,
+                toast = toast,
+                livePhoto = null,
+                idImage = null,
+                signature = null,
+                blocked = false,
+                blacklistHit = null,
+                createdVisit = null,
             )
         }
     }
@@ -172,15 +254,147 @@ class KioskViewModel(
                 draft = normalized,
                 fieldErrors = emptyMap(),
                 step = 3,
-                toast = "Details valid · photo & ID are Wave 2",
+                toast = null,
             )
+        }
+    }
+
+    fun submitRegistration() {
+        val current = _state.value
+        val errors = RegistrationValidator.validateStep3(current.draft)
+        if (errors.isNotEmpty()) {
+            _state.update {
+                it.copy(
+                    fieldErrors = errors,
+                    toast = RegistrationValidator.toastMessage(errors),
+                )
+            }
+            return
+        }
+        viewModelScope.launch { submitNow() }
+    }
+
+    private suspend fun submitNow() {
+        _state.update { it.copy(submitting = true, toast = null, blocked = false) }
+        val snap = _state.value
+        val draft = snap.draft
+        try {
+            val liveBmp = snap.livePhoto ?: PlaceholderBitmap.livePhoto(draft.visitorName)
+            val photo = repository.uploadMedia(
+                PlaceholderBitmap.toJpeg(liveBmp),
+                "live-photo.jpg",
+                "image/jpeg",
+                "live_photo",
+            )
+            val idKey = snap.idImage?.let {
+                repository.uploadMedia(
+                    PlaceholderBitmap.toJpeg(it),
+                    "id-image.jpg",
+                    "image/jpeg",
+                    "id_image",
+                ).key
+            }
+            val sigKey = snap.signature?.let {
+                repository.uploadMedia(
+                    PlaceholderBitmap.toJpeg(it),
+                    "signature.jpg",
+                    "image/jpeg",
+                    "signature",
+                ).key
+            }
+            val mobileTen = MobileIndia.tenDigit(draft.mobile) ?: draft.mobile.filter { it.isDigit() }
+            val hit = repository.matchBlacklist(
+                mobile = mobileTen,
+                idType = draft.idType,
+                idNumber = draft.idNumber.trim().ifEmpty { null },
+            )
+            if (hit?.severity == "Block") {
+                _state.update {
+                    it.copy(
+                        submitting = false,
+                        blocked = true,
+                        blacklistHit = hit,
+                        draft = draft.copy(livePhotoKey = photo.key, idImageKey = idKey, signatureKey = sigKey),
+                        toast = "Blacklist Block · pass not issued",
+                    )
+                }
+                return
+            }
+            val body = VisitCreate(
+                visitorName = draft.visitorName.trim(),
+                mobile = mobileTen,
+                visitorType = draft.visitorType,
+                purpose = draft.purpose.trim(),
+                hostId = draft.hostId.orEmpty(),
+                livePhotoKey = photo.key,
+                idType = draft.idType,
+                idNumber = draft.idNumber.trim().ifEmpty { null },
+                idImageKey = idKey,
+                vehicleNumber = draft.vehicleNumber.trim().ifEmpty { null },
+                accompanyingCount = draft.accompanyingCount.trim().toIntOrNull(),
+                notes = draft.notes.trim().ifEmpty { null },
+                signatureKey = sigKey,
+                gateId = draft.gateId,
+                blacklistOverride = false,
+            )
+            val visit = repository.createVisit(body)
+            _state.update {
+                it.copy(
+                    submitting = false,
+                    createdVisit = visit,
+                    blacklistHit = hit,
+                    blocked = false,
+                    draft = draft.copy(livePhotoKey = photo.key, idImageKey = idKey, signatureKey = sigKey),
+                    step = 4,
+                    toast = if (hit?.severity == "Alert") {
+                        "Alert hit · visit pending · host notified"
+                    } else {
+                        "Host notified · waiting for approval"
+                    },
+                )
+            }
+        } catch (e: ApiException) {
+            if (e.code == "BLACKLIST_BLOCK") {
+                _state.update {
+                    it.copy(
+                        submitting = false,
+                        blocked = true,
+                        toast = e.message,
+                    )
+                }
+            } else {
+                _state.update { it.copy(submitting = false, toast = e.message) }
+            }
+        } catch (e: Exception) {
+            _state.update {
+                it.copy(submitting = false, toast = e.message ?: "Submit failed")
+            }
         }
     }
 
     fun back() {
         _state.update {
             val prev = (it.step - 1).coerceAtLeast(1)
-            it.copy(step = prev, toast = null, fieldErrors = emptyMap())
+            it.copy(step = prev, toast = null, fieldErrors = emptyMap(), blocked = false)
+        }
+    }
+
+    fun registerAnother() {
+        val story = _state.value.story
+        _state.update {
+            it.copy(
+                step = 1,
+                draft = RegistrationDraft(hostId = story.hostId, gateId = story.gateId),
+                livePhoto = null,
+                idImage = null,
+                signature = null,
+                fieldErrors = emptyMap(),
+                toast = null,
+                blocked = false,
+                blacklistHit = null,
+                createdVisit = null,
+                submitting = false,
+            )
         }
     }
 
@@ -189,11 +403,11 @@ class KioskViewModel(
     }
 
     companion object {
-        fun factory(directory: DirectoryRepository = FixtureDirectoryRepository()): ViewModelProvider.Factory =
+        fun factory(repository: KioskRepository = HybridKioskRepository()): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return KioskViewModel(directory) as T
+                    return KioskViewModel(repository) as T
                 }
             }
     }

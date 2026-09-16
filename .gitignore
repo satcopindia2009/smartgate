@@ -8,6 +8,7 @@ __pycache__/
 
 # Android kiosk
 kiosk/.gradle/
+kiosk/.kotlin/
 kiosk/**/build/
 kiosk/local.properties
 kiosk/.idea/

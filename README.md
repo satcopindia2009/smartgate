@@ -3,9 +3,15 @@
 In-memory FastAPI mock implementing Wave 1–2 of `mvp-api-contract-2026-09-16.md` (§§0–5 under `/v1`).  
 For Mobile / Admin local demos. **Not for live school deploy.**
 
-## Gate tablet (Android kiosk)
+## Client surfaces (Wave 1–2)
 
-Wave 1 gate / reception tablet lives in [`kiosk/`](kiosk/) (Kotlin + Jetpack Compose, landscape). Open that folder in Android Studio. See [`kiosk/README.md`](kiosk/README.md). Backend files in `app/` are unchanged.
+| Surface | Path | How to open |
+|---------|------|-------------|
+| Gate tablet (Android) | [`kiosk/`](kiosk/) | Android Studio → open `kiosk/`. See [`kiosk/README.md`](kiosk/README.md) |
+| Host approve (mobile web) | [`host-web/`](host-web/) | `cd host-web && python3 -m http.server 8767` |
+| Visitor QR pass (mobile web) | [`visitor-qr/`](visitor-qr/) | `cd visitor-qr && python3 -m http.server 8768` |
+
+All three prefer the ephemeral mock `https://weed-pumps-laura-upc.trycloudflare.com/v1` and fall back to fixtures if the tunnel is down. **Not for live school deploy.** Backend FastAPI stub in `app/` is unchanged.
 
 
 ## Stack

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Visitor QR — Satcop Smart Visitor</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .qr-screen { text-align: center; }
+    .school-name {
+      font-size: 12px; font-weight: 500; color: var(--text-muted);
+      letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .pass-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .pass-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
+    .source-pill {
+      display: inline-flex; margin-bottom: 12px; padding: 4px 10px; border-radius: 999px;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+      background: var(--cyan-dim); color: var(--cyan-bright);
+    }
+    .source-pill.fallback { background: var(--orange-dim); color: #fbbf24; }
+    .pass-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl);
+      padding: 22px 18px 24px; box-shadow: var(--shadow); text-align: left;
+    }
+    .pass-visitor { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+    .pass-visitor h2 { font-size: 16px; font-weight: 600; }
+    .pass-visitor p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .qr-wrap {
+      background: #fff; border-radius: 16px; padding: 18px; margin: 0 auto 16px; width: fit-content;
+    }
+    #qr-canvas { width: 180px; height: 180px; }
+    .status-banner {
+      text-align: center; padding: 12px; border-radius: var(--radius);
+      font-weight: 600; font-size: 14px; margin-bottom: 16px;
+    }
+    .status-banner.waiting { background: var(--orange-dim); color: #fbbf24; }
+    .status-banner.approved { background: var(--green-dim); color: #4ade80; }
+    .status-banner.inside { background: var(--cyan-dim); color: var(--cyan-bright); }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .detail { background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; }
+    .detail span {
+      display: block; font-size: 10px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px;
+    }
+    .detail strong { font-size: 13px; font-weight: 500; }
+    .pass-code {
+      text-align: center; margin-top: 14px; font-size: 12px; color: var(--text-dim);
+      font-variant-numeric: tabular-nums; letter-spacing: 0.08em; word-break: break-all;
+    }
+    .hub-link-bar { text-align: center; margin-top: 18px; }
+    .hub-link-bar a { font-size: 12px; color: var(--text-dim); }
+    .hint { font-size: 11px; color: var(--text-dim); text-align: center; margin-bottom: 12px; }
+    @media (max-width: 480px) {
+      .phone-stage { padding: 0; background: var(--bg); }
+      .phone-label { display: none; }
+      .phone-shell {
+        width: 100%; max-width: none; height: 100vh; max-height: none;
+        border: 0; border-radius: 0; box-shadow: none;
+      }
+      .phone-notch { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="phone-stage">
+    <div>
+      <p class="phone-label">Visitor QR pass · mobile (~390px)</p>
+      <div class="phone-shell">
+        <div class="demo-watermark">DEMO</div>
+        <div class="phone-notch"></div>
+        <div class="phone-body qr-screen">
+          <p class="school-name" id="school-name">Demo International School</p>
+          <h1 class="pass-title">Visitor pass</h1>
+          <p class="pass-sub">Satcop Smart Visitor</p>
+          <div id="source-pill" class="source-pill">Checking mock…</div>
+          <p class="hint">Read-only badge · QR encodes opaque qrToken</p>
+
+          <div class="pass-card">
+            <div class="pass-visitor">
+              <div class="avatar avatar-xl avatar-purple" id="qr-avatar">PS</div>
+              <div>
+                <h2 id="qr-name">Priya Sharma</h2>
+                <p id="qr-sub">Parent · +91 98220 11122</p>
+              </div>
+            </div>
+            <div class="status-banner inside" id="status-banner">Inside campus · present QR on exit</div>
+            <div class="qr-wrap" aria-label="QR code">
+              <div id="qr-canvas"></div>
+            </div>
+            <div class="detail-grid">
+              <div class="detail"><span>Host</span><strong id="qr-host">Anita Joshi</strong></div>
+              <div class="detail"><span>Gate</span><strong id="qr-gate">Main Gate</strong></div>
+              <div class="detail"><span>Purpose</span><strong id="qr-purpose">PTM follow-up, Class 4B</strong></div>
+              <div class="detail"><span>Visit</span><strong id="qr-visit">V-20260916-014</strong></div>
+            </div>
+            <p class="pass-code" id="pass-code">PASS · P-4F21</p>
+          </div>
+          <div class="hub-link-bar">
+            <a href="../host-web/index.html">← Host approve</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="config.js"></script>
+  <script src="fixtures.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

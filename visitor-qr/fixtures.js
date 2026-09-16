@@ -1,0 +1,18 @@
+window.VMS_PASS_FIXTURE = {
+  passId: "P-4F21",
+  visitId: "V-20260916-014",
+  schoolId: "SCH-DEMO-01",
+  schoolName: "Demo International School",
+  visitorName: "Priya Sharma",
+  visitorType: "Parent",
+  mobile: "9822011122",
+  purpose: "PTM follow-up, Class 4B",
+  hostId: "H03",
+  hostName: "Anita Joshi",
+  gateId: "G-MAIN",
+  gateName: "Main Gate",
+  status: "inside",
+  qrToken: "demo-qr-token-P-4F21-not-the-passId",
+  issuedAt: "2026-09-16T14:08:00+05:30",
+  revoked: false,
+};
