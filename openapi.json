@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Satcop Smart Visitor API",
-    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours (A1\u2013A6) + escort/zones Access Rules (B4). Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. Blast not in this slice. Demo watermark; no production / live-school deploy.",
-    "version": "0.5.0"
+    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours (A1\u2013A6) + escort/zones Access Rules (B4) + Admin reports/exports/notify-outbox. Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. Blast not in this slice. Demo watermark; SCH-DEMO-01 seed only; no production / live-school deploy.",
+    "version": "0.6.0"
   },
   "paths": {
     "/v1/auth/login": {
@@ -1494,7 +1494,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/GateReportResponse"
+                }
               }
             }
           }
@@ -1543,7 +1545,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/GateReportResponse"
+                }
               }
             }
           },
@@ -1565,8 +1569,8 @@
         "tags": [
           "reports"
         ],
-        "summary": "Visitor Type Mix",
-        "operationId": "visitor_type_mix_v1_reports_visitor_type_mix_get",
+        "summary": "Visitor Type Mix Report",
+        "operationId": "visitor_type_mix_report_v1_reports_visitor_type_mix_get",
         "security": [
           {
             "HTTPBearer": []
@@ -1597,7 +1601,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TypeMixResponse"
+                }
               }
             }
           },
@@ -1633,10 +1639,25 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "CSV download (\u226410k data rows)",
             "content": {
               "application/json": {
                 "schema": {}
+              },
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Async job when row count exceeds 10k",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJobOut"
+                }
               }
             }
           },
@@ -1694,7 +1715,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/NotifyOutboxResponse"
+                }
               }
             }
           },
@@ -3845,6 +3868,51 @@
         ],
         "title": "EscortZoneRuleIn"
       },
+      "ExportJobOut": {
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "title": "Jobid"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope"
+          },
+          "rowCount": {
+            "type": "integer",
+            "title": "Rowcount"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobId",
+          "status",
+          "scope",
+          "rowCount",
+          "message"
+        ],
+        "title": "ExportJobOut"
+      },
       "ExportRequest": {
         "properties": {
           "scope": {
@@ -3895,6 +3963,95 @@
           "reason"
         ],
         "title": "ForceCheckoutBody"
+      },
+      "GateReportResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/GateReportRow"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ReportMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "GateReportResponse"
+      },
+      "GateReportRow": {
+        "properties": {
+          "gate": {
+            "type": "string",
+            "title": "Gate"
+          },
+          "gateId": {
+            "type": "string",
+            "title": "Gateid"
+          },
+          "checkIns": {
+            "type": "integer",
+            "title": "Checkins"
+          },
+          "checkOuts": {
+            "type": "integer",
+            "title": "Checkouts"
+          },
+          "stillInside": {
+            "type": "integer",
+            "title": "Stillinside"
+          },
+          "rejects": {
+            "type": "integer",
+            "title": "Rejects"
+          },
+          "blacklistHits": {
+            "type": "integer",
+            "title": "Blacklisthits"
+          },
+          "forceCheckouts": {
+            "type": "integer",
+            "title": "Forcecheckouts"
+          },
+          "uniqueMobiles": {
+            "type": "integer",
+            "title": "Uniquemobiles"
+          },
+          "medianApprovalSec": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Medianapprovalsec"
+          },
+          "peakInside": {
+            "type": "integer",
+            "title": "Peakinside"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gate",
+          "gateId",
+          "checkIns",
+          "checkOuts",
+          "stillInside",
+          "rejects",
+          "blacklistHits",
+          "forceCheckouts",
+          "uniqueMobiles",
+          "peakInside"
+        ],
+        "title": "GateReportRow"
       },
       "HTTPValidationError": {
         "properties": {
@@ -4129,6 +4286,95 @@
           "url"
         ],
         "title": "MediaUploadResponse"
+      },
+      "NotifyOutboxItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "schoolId": {
+            "type": "string",
+            "title": "Schoolid"
+          },
+          "event": {
+            "type": "string",
+            "title": "Event"
+          },
+          "visitId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visitid"
+          },
+          "pickupId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupid"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          },
+          "channelHints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Channelhints"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "schoolId",
+          "event",
+          "status",
+          "createdAt"
+        ],
+        "title": "NotifyOutboxItem"
+      },
+      "NotifyOutboxResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/NotifyOutboxItem"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "NotifyOutboxResponse"
       },
       "PassOut": {
         "properties": {
@@ -4771,6 +5017,63 @@
         ],
         "title": "RejectBody"
       },
+      "ReportMeta": {
+        "properties": {
+          "watermark": {
+            "type": "string",
+            "title": "Watermark"
+          },
+          "schoolId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schoolid"
+          },
+          "demoToday": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demotoday"
+          },
+          "from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "watermark"
+        ],
+        "title": "ReportMeta"
+      },
       "Role": {
         "type": "string",
         "enum": [
@@ -5035,6 +5338,44 @@
         },
         "type": "object",
         "title": "StudentPatch"
+      },
+      "TypeMixResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TypeMixRow"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ReportMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "TypeMixResponse"
+      },
+      "TypeMixRow": {
+        "properties": {
+          "visitorType": {
+            "type": "string",
+            "title": "Visitortype"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "visitorType",
+          "count"
+        ],
+        "title": "TypeMixRow"
       },
       "UserPublic": {
         "properties": {

@@ -30,6 +30,7 @@ _state: dict[str, Any] = {
         "staff_seq": 10,
         "bl_seq": 10,
         "outbox_seq": 1,
+        "export_seq": 1,
         "student_seq": 10,
         "person_seq": 10,
         "pickup_seq": 10,
@@ -66,6 +67,7 @@ def reset() -> None:
             "staff_seq": 10,
             "bl_seq": 10,
             "outbox_seq": 1,
+            "export_seq": 1,
             "student_seq": 10,
             "person_seq": 10,
             "pickup_seq": 10,
@@ -236,6 +238,8 @@ def list_outbox(status: Optional[str] = None) -> list[dict]:
 
 
 def add_export(rec: dict) -> dict:
+    rec = deepcopy(rec)
+    rec.setdefault("id", f"EX-{next_seq('export_seq'):04d}")
     _state["exports"].append(rec)
     return rec
 

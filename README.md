@@ -1,9 +1,9 @@
-# Satcop Smart Visitor — MVP API Stub + P2 Pickup + After-hours + Escort / Zones
+# Satcop Smart Visitor — MVP API Stub + P2 Pickup + After-hours + Escort / Zones + Admin reports
 
-In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**), **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**), and **escort / zones** (Hub **B4**).  
-For Mobile / Admin **showable demos**. **Not for live school deploy** (V4 HOLD).
+In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**), **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**), **escort / zones** (Hub **B4**), and **Admin reports / exports / notify-outbox**.  
+For Mobile / Admin **showable demos** on **SCH-DEMO-01** only. **Not for live school deploy** (V4 HOLD).
 
-Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype. After-hours Approve (SH-only) is unchanged. Blast / geo-fence are **not** in this slice.
+Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype. After-hours Approve (SH-only) is unchanged. Reports read the in-memory store (not empty stubs). Blast / geo-fence are **not** in this slice.
 
 ## Stack
 
@@ -59,7 +59,8 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 - **Holidays (A2):** one fixture — `2026-10-20` Diwali (`HOL-DIWALI`)
 - **After-hours demos (separate from Priya):** evening Vendor **Ravi Deshmukh** `V-AH-VENDOR` pending SH (host Anita / H03); holiday Parent **Deepak Nair** → **Meera Kulkarni** (H01) → pass **`P-7K88`** (`V-AH-HOLIDAY`)
 - **Escort / zones (B4):** Vendor default `escortRequired=true` zones `reception`+`admin`; Parent/Guest/Alumni reception only (no escort); Official reception+admin (no escort). **Ravi** is assignable to **Vikram More** (`E01`). P-7K88 / Meera and Priya MVP unchanged.
-- **Pickup (P6, separate from Priya):** student **Aarav Mehta · 5-B** (`STU-AARAV`) with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** (`STU-KABIR`) `court_order` blocking **Rajesh Singh**, allow-list **Sunita Singh**
+- **Pickup (P6, separate from Priya):** student **Aarav Mehta · 5-B** (`STU-AARAV`) with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** (`STU-KABIR`) `court_order` blocking **Rajesh Singh**, allow-list **Sunita Singh**; pending SH override attempt **`PK-20260916-OVR`**
+- **Notify outbox (Notifications desk):** pending Host notify (`V-20260916-040`) + Host FYI / SH after-hours (`V-AH-VENDOR`, `V-AH-HOLIDAY`) + pickup override (`PK-20260916-OVR`); seeded **sent** (Priya approve/check-in) and **failed** (WhatsApp not configured). No blast.
 
 ## Visit lifecycle (contract §2)
 
@@ -95,6 +96,8 @@ Illegal transitions return `409` `{ "error": { "code": "INVALID_STATE" } }`.
 | Staff POST/PATCH               |      |      | ✓     | ✓             |
 | Blacklist write                |      |      | view  | ✓             |
 | Live board / history           | ✓    | own* | ✓     | ✓             |
+| Today-by-gate report           | ✓    |      | ✓     | ✓             |
+| Range / type-mix / CSV export / outbox | | | ✓ | ✓ |
 
 \* Host scoped to `hostId == self.staffId`.  
 Gate users are limited to `user.gateIds` (login + JWT). `GET /gates` is filtered to assigned gates.
@@ -128,7 +131,7 @@ Matching → Released
 
 **Outbox:** `pickup.blocked_custody`, `pickup.override_requested`, `pickup.override_completed` (SH channelHints). `pickup.released` class-teacher notify stays **OFF**.
 
-**Exports:** scopes `pickup_events`, `pickup_lists` (lists require logged `purpose` — AC-D9).
+**Exports:** scopes `history`, `inside`, `blacklist`, `daily_gate_summary`, plus `pickup_events` / `pickup_lists` (lists require logged `purpose` — AC-D9). Admin/SH only; writes an in-memory export audit row.
 
 Out of this slice: blast, geo-fence, face match, MSR, live school (V4), Patrol.
 
@@ -258,6 +261,37 @@ curl -s -X POST "$BASE/pickups/$PK/release" \
   -d "{\"collectorLivePhotoRef\":\"$KEY\"}" | python3 -m json.tool
 ```
 
+## Reports / exports / notify-outbox (Admin Hub)
+
+In-memory aggregates over **SCH-DEMO-01** seed visits. `GET /v1/reports/today-by-gate` is pinned to demo day **`2026-09-16`** (`DEMO_TODAY`) so Hub stays READY TO USE regardless of wall-clock. Range + type-mix take `?from&to` (inclusive, max 90 days). `meta.watermark` is always `DEMO`.
+
+| Endpoint | Role | Notes |
+|----------|------|-------|
+| `GET /v1/reports/today-by-gate` | Admin / SH / Gate | Per-gate checkIns, checkOuts, stillInside, rejects, blacklistHits, forceCheckouts, uniqueMobiles, medianApprovalSec, peakInside |
+| `GET /v1/reports/range-by-gate?from&to` | Admin / SH | Same columns over a date range |
+| `GET /v1/reports/visitor-type-mix?from&to` | Admin / SH | Parent / Vendor / Guest / Official / Alumni counts |
+| `POST /v1/exports` | Admin / SH | `{ "scope": "history"\|"inside"\|"blacklist"\|"daily_gate_summary"\|"pickup_events"\|"pickup_lists", "filters": {}, "purpose"? }` → CSV (`text/csv`) ≤10k rows, or `202` job JSON if over the cap. Writes export audit (`X-Export-Audit-Id`) |
+| `GET /v1/internal/notify-outbox?status=pending` | Admin / SH | `pending` (default) / `sent` / `failed` / `all`. No real send. No blast. |
+
+`daily_gate_summary` CSV uses the same headers as today-by-gate (not a pointer stub).
+
+### Curl — Admin reports + CSV + outbox
+
+```bash
+BASE=http://127.0.0.1:8080/v1
+ADMIN=$(curl -s -X POST "$BASE/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+
+curl -s "$BASE/reports/today-by-gate" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+curl -s "$BASE/reports/range-by-gate?from=2026-09-14&to=2026-09-16" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+curl -s "$BASE/reports/visitor-type-mix?from=2026-09-14&to=2026-09-16" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+curl -s -X POST "$BASE/exports" \
+  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+  -d '{"scope":"history","filters":{"from":"2026-09-16","to":"2026-09-16"}}'
+curl -s "$BASE/internal/notify-outbox?status=pending" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+```
+
 ## Pass / media / blacklist
 
 - `POST /v1/passes/scan` — `{ "token" | "passId", "action": "check_in" | "check_out", "gateId"? }`
@@ -355,14 +389,13 @@ bash scripts/smoke.sh
 - `tests/test_after_hours_acceptance.py` — AC-C4a / AC-C4b / AC-C4c / AC-C4d / AC-C4e + close-exclusive / holiday-wins edges
 - `tests/test_escort.py` — B4: zone keys, Vendor default ON, Vikram staff, Ravi assignable, P-7K88/Meera/Priya intact, Contractor→Vendor, assign/waive
 - `tests/test_escort_acceptance.py` — AC-B4a / AC-B4b / AC-B4c / AC-B4d / AC-B4e / AC-B4f
+- `tests/test_reports.py` — today-by-gate / range-by-gate / visitor-type-mix seed aggregates, history CSV + audit, outbox status filter
 
 ## Remaining thin stubs / out of scope
 
 OK to stay thin (not blocking Mobile/Admin demos):
 
-- Reports (`/v1/reports/*`) — simple in-memory aggregates; `medianApprovalSec` is null
-- Exports (`POST /v1/exports`) — sync CSV ≤ current store; audit row kept in memory
-- Notify outbox (`GET /v1/internal/notify-outbox`) — events emitted on transitions; no real send
+- Reports / exports / outbox are **seed-backed** (no Postgres, no worker, no real notify send). Exports over 10k rows return a queued job JSON (no async worker).
 - Media GET returns bytes (or `DEMO_MEDIA_STUB`); not S3 signed URLs
 - No Postgres / real object storage
 - Optional `cancelled` before check-in is in the §2 diagram but **no REST cancel** in §4 (not implemented)
