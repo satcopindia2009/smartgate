@@ -3,7 +3,8 @@ export const SCHOOL_NAME = "Demo International School";
 export const OVERDUE_HOURS_DEFAULT = 4;
 export const LIVE_REFRESH_MS = 30_000;
 export const API_BASE =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8080/v1";
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://weed-pumps-laura-upc.trycloudflare.com/v1";
 
 export const GATE_ENUMS = [
   "Main Gate",

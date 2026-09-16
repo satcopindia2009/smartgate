@@ -39,13 +39,15 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080
 
 # admin UI
 cd admin
-cp .env.example .env   # VITE_API_BASE_URL=http://127.0.0.1:8080/v1
+cp .env.example .env   # VITE_API_BASE_URL=https://weed-pumps-laura-upc.trycloudflare.com/v1
 npm install
 npm run dev            # http://127.0.0.1:5173
-npm run build          # tsc --noEmit && vite build
+npm run build && npm run preview   # http://127.0.0.1:4173          # tsc --noEmit && vite build
 ```
 
-If the API is unreachable, demo logins still work against bundled `public/data/admin-mvp-fixtures.json`.
+If the API tunnel is unreachable, demo logins still work against bundled `public/data/admin-mvp-fixtures.json`.
+
+Default `VITE_API_BASE_URL` is `https://weed-pumps-laura-upc.trycloudflare.com/v1`. `vite preview` allows tunnel hosts (`allowedHosts: true`) so a temporary `*.trycloudflare.com` can be shown to Hub/Viren.
 
 ## Roles
 

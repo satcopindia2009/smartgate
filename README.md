@@ -16,7 +16,7 @@ npm run build
 ```
 
 Demo logins: `admin` / `admin123` · `security` / `sh123`.  
-Default API: `VITE_API_BASE_URL=http://127.0.0.1:8080/v1`. If the stub is down, the UI falls back to `admin/public/data/admin-mvp-fixtures.json`.
+Default API: `VITE_API_BASE_URL=https://weed-pumps-laura-upc.trycloudflare.com/v1`. If that tunnel drops, the UI falls back to `admin/public/data/admin-mvp-fixtures.json`.
 
 Walkthrough: **Priya Sharma** · pass **P-4F21** · **Main Gate** · host **Anita Joshi**.
 

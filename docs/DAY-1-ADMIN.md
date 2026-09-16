@@ -14,7 +14,7 @@
 6. Auto-refresh every 30s
 7. Force checkout with required reason → `POST /visits/{id}/force-checkout`
 8. Directory: `GET /gates`, `GET /staff?active=true`
-9. Fixtures fallback (`admin/public/data/admin-mvp-fixtures.json`)
+9. Default API tunnel: `https://weed-pumps-laura-upc.trycloudflare.com/v1` (fixtures fallback if it drops)
 10. Stretch: History + Blacklist (SH write)
 11. Multi-gate enums: Main Gate, Pedestrian Gate, Staff Gate, Bus Bay
 
