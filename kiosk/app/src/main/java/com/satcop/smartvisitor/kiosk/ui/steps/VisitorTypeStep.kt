@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalLayoutApi::class)
+
 package com.satcop.smartvisitor.kiosk.ui.steps
 
 import androidx.compose.foundation.background
@@ -40,7 +42,6 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VisitorTypeStep(
     selectedType: String,

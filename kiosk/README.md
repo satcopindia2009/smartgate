@@ -43,7 +43,7 @@ From this `kiosk/` directory:
 
 Debug APK:
 
-`app/build/outputs/apk/debug/app-demo-debug.apk`
+`app/build/outputs/apk/debug/app-debug.apk`
 
 (Debug builds use `applicationId` suffix `.demo` and version suffix `-DEMO`.)
 
