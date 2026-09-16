@@ -19,6 +19,9 @@ __all__ = [
     "normalize_id",
     "gen_visit_id",
     "gen_pickup_id",
+    "gen_blast_id",
+    "gen_blast_template_id",
+    "mask_mobile",
     "gen_pass_id",
     "gen_qr_token",
     "gen_media_key",
@@ -56,6 +59,27 @@ def gen_visit_id(seq: int, when: datetime | None = None) -> str:
 def gen_pickup_id(seq: int, when: datetime | None = None) -> str:
     d = when or datetime.now(TZ)
     return f"PK-{d.strftime('%Y%m%d')}-{seq:03d}"
+
+
+def gen_blast_id(seq: int, when: datetime | None = None) -> str:
+    d = when or datetime.now(TZ)
+    return f"B-{d.strftime('%Y%m%d')}-{seq:02d}"
+
+
+def gen_blast_template_id(seq: int) -> str:
+    return f"T-{seq:04d}"
+
+
+def mask_mobile(mobile: str | None) -> str:
+    """Visitor SMS never carries a full number (AC-E3g)."""
+    if not mobile:
+        return "******"
+    digits = re.sub(r"\D", "", mobile)
+    if digits.startswith("91") and len(digits) == 12:
+        digits = digits[2:]
+    if len(digits) >= 4:
+        return "*" * 6 + digits[-4:]
+    return "******"
 
 
 def last4(value: str | None) -> str | None:

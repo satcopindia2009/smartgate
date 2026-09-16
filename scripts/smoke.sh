@@ -23,4 +23,12 @@ curl -sf -X POST "$BASE/v1/blacklist/match" \
   -H 'Content-Type: application/json' \
   -d '{"mobile":"9876500001"}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["hit"]["id"] if d["hit"] else None)'
 
+echo "== blast preview (SH) =="
+SHLOGIN=$(curl -sf -X POST "$BASE/v1/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"security","password":"sh123"}')
+SH=$(echo "$SHLOGIN" | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+curl -sf "$BASE/v1/emergency/blasts/preview?templateId=T-EVAC-01" \
+  -H "Authorization: Bearer $SH" | python3 -c 'import sys,json; d=json.load(sys.stdin); print("inside", d["insideCount"])'
+
 echo "SMOKE OK"

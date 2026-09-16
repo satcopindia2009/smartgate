@@ -10,6 +10,7 @@ from app.after_hours import stamp_after_hours
 from app.auth import CurrentUser, assert_gate_allowed, require_roles
 from app.config import SCHOOL_TZ, WATERMARK
 from app.escort import assert_escort_ready, escort_name, stamp_escort_zones
+from app.inside import list_inside_visits
 from app.errors import AppError
 from app.models import (
     ApproveBody,
@@ -172,9 +173,7 @@ def visits_inside(
     overdue_h = school.get("overdueHoursDefault", 4) if school else 4
     now = datetime.now(TZ)
     rows = []
-    for v in store.list_visits(user["schoolId"]):
-        if v["status"] != "inside":
-            continue
+    for v in list_inside_visits(user["schoolId"]):
         if user["role"] == "host" and not _host_owns(user, v):
             continue
         if gateId and v.get("gateInId") != gateId and v.get("gateId") != gateId:

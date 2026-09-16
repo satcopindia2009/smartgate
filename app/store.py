@@ -25,6 +25,9 @@ _state: dict[str, Any] = {
     "holidays": {},
     "zone_labels": {},  # (schoolId, key) -> row
     "escort_rules": {},  # (schoolId, visitorType) -> row
+    "blast_templates": {},
+    "blasts": {},
+    "blast_recipients": {},
     "counters": {
         "visit_seq": 40,
         "staff_seq": 10,
@@ -34,6 +37,9 @@ _state: dict[str, Any] = {
         "person_seq": 10,
         "pickup_seq": 10,
         "holiday_seq": 10,
+        "template_seq": 10,
+        "blast_seq": 10,
+        "recipient_seq": 10,
     },
 }
 
@@ -61,6 +67,9 @@ def reset() -> None:
         "holidays": {},
         "zone_labels": {},
         "escort_rules": {},
+        "blast_templates": {},
+        "blasts": {},
+        "blast_recipients": {},
         "counters": {
             "visit_seq": 40,
             "staff_seq": 10,
@@ -70,6 +79,9 @@ def reset() -> None:
             "person_seq": 10,
             "pickup_seq": 10,
             "holiday_seq": 10,
+            "template_seq": 10,
+            "blast_seq": 10,
+            "recipient_seq": 10,
         },
     }
 
@@ -102,6 +114,10 @@ def get_user(user_id: str) -> Optional[dict]:
 def get_user_by_username(username: str) -> Optional[dict]:
     uid = _state["users_by_username"].get(username.lower())
     return _state["users"].get(uid) if uid else None
+
+
+def list_users(school_id: str) -> list[dict]:
+    return [u for u in _state["users"].values() if u.get("schoolId") == school_id]
 
 
 # --- gates / staff ---
@@ -396,3 +412,50 @@ def list_escort_rules(school_id: str) -> list[dict]:
         if sid == school_id
     }
     return [index[vt] for vt in VISITOR_TYPES if vt in index]
+
+
+# --- emergency blast (P2 E3 · B1–B6) ---
+
+
+def put_blast_template(row: dict) -> None:
+    _state["blast_templates"][row["id"]] = row
+
+
+def get_blast_template(template_id: str) -> Optional[dict]:
+    return _state["blast_templates"].get(template_id)
+
+
+def list_blast_templates(school_id: str) -> list[dict]:
+    rows = [t for t in _state["blast_templates"].values() if t["schoolId"] == school_id]
+    rows.sort(key=lambda t: t.get("name") or t["id"])
+    return rows
+
+
+def put_blast(row: dict) -> None:
+    _state["blasts"][row["blastId"]] = row
+
+
+def get_blast(blast_id: str) -> Optional[dict]:
+    return _state["blasts"].get(blast_id)
+
+
+def list_blasts(school_id: str) -> list[dict]:
+    rows = [b for b in _state["blasts"].values() if b["schoolId"] == school_id]
+    rows.sort(key=lambda b: b.get("triggeredAt") or "", reverse=True)
+    return rows
+
+
+def put_blast_recipient(row: dict) -> None:
+    _state["blast_recipients"][row["id"]] = row
+
+
+def list_blast_recipients(blast_id: str) -> list[dict]:
+    rows = [r for r in _state["blast_recipients"].values() if r["blastId"] == blast_id]
+    rows.sort(key=lambda r: (r.get("visitId") or "", r.get("channel") or "", r["id"]))
+    return rows
+
+
+def next_blast_id() -> str:
+    from app.util import gen_blast_id
+
+    return gen_blast_id(next_seq("blast_seq"))

@@ -26,6 +26,13 @@ def seed() -> None:
             "timezone": SCHOOL_TZ,
             "overdueHoursDefault": 4,
             "config": {"hostNotifyChannels": ["in_app"]},
+            # Demo/SCH-DEMO-01 only — new schools default OFF (AC-E3e)
+            "emergencyBlastEnabled": True,
+            "blastStaffLaneEnabled": False,
+            "blastChannelsVisitor": ["sms"],
+            "blastChannelsStaff": ["in_app", "push"],
+            "blastConfigUpdatedByUserId": "U-ADMIN",
+            "blastConfigUpdatedAt": "2026-09-16T09:00:00+05:30",
         }
     )
 
@@ -635,6 +642,7 @@ def seed() -> None:
 
     _seed_after_hours(ts)
     _seed_pickup(ts)
+    _seed_emergency_blast(ts)
 
 
 def _seed_after_hours(ts: str) -> None:
@@ -1013,3 +1021,95 @@ def _seed_pickup(ts: str) -> None:
     )
     denormalize_blocked_by_custody("STU-AARAV", SCHOOL_ID)
     denormalize_blocked_by_custody("STU-KABIR", SCHOOL_ID)
+
+
+def _seed_emergency_blast(ts: str) -> None:
+    """E3 demo — Security Head live-board story, separate from Priya walkthrough.
+
+    Uses the existing inside seed (Priya / Arjun / Neha) so preview count > 0.
+    Does not add extra inside visits or change visit status.
+    """
+    from app.inside import list_inside_visits
+    from app.util import mask_mobile
+
+    store.put_blast_template(
+        {
+            "id": "T-EVAC-01",
+            "schoolId": SCHOOL_ID,
+            "name": "Evacuation — assembly ground",
+            "instruction": "Evacuate to the assembly ground. Follow staff. Do not use lifts.",
+            "channel": "sms",
+            "active": True,
+            "updatedByUserId": "U-SH",
+            "updatedAt": "2026-09-16T09:10:00+05:30",
+            "createdAt": "2026-09-16T09:10:00+05:30",
+        }
+    )
+
+    inside = list_inside_visits(SCHOOL_ID)
+    blast_id = "B-20260916-03"
+    triggered_at = "2026-09-16T16:45:00+05:30"
+    instruction = "Evacuate to the assembly ground. Follow staff. Do not use lifts."
+    store.put_blast(
+        {
+            "blastId": blast_id,
+            "schoolId": SCHOOL_ID,
+            "triggeredByUserId": "U-SH",
+            "triggeredAt": triggered_at,
+            "templateId": "T-EVAC-01",
+            "instruction": instruction,
+            "insideCount": len(inside),
+            "recipientCount": len(inside),
+            "status": "completed",
+            "confirmAt": triggered_at,
+            "createdAt": triggered_at,
+            "updatedAt": triggered_at,
+        }
+    )
+    refs = []
+    for visit in inside:
+        rid = f"BR-SEED-{visit['id']}"
+        masked = mask_mobile(visit.get("mobile"))
+        store.put_blast_recipient(
+            {
+                "id": rid,
+                "blastId": blast_id,
+                "schoolId": SCHOOL_ID,
+                "visitId": visit["id"],
+                "mobileMasked": masked,
+                "channel": "sms",
+                "status": "sent",
+                "providerMessageId": f"mock-sms-seed-{visit['id'][-3:]}",
+                "attemptedAt": triggered_at,
+                "errorCode": None,
+            }
+        )
+        refs.append(
+            {
+                "visitId": visit["id"],
+                "mobileMasked": masked,
+                "channel": "sms",
+            }
+        )
+    store.add_outbox(
+        {
+            "schoolId": SCHOOL_ID,
+            "event": "emergency.blast",
+            "visitId": None,
+            "blastId": blast_id,
+            "payload": {
+                "blastId": blast_id,
+                "insideCount": len(inside),
+                "instruction": instruction,
+                "templateId": "T-EVAC-01",
+                "schoolId": SCHOOL_ID,
+                "triggeredByUserId": "U-SH",
+                "channels": ["sms"],
+                "recipientRefs": refs,
+                "waHold": True,
+            },
+            "channelHints": ["sms"],
+            "status": "pending",
+            "createdAt": triggered_at,
+        }
+    )
