@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { IconShield } from "../components/Icons";
+import { ThemeToggle } from "../components/ThemeToggle";
 
 export function LoginPage() {
   const { user, ready, login } = useAuth();
@@ -30,13 +31,16 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <div className="demo-watermark">DEMO</div>
+      <div className="login-theme">
+        <ThemeToggle />
+      </div>
       <div className="login-card">
         <div className="login-brand">
           <div className="logo-mark" aria-hidden="true">
             <IconShield />
           </div>
           <div>
-            <strong>Smart Visitor</strong>
+            <strong>Satcop Smart Visitor</strong>
             <small>Admin dashboard · Demo International School</small>
           </div>
         </div>

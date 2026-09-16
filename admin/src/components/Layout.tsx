@@ -3,6 +3,7 @@ import { useAuth } from "../auth/AuthContext";
 import { SCHOOL_NAME } from "../lib/constants";
 import { AuditPanel, AuditProvider } from "./AuditContext";
 import { IconBlacklist, IconGates, IconHistory, IconLive, IconReports, IconShield } from "./Icons";
+import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
   { to: "/live", label: "Live", icon: <IconLive /> },
@@ -25,7 +26,7 @@ export function Layout() {
             <IconShield />
           </div>
           <div>
-            Smart Visitor
+            Satcop Smart Visitor
             <small>{SCHOOL_NAME}</small>
           </div>
         </div>
@@ -48,6 +49,9 @@ export function Layout() {
         <div className="sidebar-foot">Day-1 MVP · no live school</div>
       </aside>
       <main className="main">
+        <header className="app-header">
+          <ThemeToggle />
+        </header>
         <AuditProvider>
           <Outlet />
           <AuditPanel />
