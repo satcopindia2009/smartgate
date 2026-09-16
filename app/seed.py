@@ -689,11 +689,11 @@ def _seed_after_hours(ts: str) -> None:
         {
             "id": "V-AH-VENDOR",
             "schoolId": SCHOOL_ID,
-            "visitorName": "Ravi Kulkarni",
+            "visitorName": "Ravi Deshmukh",
             "mobile": "9822098801",
             "visitorType": "Vendor",
             "purpose": "After-hours AC repair — Main Gate",
-            "hostId": "H04",
+            "hostId": "H03",
             "livePhotoKey": "media/live_photo/arjun",
             "idType": "DL",
             "idNumber": "MH12AH8801",
@@ -735,8 +735,8 @@ def _seed_after_hours(ts: str) -> None:
             "event": "visit.pending",
             "visitId": "V-AH-VENDOR",
             "payload": {
-                "hostPhone": "9000000004",
-                "visitorName": "Ravi Kulkarni",
+                "hostPhone": "9000000003",
+                "visitorName": "Ravi Deshmukh",
                 "purpose": "After-hours AC repair — Main Gate",
                 "afterHours": True,
                 "policyTrigger": "outside_hours",
@@ -748,32 +748,33 @@ def _seed_after_hours(ts: str) -> None:
         }
     )
 
-    # Holiday Parent — in-hours clock on Diwali; holiday wins. Not Priya.
+    # Holiday Parent Deepak Nair → Meera Kulkarni (H01) → P-7K88. Not Priya.
+    deepak_token = gen_qr_token()
     store.put_visit(
         {
             "id": "V-AH-HOLIDAY",
             "schoolId": SCHOOL_ID,
-            "visitorName": "Meera Shah",
+            "visitorName": "Deepak Nair",
             "mobile": "9822098802",
             "visitorType": "Parent",
             "purpose": "Holiday walk-in — collect notebooks",
-            "hostId": "H02",
+            "hostId": "H01",
             "livePhotoKey": "media/live_photo/priya",
             "idType": "Aadhaar",
             "idNumber": "888877776666",
             "idImageKey": None,
             "vehicleNumber": None,
             "accompanyingCount": 1,
-            "notes": "Holiday Parent demo — SH approve required",
+            "notes": "Holiday Parent demo — SH approved; pass P-7K88",
             "signatureKey": None,
             "gateId": "G-MAIN",
             "registeredByUserId": "U-GATE",
-            "status": "pending",
+            "status": "approved",
             "rejectReason": None,
-            "decidedAt": None,
-            "decidedByUserId": None,
-            "passId": None,
-            "qrToken": None,
+            "decidedAt": "2026-10-20T10:40:00+05:30",
+            "decidedByUserId": "U-SH",
+            "passId": "P-7K88",
+            "qrToken": deepak_token,
             "timeIn": None,
             "timeOut": None,
             "gateInId": None,
@@ -788,27 +789,39 @@ def _seed_after_hours(ts: str) -> None:
             "afterHours": True,
             "policyTrigger": "holiday",
             "afterHoursEvaluatedAt": "2026-10-20T10:30:00+05:30",
-            "afterHoursApproveReason": None,
+            "afterHoursApproveReason": "Holiday walk-in verified by Security Head",
             "createdAt": "2026-10-20T10:30:00+05:30",
-            "updatedAt": "2026-10-20T10:30:00+05:30",
+            "updatedAt": "2026-10-20T10:40:00+05:30",
+        }
+    )
+    store.put_pass(
+        {
+            "passId": "P-7K88",
+            "token": deepak_token,
+            "visitId": "V-AH-HOLIDAY",
+            "schoolId": SCHOOL_ID,
+            "issuedAt": "2026-10-20T10:40:00+05:30",
+            "expiresAt": None,
+            "revoked": False,
         }
     )
     store.add_outbox(
         {
             "schoolId": SCHOOL_ID,
-            "event": "visit.pending",
+            "event": "visit.approved",
             "visitId": "V-AH-HOLIDAY",
             "payload": {
-                "hostPhone": "9000000002",
-                "visitorName": "Meera Shah",
+                "hostPhone": "9000000001",
+                "visitorName": "Deepak Nair",
                 "purpose": "Holiday walk-in — collect notebooks",
                 "afterHours": True,
                 "policyTrigger": "holiday",
                 "hostFyi": True,
+                "passId": "P-7K88",
             },
             "channelHints": ["in_app", "security_head"],
             "status": "pending",
-            "createdAt": "2026-10-20T10:30:00+05:30",
+            "createdAt": "2026-10-20T10:40:00+05:30",
         }
     )
 

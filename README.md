@@ -57,7 +57,7 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 - Pending visit for host demo: `V-20260916-040` (host H03)
 - **Campus hours (A1):** Mon–Fri `08:00–18:00`, Sat `08:00–13:00`, Sun closed; timezone **Asia/Kolkata**
 - **Holidays (A2):** `2026-10-20` Diwali (`HOL-DIWALI`), `2026-10-02` Gandhi Jayanti
-- **After-hours demos (separate from Priya):** evening Vendor **Ravi Kulkarni** `V-AH-VENDOR` pending SH; holiday Parent **Meera Shah** `V-AH-HOLIDAY` pending SH
+- **After-hours demos (separate from Priya):** evening Vendor **Ravi Deshmukh** `V-AH-VENDOR` pending SH (host Anita / H03); holiday Parent **Deepak Nair** → **Meera Kulkarni** (H01) → pass **`P-7K88`** (`V-AH-HOLIDAY`)
 - **Pickup (P6, separate from Priya):** student **Aarav Mehta · 5-B** (`STU-AARAV`) with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** (`STU-KABIR`) `court_order` blocking **Rajesh Singh**, allow-list **Sunita Singh**
 
 ## Visit lifecycle (contract §2)
@@ -165,6 +165,8 @@ SH=$(curl -s -X POST "$BASE/auth/login" \
 curl -s "$BASE/access-rules/hours" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
 curl -s "$BASE/access-rules/holidays" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
 curl -s "$BASE/visits/V-AH-VENDOR" -H "Authorization: Bearer $SH" | python3 -m json.tool
+curl -s "$BASE/visits/V-AH-HOLIDAY" -H "Authorization: Bearer $SH" | python3 -m json.tool
+curl -s "$BASE/passes/P-7K88" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
 
 # Host Approve on after-hours is a no-op (403 AFTER_HOURS_SH_REQUIRED)
 # SH Approve with reason:

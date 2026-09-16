@@ -406,23 +406,41 @@ def test_demo_after_hours_vendor_and_holiday_parent_not_priya(client):
     token = login(client, "security", "sh123")
     vendor = client.get("/v1/visits/V-AH-VENDOR", headers=auth(token))
     assert vendor.status_code == 200
-    assert vendor.json()["visitorName"] == "Ravi Kulkarni"
+    assert vendor.json()["visitorName"] == "Ravi Deshmukh"
     assert vendor.json()["visitorType"] == "Vendor"
     assert vendor.json()["status"] == "pending"
+    assert vendor.json()["hostId"] == "H03"
     assert vendor.json()["afterHours"] is True
     assert vendor.json()["policyTrigger"] == "outside_hours"
     assert vendor.json()["visitorName"] != "Priya Sharma"
 
     holiday = client.get("/v1/visits/V-AH-HOLIDAY", headers=auth(token))
-    assert holiday.json()["visitorName"] == "Meera Shah"
+    assert holiday.json()["visitorName"] == "Deepak Nair"
     assert holiday.json()["visitorType"] == "Parent"
+    assert holiday.json()["hostId"] == "H01"  # Meera Kulkarni
+    assert holiday.json()["passId"] == "P-7K88"
+    assert holiday.json()["status"] == "approved"
     assert holiday.json()["afterHours"] is True
     assert holiday.json()["policyTrigger"] == "holiday"
+    assert holiday.json()["decidedByUserId"] == "U-SH"
 
     priya = client.get("/v1/visits/V-20260916-014", headers=auth(token))
     assert priya.json()["visitorName"] == "Priya Sharma"
     assert priya.json()["status"] == "inside"
     assert priya.json()["afterHours"] is False
+
+    htoken = login(client, "host", "host123")
+    host_ap = client.post("/v1/visits/V-AH-VENDOR/approve", headers=auth(htoken))
+    assert host_ap.status_code == 403
+    assert host_ap.json()["error"]["code"] == "AFTER_HOURS_SH_REQUIRED"
+    assert client.get("/v1/visits/V-AH-VENDOR", headers=auth(token)).json()["status"] == "pending"
+
+    gtoken = login(client, "gate", "gate123")
+    badge = client.get("/v1/passes/P-7K88", headers=auth(gtoken))
+    assert badge.status_code == 200
+    assert badge.json()["passId"] == "P-7K88"
+    assert badge.json()["visitorName"] == "Deepak Nair"
+    assert badge.json()["hostName"] == "Meera Kulkarni"
 
 
 def test_c4e1_close_exclusive_and_overnight_eval():
