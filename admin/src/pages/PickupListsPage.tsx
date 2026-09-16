@@ -150,14 +150,19 @@ export function PickupListsPage() {
 
   const filteredStudents = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return students.filter((s) => {
-      if (!query) return true;
-      return (
-        s.name.toLowerCase().includes(query) ||
-        studentClassLabel(s).toLowerCase().includes(query) ||
-        String(s.studentId || "").toLowerCase().includes(query)
-      );
-    });
+    return students
+      .filter((s) => {
+        if (!query) return true;
+        return (
+          s.name.toLowerCase().includes(query) ||
+          studentClassLabel(s).toLowerCase().includes(query) ||
+          String(s.studentId || "").toLowerCase().includes(query)
+        );
+      })
+      .sort((a, b) => {
+        const seed = (s: Student) => (/aarav/i.test(s.name) ? 0 : 1);
+        return seed(a) - seed(b) || a.name.localeCompare(b.name);
+      });
   }, [students, q]);
 
   const selected = students.find((s) => s.id === selectedId) || null;
