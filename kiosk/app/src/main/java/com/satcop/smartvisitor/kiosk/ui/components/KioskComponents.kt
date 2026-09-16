@@ -108,17 +108,45 @@ fun KioskPrimaryButton(
 }
 
 @Composable
+fun KioskCyanButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val brush = Brush.linearGradient(listOf(Color(0xFF22D3EE), Color(0xFF06B6D4)))
+    Box(
+        modifier = modifier
+            .height(52.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (enabled) brush else Brush.linearGradient(listOf(KioskColors.border, KioskColors.border)))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = if (enabled) KioskColors.bg else KioskColors.textDim,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = KioskFont,
+        )
+    }
+}
+
+@Composable
 fun KioskGhostButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Box(
         modifier = modifier
             .height(52.dp)
             .clip(RoundedCornerShape(RadiusSm))
             .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusSm))
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -207,16 +235,40 @@ fun KioskField(
 
 @Composable
 fun GatePill(name: String, onClick: () -> Unit) {
+    StatusPill(
+        label = name,
+        background = KioskColors.cyanDim,
+        foreground = KioskColors.cyanBright,
+        onClick = onClick,
+    )
+}
+
+@Composable
+fun SourcePill(live: Boolean) {
+    StatusPill(
+        label = if (live) "LIVE mock" else "FIXTURES",
+        background = if (live) KioskColors.cyanDim else KioskColors.orangeDim,
+        foreground = if (live) KioskColors.cyanBright else KioskColors.peakAmber,
+    )
+}
+
+@Composable
+fun StatusPill(
+    label: String,
+    background: Color,
+    foreground: Color,
+    onClick: (() -> Unit)? = null,
+) {
     Box(
         modifier = Modifier
             .clip(ChipShape)
-            .background(KioskColors.cyanDim)
-            .clickable(onClick = onClick)
+            .background(background)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Text(
-            text = name,
-            color = KioskColors.cyanBright,
+            text = label,
+            color = foreground,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
@@ -224,22 +276,28 @@ fun GatePill(name: String, onClick: () -> Unit) {
     }
 }
 
+enum class ToastKind { INFO, SUCCESS, WARNING, ERROR }
+
 @Composable
-fun ToastBanner(message: String?) {
+fun ToastBanner(message: String?, kind: ToastKind = ToastKind.INFO) {
+    val accent = when (kind) {
+        ToastKind.SUCCESS -> KioskColors.green
+        ToastKind.WARNING -> KioskColors.orange
+        ToastKind.ERROR -> KioskColors.red
+        ToastKind.INFO -> KioskColors.purple
+    }
     AnimatedVisibility(visible = !message.isNullOrBlank(), enter = fadeIn(), exit = fadeOut()) {
-        Box(
+        Row(
             modifier = Modifier
                 .widthIn(min = 240.dp, max = 360.dp)
                 .clip(RoundedCornerShape(RadiusSm))
                 .background(KioskColors.card)
-                .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusSm))
-                .padding(start = 3.dp),
+                .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusSm)),
         ) {
             Box(
                 modifier = Modifier
-                    .matchParentSize()
-                    .padding(end = 300.dp)
-                    .background(KioskColors.orange),
+                    .size(width = 3.dp, height = 48.dp)
+                    .background(accent),
             )
             Text(
                 text = message.orEmpty(),

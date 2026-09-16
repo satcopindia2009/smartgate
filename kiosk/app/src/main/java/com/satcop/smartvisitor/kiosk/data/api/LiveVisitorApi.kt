@@ -10,6 +10,8 @@ import com.satcop.smartvisitor.kiosk.data.model.LoginRequest
 import com.satcop.smartvisitor.kiosk.data.model.LoginResponse
 import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.MediaUploadResponse
+import com.satcop.smartvisitor.kiosk.data.model.PassOut
+import com.satcop.smartvisitor.kiosk.data.model.PassScanRequest
 import com.satcop.smartvisitor.kiosk.data.model.StaffListResponse
 import com.satcop.smartvisitor.kiosk.data.model.VisitCreate
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
@@ -73,6 +75,22 @@ class LiveVisitorApi(
 
     fun createVisit(body: VisitCreate): VisitOut =
         post("/visits", json.encodeToString(body))
+
+    fun getVisit(id: String): VisitOut = get("/visits/$id")
+
+    fun getPass(passId: String): PassOut = get("/passes/$passId")
+
+    fun scanPass(
+        passId: String? = null,
+        token: String? = null,
+        action: String,
+        gateId: String? = null,
+    ): VisitOut = post(
+        "/passes/scan",
+        json.encodeToString(
+            PassScanRequest(passId = passId, token = token, action = action, gateId = gateId),
+        ),
+    )
 
     fun uploadMedia(
         bytes: ByteArray,

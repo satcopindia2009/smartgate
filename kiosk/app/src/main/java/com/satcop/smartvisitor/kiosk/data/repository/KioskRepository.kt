@@ -24,4 +24,18 @@ interface KioskRepository : DirectoryRepository {
     ): BlacklistEntry?
 
     suspend fun createVisit(body: VisitCreate): VisitOut
+
+    suspend fun getVisit(id: String): VisitOut
+
+    suspend fun scanPass(
+        passId: String? = null,
+        token: String? = null,
+        action: String,
+        gateId: String? = null,
+    ): VisitOut
+
+    /** Fixture-only host approve. Never POSTs /visits/{id}/approve as the gate role. */
+    suspend fun demoApprove(visitId: String): VisitOut
+
+    suspend fun storyPass(): VisitOut
 }

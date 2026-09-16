@@ -22,6 +22,9 @@ object DemoFixtures {
     const val SCHOOL_TZ = "Asia/Calcutta"
     const val GATE_MAIN_ID = "G-MAIN"
     const val HOST_ANITA_ID = "H03"
+    const val STORY_VISIT_ID = "V-20260916-014"
+    const val STORY_PASS_ID = "P-4F21"
+    const val STORY_QR_TOKEN = "demo-qr-token-P-4F21-not-the-passId"
     const val PEAK_TIP_TITLE = "Peak tip"
     const val PEAK_TIP_BODY = "PTM hours — keep IDs ready; parents first at Main Gate"
 

@@ -15,8 +15,6 @@ import com.satcop.smartvisitor.kiosk.data.model.StaffListResponse
 import com.satcop.smartvisitor.kiosk.data.model.VisitCreate
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import com.satcop.smartvisitor.kiosk.data.repository.KioskRepository
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,6 +22,7 @@ import kotlinx.coroutines.withContext
 class HybridKioskRepository(
     private val live: LiveVisitorApi = LiveVisitorApi(),
     private val fixtures: FixtureDirectoryRepository = FixtureDirectoryRepository(),
+    private val local: LocalVisitStore = LocalVisitStore(),
 ) : KioskRepository {
 
     @Volatile
@@ -56,8 +55,12 @@ class HybridKioskRepository(
         kind: String,
     ): MediaUploadResponse = withContext(Dispatchers.IO) {
         if (dataSource == DataSource.LIVE) {
-            runCatching { live.uploadMedia(bytes, filename, contentType, kind) }.getOrNull()
-                ?: localMedia(kind)
+            try {
+                live.uploadMedia(bytes, filename, contentType, kind)
+            } catch (e: Exception) {
+                if (shouldFallback(e)) markFixtures()
+                localMedia(kind)
+            }
         } else {
             localMedia(kind)
         }
@@ -69,11 +72,14 @@ class HybridKioskRepository(
         idNumber: String?,
     ): BlacklistEntry? = withContext(Dispatchers.IO) {
         if (dataSource == DataSource.LIVE) {
-            runCatching {
+            try {
                 live.matchBlacklist(
                     BlacklistMatchRequest(mobile = mobile, idType = idType, idNumber = idNumber),
                 ).hit
-            }.getOrElse { LocalBlacklist.match(mobile, idType, idNumber) }
+            } catch (e: Exception) {
+                if (shouldFallback(e)) markFixtures()
+                LocalBlacklist.match(mobile, idType, idNumber)
+            }
         } else {
             LocalBlacklist.match(mobile, idType, idNumber)
         }
@@ -82,12 +88,14 @@ class HybridKioskRepository(
     override suspend fun createVisit(body: VisitCreate): VisitOut = withContext(Dispatchers.IO) {
         if (dataSource == DataSource.LIVE) {
             try {
-                live.createVisit(body)
+                live.createVisit(body).also { local.put(it) }
             } catch (e: ApiException) {
                 if (e.code == "BLACKLIST_BLOCK") throw e
-                localVisit(body)
-            } catch (_: Exception) {
-                localVisit(body)
+                if (shouldFallback(e)) markFixtures()
+                local.createPending(body)
+            } catch (e: Exception) {
+                markFixtures()
+                local.createPending(body)
             }
         } else {
             val hit = LocalBlacklist.match(body.mobile, body.idType, body.idNumber)
@@ -98,13 +106,85 @@ class HybridKioskRepository(
                     403,
                 )
             }
-            localVisit(body, hit)
+            local.createPending(body, hit)
         }
     }
 
+    override suspend fun getVisit(id: String): VisitOut = withContext(Dispatchers.IO) {
+        if (dataSource == DataSource.LIVE) {
+            try {
+                live.getVisit(id).also { local.put(it) }
+            } catch (e: Exception) {
+                if (shouldFallback(e)) markFixtures()
+                local.get(id) ?: throw asApi(e, "Visit fetch failed")
+            }
+        } else {
+            local.get(id) ?: throw ApiException("NOT_FOUND", "Visit $id not found", 404)
+        }
+    }
+
+    override suspend fun scanPass(
+        passId: String?,
+        token: String?,
+        action: String,
+        gateId: String?,
+    ): VisitOut = withContext(Dispatchers.IO) {
+        if (dataSource == DataSource.LIVE) {
+            try {
+                live.scanPass(passId = passId, token = token, action = action, gateId = gateId)
+                    .also { local.put(it) }
+            } catch (e: Exception) {
+                if (shouldFallback(e)) {
+                    markFixtures()
+                    local.scan(passId, token, action, gateId)
+                } else {
+                    throw asApi(e, "Scan failed")
+                }
+            }
+        } else {
+            local.scan(passId, token, action, gateId)
+        }
+    }
+
+    override suspend fun demoApprove(visitId: String): VisitOut = withContext(Dispatchers.IO) {
+        local.demoApprove(visitId)
+    }
+
+    override suspend fun storyPass(): VisitOut = withContext(Dispatchers.IO) {
+        if (dataSource == DataSource.LIVE) {
+            runCatching { live.getVisit(DemoFixtures.STORY_VISIT_ID) }.getOrNull()
+                ?.also { local.put(it) }
+                ?: runCatching { live.getPass(DemoFixtures.STORY_PASS_ID).toVisit() }.getOrNull()
+                    ?.also { local.put(it) }
+                ?: local.get(DemoFixtures.STORY_VISIT_ID)
+                ?: local.storyInside().also { local.put(it) }
+        } else {
+            local.get(DemoFixtures.STORY_VISIT_ID) ?: local.storyInside().also { local.put(it) }
+        }
+    }
+
+    private fun markFixtures() {
+        dataSource = DataSource.FIXTURES
+    }
+
+    private fun shouldFallback(e: Exception): Boolean {
+        if (e is ApiException) {
+            return e.httpStatus == 0 || e.httpStatus >= 500
+        }
+        return true
+    }
+
+    private fun asApi(e: Exception, fallback: String): ApiException =
+        e as? ApiException ?: ApiException("UNAVAILABLE", e.message ?: fallback, 0)
+
     private suspend fun <T> liveOrFixture(block: () -> T): T? = withContext(Dispatchers.IO) {
         if (dataSource != DataSource.LIVE) return@withContext null
-        runCatching { block() }.getOrNull()
+        try {
+            block()
+        } catch (e: Exception) {
+            if (shouldFallback(e)) markFixtures()
+            null
+        }
     }
 
     private fun localMedia(kind: String) = MediaUploadResponse(
@@ -112,31 +192,4 @@ class HybridKioskRepository(
         url = null,
         meta = DemoFixtures.meta,
     )
-
-    private fun localVisit(body: VisitCreate, hit: BlacklistEntry? = null): VisitOut {
-        val ts = OffsetDateTime.now(ZoneOffset.ofHoursMinutes(5, 30)).toString()
-        return VisitOut(
-            id = "V-LOCAL-${System.currentTimeMillis() % 100000}",
-            schoolId = DemoFixtures.SCHOOL_ID,
-            visitorName = body.visitorName,
-            mobile = body.mobile,
-            visitorType = body.visitorType,
-            purpose = body.purpose,
-            hostId = body.hostId,
-            livePhotoKey = body.livePhotoKey,
-            idType = body.idType,
-            idNumber = body.idNumber,
-            idImageKey = body.idImageKey,
-            vehicleNumber = body.vehicleNumber,
-            accompanyingCount = body.accompanyingCount,
-            notes = body.notes,
-            signatureKey = body.signatureKey,
-            gateId = body.gateId,
-            status = "pending",
-            blacklistHit = hit != null,
-            blacklistId = hit?.id,
-            createdAt = ts,
-            meta = DemoFixtures.meta,
-        )
-    }
 }

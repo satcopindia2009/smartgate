@@ -19,6 +19,7 @@ import com.satcop.smartvisitor.kiosk.data.registration.MobileIndia
 import com.satcop.smartvisitor.kiosk.data.registration.RegistrationDraft
 import com.satcop.smartvisitor.kiosk.data.registration.RegistrationValidator
 import com.satcop.smartvisitor.kiosk.data.repository.KioskRepository
+import com.satcop.smartvisitor.kiosk.ui.components.ToastKind
 import com.satcop.smartvisitor.kiosk.ui.media.PlaceholderBitmap
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -45,6 +46,7 @@ data class KioskUiState(
     val draft: RegistrationDraft = RegistrationDraft(),
     val fieldErrors: Map<String, String> = emptyMap(),
     val toast: String? = null,
+    val toastKind: ToastKind = ToastKind.INFO,
     val story: DemoStory = DemoFixtures.demoStory,
     val loaded: Boolean = false,
     val submitting: Boolean = false,
@@ -54,6 +56,7 @@ data class KioskUiState(
     val blacklistHit: BlacklistEntry? = null,
     val blocked: Boolean = false,
     val createdVisit: VisitOut? = null,
+    val outcomeBusy: Boolean = false,
 ) {
     val selectedGate: Gate?
         get() = gates.firstOrNull { it.id == draft.gateId } ?: gates.firstOrNull()
@@ -112,8 +115,9 @@ class KioskViewModel(
                 toast = if (source == DataSource.LIVE) {
                     "Live mock connected"
                 } else {
-                    "Fixtures fallback · tunnel unreachable"
+                    "FIXTURES · tunnel unreachable"
                 },
+                toastKind = if (source == DataSource.LIVE) ToastKind.SUCCESS else ToastKind.WARNING,
             )
         }
     }
@@ -169,6 +173,7 @@ class KioskViewModel(
                 draft = it.draft.copy(livePhotoCaptured = true),
                 fieldErrors = it.fieldErrors - "livePhotoKey",
                 toast = if (bitmap == null) "Live photo captured (demo placeholder)" else "Live photo captured",
+                toastKind = ToastKind.SUCCESS,
             )
         }
     }
@@ -181,6 +186,7 @@ class KioskViewModel(
                 draft = it.draft.copy(idImageCaptured = true),
                 fieldErrors = it.fieldErrors - "idNumber",
                 toast = if (bitmap == null) "ID image attached (demo)" else "ID image attached",
+                toastKind = ToastKind.INFO,
             )
         }
     }
@@ -222,6 +228,7 @@ class KioskViewModel(
                 draft = draft,
                 fieldErrors = emptyMap(),
                 toast = toast,
+                toastKind = ToastKind.INFO,
                 livePhoto = null,
                 idImage = null,
                 signature = null,
@@ -244,6 +251,7 @@ class KioskViewModel(
                 it.copy(
                     fieldErrors = errors,
                     toast = RegistrationValidator.toastMessage(errors),
+                    toastKind = ToastKind.WARNING,
                 )
             }
             return
@@ -267,6 +275,7 @@ class KioskViewModel(
                 it.copy(
                     fieldErrors = errors,
                     toast = RegistrationValidator.toastMessage(errors),
+                    toastKind = ToastKind.WARNING,
                 )
             }
             return
@@ -316,6 +325,7 @@ class KioskViewModel(
                         blacklistHit = hit,
                         draft = draft.copy(livePhotoKey = photo.key, idImageKey = idKey, signatureKey = sigKey),
                         toast = "Blacklist Block · pass not issued",
+                        toastKind = ToastKind.ERROR,
                     )
                 }
                 return
@@ -338,20 +348,26 @@ class KioskViewModel(
                 blacklistOverride = false,
             )
             val visit = repository.createVisit(body)
+            val source = repository.dataSource
             _state.update {
                 it.copy(
                     submitting = false,
                     createdVisit = visit,
                     blacklistHit = hit,
                     blocked = false,
+                    dataSource = source,
                     draft = draft.copy(livePhotoKey = photo.key, idImageKey = idKey, signatureKey = sigKey),
                     step = 4,
-                    toast = if (hit?.severity == "Alert") {
-                        "Alert hit · visit pending · host notified"
-                    } else {
-                        "Host notified · waiting for approval"
+                    toast = when {
+                        hit?.severity == "Alert" -> "Alert hit · visit pending · host notified"
+                        source == DataSource.FIXTURES -> "FIXTURES · host notified · Demo approve to issue QR"
+                        else -> "Host notified · waiting for approval"
                     },
+                    toastKind = if (hit?.severity == "Alert") ToastKind.WARNING else ToastKind.SUCCESS,
                 )
+            }
+            if (visit.status == "pending") {
+                viewModelScope.launch { pollWhilePending() }
             }
         } catch (e: ApiException) {
             if (e.code == "BLACKLIST_BLOCK") {
@@ -360,16 +376,167 @@ class KioskViewModel(
                         submitting = false,
                         blocked = true,
                         toast = e.message,
+                        toastKind = ToastKind.ERROR,
+                        dataSource = repository.dataSource,
                     )
                 }
             } else {
-                _state.update { it.copy(submitting = false, toast = e.message) }
+                _state.update {
+                    it.copy(
+                        submitting = false,
+                        toast = e.message,
+                        toastKind = ToastKind.ERROR,
+                        dataSource = repository.dataSource,
+                    )
+                }
             }
         } catch (e: Exception) {
             _state.update {
-                it.copy(submitting = false, toast = e.message ?: "Submit failed")
+                it.copy(
+                    submitting = false,
+                    toast = e.message ?: "Submit failed",
+                    toastKind = ToastKind.ERROR,
+                    dataSource = repository.dataSource,
+                )
             }
         }
+    }
+
+    private suspend fun pollWhilePending() {
+        repeat(20) {
+            delay(6_000)
+            val current = _state.value
+            if (current.step != 4 || current.createdVisit?.status != "pending") return
+            refreshVisit(silent = true)
+        }
+    }
+
+    fun refreshVisit(silent: Boolean = false) {
+        val id = _state.value.createdVisit?.id ?: return
+        viewModelScope.launch {
+            if (!silent) _state.update { it.copy(outcomeBusy = true) }
+            try {
+                val visit = repository.getVisit(id)
+                applyVisit(
+                    visit,
+                    toast = if (silent) _state.value.toast else statusToast(visit),
+                    kind = if (silent) _state.value.toastKind else ToastKind.INFO,
+                )
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        outcomeBusy = false,
+                        dataSource = repository.dataSource,
+                        toast = if (silent) it.toast else (e.message ?: "Refresh failed"),
+                        toastKind = if (silent) it.toastKind else ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    fun demoApprove() {
+        val id = _state.value.createdVisit?.id ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(outcomeBusy = true) }
+            try {
+                val visit = repository.demoApprove(id)
+                applyVisit(visit, "Demo host approved · pass ${visit.passId}", ToastKind.SUCCESS)
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        outcomeBusy = false,
+                        toast = e.message ?: "Demo approve failed",
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    fun scanCheckIn() {
+        scan("check_in", "Checked in · inside campus")
+    }
+
+    fun scanCheckOut() {
+        scan("check_out", "Checked out · visit completed")
+    }
+
+    private fun scan(action: String, okToast: String) {
+        val visit = _state.value.createdVisit ?: return
+        val gateId = _state.value.draft.gateId
+        viewModelScope.launch {
+            _state.update { it.copy(outcomeBusy = true) }
+            try {
+                val updated = repository.scanPass(
+                    passId = visit.passId,
+                    token = visit.qrToken,
+                    action = action,
+                    gateId = gateId,
+                )
+                val inside = runCatching { repository.listInside() }.getOrNull()
+                applyVisit(updated, okToast, ToastKind.SUCCESS, inside?.data?.take(4))
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        outcomeBusy = false,
+                        dataSource = repository.dataSource,
+                        toast = e.message ?: "Scan failed",
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    fun loadStoryPass() {
+        viewModelScope.launch {
+            _state.update { it.copy(outcomeBusy = true) }
+            try {
+                val visit = repository.storyPass()
+                applyVisit(
+                    visit,
+                    "Story pass ${visit.passId} · ${visit.visitorName} · ${visit.status}",
+                    ToastKind.INFO,
+                )
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        outcomeBusy = false,
+                        toast = e.message ?: "Could not load P-4F21",
+                        toastKind = ToastKind.ERROR,
+                        dataSource = repository.dataSource,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun applyVisit(
+        visit: VisitOut,
+        toast: String?,
+        kind: ToastKind,
+        recent: List<InsideVisit>? = null,
+    ) {
+        _state.update {
+            it.copy(
+                createdVisit = visit,
+                outcomeBusy = false,
+                dataSource = repository.dataSource,
+                recent = recent ?: it.recent,
+                toast = toast,
+                toastKind = kind,
+            )
+        }
+    }
+
+    private fun statusToast(visit: VisitOut): String = when (visit.status) {
+        "pending" -> "Still waiting for host"
+        "approved" -> "Approved · pass ${visit.passId ?: "ready"}"
+        "inside" -> "Inside campus · ${visit.passId ?: ""}"
+        "completed" -> "Checked out"
+        "rejected" -> "Rejected · ${visit.rejectReason ?: "see host"}"
+        else -> "Status · ${visit.status}"
     }
 
     fun back() {
@@ -394,6 +561,7 @@ class KioskViewModel(
                 blacklistHit = null,
                 createdVisit = null,
                 submitting = false,
+                outcomeBusy = false,
             )
         }
     }

@@ -1,11 +1,11 @@
 window.VMS_FIXTURES = {
   host: { id: "H03", name: "Anita Joshi", roleTitle: "Primary Coordinator" },
   pending: {
-    id: "V-20260916-040",
-    visitorName: "Demo Pending Parent",
-    mobile: "9811111111",
+    id: "V-LOCAL-PRIYA-WAIT",
+    visitorName: "Priya Sharma",
+    mobile: "9822011122",
     visitorType: "Parent",
-    purpose: "Meet class teacher",
+    purpose: "PTM follow-up, Class 4B",
     hostId: "H03",
     gateId: "G-MAIN",
     gateName: "Main Gate",

@@ -39,6 +39,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.satcop.smartvisitor.kiosk.ui.components.DemoWatermark
 import com.satcop.smartvisitor.kiosk.ui.components.GatePill
 import com.satcop.smartvisitor.kiosk.ui.components.ShieldMark
+import com.satcop.smartvisitor.kiosk.ui.components.SourcePill
 import com.satcop.smartvisitor.kiosk.ui.components.StepDots
 import com.satcop.smartvisitor.kiosk.ui.components.ToastBanner
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
@@ -76,6 +77,7 @@ fun KioskApp(
                 gates = state.gates,
                 clockLabel = state.clockLabel,
                 dataSource = state.dataSource,
+                roleLabel = state.meDisplayName,
                 onSelectGate = viewModel::selectGate,
             )
             Box(
@@ -148,6 +150,13 @@ fun KioskApp(
                                 hosts = state.hosts,
                                 gates = state.gates,
                                 blacklistHit = state.blacklistHit,
+                                dataSource = state.dataSource,
+                                busy = state.outcomeBusy,
+                                onRefresh = { viewModel.refreshVisit() },
+                                onDemoApprove = viewModel::demoApprove,
+                                onCheckIn = viewModel::scanCheckIn,
+                                onCheckOut = viewModel::scanCheckOut,
+                                onLoadStory = viewModel::loadStoryPass,
                                 onNewVisitor = viewModel::registerAnother,
                             )
                         }
@@ -171,7 +180,7 @@ fun KioskApp(
                     viewModel.dismissToast()
                 }
             }
-            ToastBanner(message = toast)
+            ToastBanner(message = toast, kind = state.toastKind)
         }
     }
 }
@@ -183,6 +192,7 @@ private fun KioskHeader(
     gates: List<com.satcop.smartvisitor.kiosk.data.model.Gate>,
     clockLabel: String,
     dataSource: DataSource,
+    roleLabel: String,
     onSelectGate: (String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -207,7 +217,11 @@ private fun KioskHeader(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                 )
                 Text(
-                    text = "$schoolName · Gate check-in",
+                    text = if (roleLabel.isBlank()) {
+                        "$schoolName · Gate check-in"
+                    } else {
+                        "$schoolName · $roleLabel"
+                    },
                     color = KioskColors.textMuted,
                     fontSize = 12.sp,
                     fontFamily = KioskFont,
@@ -218,10 +232,7 @@ private fun KioskHeader(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            GatePill(
-                name = if (dataSource == DataSource.LIVE) "LIVE mock" else "FIXTURES",
-                onClick = {},
-            )
+            SourcePill(live = dataSource == DataSource.LIVE)
             Box {
                 GatePill(name = gateName, onClick = { menuOpen = true })
                 DropdownMenu(

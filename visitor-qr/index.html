@@ -29,14 +29,17 @@
     .qr-wrap {
       background: #fff; border-radius: 16px; padding: 18px; margin: 0 auto 16px; width: fit-content;
     }
-    #qr-canvas { width: 180px; height: 180px; }
+    #qr-canvas { width: 220px; height: 220px; }
     .status-banner {
       text-align: center; padding: 12px; border-radius: var(--radius);
-      font-weight: 600; font-size: 14px; margin-bottom: 16px;
+      font-weight: 600; font-size: 14px; margin-bottom: 16px; cursor: default;
     }
+    .status-banner.cycle { cursor: pointer; }
     .status-banner.waiting { background: var(--orange-dim); color: #fbbf24; }
     .status-banner.approved { background: var(--green-dim); color: #4ade80; }
     .status-banner.inside { background: var(--cyan-dim); color: var(--cyan-bright); }
+    .status-banner.completed { background: var(--green-dim); color: #4ade80; }
+    .status-banner.rejected { background: var(--red-dim); color: #f87171; }
     .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .detail { background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; }
     .detail span {
@@ -51,6 +54,10 @@
     .hub-link-bar { text-align: center; margin-top: 18px; }
     .hub-link-bar a { font-size: 12px; color: var(--text-dim); }
     .hint { font-size: 11px; color: var(--text-dim); text-align: center; margin-bottom: 12px; }
+    .phone-shell .toast-container {
+      position: absolute; bottom: 28px; right: 12px; left: 12px;
+    }
+    .phone-shell .toast { min-width: 0; max-width: none; }
     @media (max-width: 480px) {
       .phone-stage { padding: 0; background: var(--bg); }
       .phone-label { display: none; }
@@ -99,6 +106,7 @@
           <div class="hub-link-bar">
             <a href="../host-web/index.html">← Host approve</a>
           </div>
+          <div id="toast-box" class="toast-container" aria-live="polite"></div>
         </div>
       </div>
     </div>

@@ -7,9 +7,10 @@ Read-only visitor badge matching `demos/visitor-qr.html`. No app install.
 ## What it shows
 
 - Pass id **P-4F21**, visitor **Priya Sharma**, host **Anita Joshi**, gate **Main Gate**
-- Status banner from visit lifecycle (`pending` / `approved` / `inside`)
+- Status banner from visit lifecycle (`pending` / `approved` / `inside` / `completed`)
 - QR encodes the opaque `qrToken` (not `passId` alone)
-- `GET /v1/passes/{passId}` when the mock tunnel is up
+- `GET /v1/passes/{passId}` when the mock tunnel is up (~6s timeout → FIXTURES)
+- On FIXTURES, tap the status banner to cycle banners for the demo
 
 ## Open locally
 
@@ -28,4 +29,4 @@ QR rendering uses [qrcodejs](https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0
 
 ## Out of scope
 
-No edit actions, no scan check-in from this page (gate kiosk Wave 4). No production deploy.
+No edit actions, no scan check-in from this page (gate kiosk owns `POST /v1/passes/scan`). No production deploy.

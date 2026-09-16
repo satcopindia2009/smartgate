@@ -8,8 +8,17 @@
   var live = false;
   var GATES = { "G-MAIN": "Main Gate", "G-PED": "Pedestrian Gate", "G-STAFF": "Staff Gate", "G-BUS": "Bus Bay" };
 
-  function toast(msg) {
-    console.log("[host-web]", msg);
+  function toast(msg, kind) {
+    var box = $("#toast-box");
+    if (!box) {
+      console.log("[host-web]", msg);
+      return;
+    }
+    var el = document.createElement("div");
+    el.className = "toast " + (kind || "info");
+    el.textContent = msg;
+    box.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 2800);
   }
 
   function gateName(v) {
@@ -28,12 +37,11 @@
     $("#visitor-type").className = "tag type-" + String(v.visitorType || "parent").toLowerCase();
     $("#visitor-avatar").textContent = api.initials(v.visitorName);
     var pending = v.status === "pending";
-    var inside = v.status === "inside" || v.status === "approved";
     $("#action-row").classList.toggle("hidden", !pending);
     $("#btn-meeting").classList.toggle("hidden", v.status !== "inside");
     $("#status-badge").textContent = pending
       ? "Awaiting your decision"
-      : (v.status === "inside" ? "Inside campus" : v.status);
+      : (v.status === "inside" ? "Inside campus" : (v.status === "approved" ? "Approved · on the way" : v.status));
     $("#confirm-view").classList.remove("visible");
     $("#request-view").classList.remove("hidden");
     $("#reject-panel").classList.remove("open");
@@ -56,13 +64,19 @@
 
   async function loadPending() {
     if (live) {
-      var rows = await api.listPending();
-      if (rows.length) {
-        render(rows[0]);
-        return;
+      try {
+        var rows = await api.listPending();
+        if (rows.length) {
+          render(rows[0]);
+          toast("Live pending · " + rows[0].visitorName, "info");
+          return;
+        }
+      } catch (e) {
+        toast(e.message || "Pending fetch failed", "warning");
       }
     }
     render(fx.pending);
+    if (!live) toast("FIXTURES · Priya awaiting Anita", "warning");
   }
 
   async function loadPriya() {
@@ -71,11 +85,13 @@
         var v = await api.getVisit("V-20260916-014");
         if (v) {
           render(v);
+          toast("Priya " + v.status + " · " + (v.passId || "P-4F21"), "info");
           return;
         }
-      } catch (e) { toast(e.message); }
+      } catch (e) { toast(e.message, "warning"); }
     }
     render(fx.priya);
+    if (!live) toast("FIXTURES · Priya inside P-4F21", "warning");
   }
 
   $("#tab-pending").addEventListener("click", function () {
@@ -95,10 +111,13 @@
         visit = await api.approve(visit.id);
       } else {
         visit.status = "approved";
+        visit.passId = visit.passId || "P-DEMO";
       }
       showConfirm(true, "Approved", visit.visitorName + " can enter via " + gateName(visit) + ".", true);
+      toast("Visitor approved · gate notified", "success");
     } catch (e) {
       showConfirm(false, "Could not approve", e.message, false);
+      toast(e.message, "error");
     }
   });
 
@@ -125,21 +144,25 @@
         visit.rejectReason = reason;
       }
       showConfirm(false, "Rejected", "Reason: " + reason + ". Gate will inform the visitor.", false);
+      toast("Rejection sent to gate", "warning");
     } catch (e) {
       showConfirm(false, "Could not reject", e.message, false);
+      toast(e.message, "error");
     }
   });
 
   $("#btn-meeting").addEventListener("click", async function () {
     try {
-      if (live && visit && visit.id) {
+      if (live && visit && visit.id && !String(visit.id).startsWith("V-LOCAL")) {
         visit = await api.meetingDone(visit.id);
       } else {
         visit.meetingDoneAt = new Date().toISOString();
       }
       showConfirm(true, "Meeting done", visit.visitorName + " — host marked meeting complete.", false);
+      toast("Meeting done · gate can check out", "success");
     } catch (e) {
       showConfirm(false, "Could not mark meeting done", e.message, false);
+      toast(e.message, "error");
     }
   });
 
@@ -151,14 +174,12 @@
   api.warmup().then(function (boot) {
     live = boot.live;
     var pill = $("#source-pill");
+    $("#host-label").textContent = "Anita Joshi · Primary Coordinator";
     if (live) {
-      pill.textContent = "LIVE mock · " + window.VMS_CONFIG.apiBase;
+      pill.textContent = "LIVE mock · " + window.VMS_CONFIG.apiBase.replace("https://", "");
       pill.classList.remove("fallback");
-      if (boot.user && boot.user.displayName) {
-        $("#host-label").textContent = boot.user.displayName + " · host";
-      }
     } else {
-      pill.textContent = "FIXTURES fallback · tunnel unreachable";
+      pill.textContent = "FIXTURES · tunnel unreachable";
       pill.classList.add("fallback");
     }
     return loadPending();

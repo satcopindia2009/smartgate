@@ -2,6 +2,7 @@
   var cfg = global.VMS_CONFIG;
   var token = null;
   var live = false;
+  var TIMEOUT_MS = 6000;
 
   function formatMobile(raw) {
     var d = String(raw || "").replace(/\D/g, "");
@@ -32,19 +33,38 @@
     return (parts[0] || "VS").slice(0, 2).toUpperCase();
   }
 
+  function withTimeout() {
+    var ctrl = new AbortController();
+    var t = setTimeout(function () { ctrl.abort(); }, TIMEOUT_MS);
+    return {
+      signal: ctrl.signal,
+      done: function () { clearTimeout(t); },
+    };
+  }
+
   async function request(path, opts) {
     var headers = Object.assign({ "Content-Type": "application/json" }, (opts && opts.headers) || {});
     if (token) headers.Authorization = "Bearer " + token;
-    var res = await fetch(cfg.apiBase + path, Object.assign({}, opts, { headers }));
-    var text = await res.text();
-    var body = text ? JSON.parse(text) : {};
-    if (!res.ok) {
-      var err = new Error((body.error && body.error.message) || ("HTTP " + res.status));
-      err.code = body.error && body.error.code;
-      err.status = res.status;
-      throw err;
+    var to = withTimeout();
+    try {
+      var res = await fetch(cfg.apiBase + path, Object.assign({}, opts, { headers: headers, signal: to.signal }));
+      var text = await res.text();
+      var body = text ? JSON.parse(text) : {};
+      if (!res.ok) {
+        var err = new Error((body.error && body.error.message) || ("HTTP " + res.status));
+        err.code = body.error && body.error.code;
+        err.status = res.status;
+        throw err;
+      }
+      return body;
+    } catch (e) {
+      if (e && e.name === "AbortError") {
+        throw new Error("Tunnel timeout · fixtures");
+      }
+      throw e;
+    } finally {
+      to.done();
     }
-    return body;
   }
 
   async function warmup() {

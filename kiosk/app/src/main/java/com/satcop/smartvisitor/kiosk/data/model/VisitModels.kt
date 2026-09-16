@@ -95,10 +95,50 @@ data class VisitOut(
     val blacklistId: String? = null,
     val createdAt: String? = null,
     val timeIn: String? = null,
+    val timeOut: String? = null,
     val meetingDoneAt: String? = null,
     val rejectReason: String? = null,
     val meta: Meta? = null,
 )
+
+@Serializable
+data class PassScanRequest(
+    val passId: String? = null,
+    val token: String? = null,
+    val action: String,
+    val gateId: String? = null,
+)
+
+@Serializable
+data class PassOut(
+    val passId: String,
+    val visitId: String,
+    val schoolId: String? = null,
+    val visitorName: String? = null,
+    val photoUrl: String? = null,
+    val hostId: String? = null,
+    val hostName: String? = null,
+    val gateId: String? = null,
+    val gateName: String? = null,
+    val status: String,
+    val qrToken: String? = null,
+    val issuedAt: String? = null,
+    val expiresAt: String? = null,
+    val revoked: Boolean = false,
+    val meta: Meta? = null,
+) {
+    fun toVisit(): VisitOut = VisitOut(
+        id = visitId,
+        schoolId = schoolId,
+        visitorName = visitorName,
+        hostId = hostId,
+        gateId = gateId,
+        status = status,
+        passId = passId,
+        qrToken = qrToken,
+        meta = meta,
+    )
+}
 
 @Serializable
 data class ErrorEnvelope(

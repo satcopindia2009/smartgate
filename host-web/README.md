@@ -10,7 +10,9 @@ Phone-first (~390px) host surface matching `demos/host-approve.html`. No Play St
 - **Approve** → `POST /v1/visits/{id}/approve` → “visitor on the way”
 - **Reject** → reason required → `POST /v1/visits/{id}/reject`
 - **Meeting done** when the visit is `inside` → `POST /v1/visits/{id}/meeting-done`
-- Demo story tabs: pending (Anita’s queue) and **Priya Sharma** (`V-20260916-014`, already inside on the mock)
+- Tabs: **Pending** (live queue, or fixtures **Priya awaiting Anita**) and **Priya (inside)** (`V-20260916-014` / `P-4F21`)
+- Host label stays **Anita Joshi · Primary Coordinator**
+- Amber **FIXTURES** pill + toast when the tunnel times out (~6s AbortController)
 
 ## Open locally
 
@@ -28,10 +30,10 @@ Prefers the ephemeral mock:
 
 `https://weed-pumps-laura-upc.trycloudflare.com/v1`
 
-Logs in as demo host `host` / `host123`. If the tunnel 502s or CORS/network fails, the page falls back to local fixtures (Priya / Demo Pending Parent) and still lets you click approve/reject/meeting-done offline.
+Logs in as demo host `host` / `host123`. If the tunnel 502s or CORS/network fails, the page falls back to local fixtures and still lets you click approve/reject/meeting-done offline.
 
 Edit `config.js` if the tunnel URL changes.
 
 ## Out of scope
 
-Guard patrol, production SSO, real PII. Gate camera lives in `kiosk/`. Visitor badge is `visitor-qr/`.
+Guard patrol, production SSO, real PII. Gate camera / scan lives in `kiosk/`. Visitor badge is `visitor-qr/`.
