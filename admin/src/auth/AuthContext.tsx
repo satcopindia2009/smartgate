@@ -182,6 +182,11 @@ export function canApproveAfterHours(role?: string | null) {
   return role === "security_head";
 }
 
+/** In-hours host-pending only. After-hours stays canApproveAfterHours (SH). */
+export function canApproveHostPending(role?: string | null) {
+  return role === "admin" || role === "security_head";
+}
+
 export function canTriggerBlast(role?: string | null) {
   return role === "admin" || role === "security_head";
 }

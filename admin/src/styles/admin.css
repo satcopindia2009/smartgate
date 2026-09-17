@@ -1552,6 +1552,13 @@ body.admin-page,
   margin-bottom: 10px;
 }
 
+.pending-host-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cyan-bright);
+  margin-bottom: 10px;
+}
+
 .pending-sh-list {
   display: flex;
   flex-direction: column;
@@ -1571,6 +1578,10 @@ body.admin-page,
 
 .pending-sh-item strong {
   display: block;
+}
+
+.pending-sh-item .action-btns {
+  margin-left: auto;
 }
 
 .ah-decision-modal {

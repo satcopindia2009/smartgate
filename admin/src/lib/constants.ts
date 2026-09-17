@@ -5,7 +5,7 @@ export const OVERDUE_HOURS_DEFAULT = 4;
 export const LIVE_REFRESH_MS = 30_000;
 export const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
-  "https://pensions-usb-loops-direction.trycloudflare.com/v1";
+  "https://replacing-spyware-yes-due.trycloudflare.com/v1";
 
 export const GATE_ENUMS = [
   "Main Gate",
@@ -53,10 +53,40 @@ export const FIRST_SCHOOL_CODE_EXAMPLE = "PRANAY";
 export const IMPORT_MAX_ROWS = 5_000;
 
 export const DEMO_LOGINS = {
-  admin: { password: "admin123", role: "admin" as const, displayName: "Office Admin" },
+  admin: {
+    password: "admin123",
+    role: "admin" as const,
+    displayName: "Office Admin",
+    id: "U-ADMIN",
+    schoolId: DEMO_SCHOOL_ID,
+    schoolCode: DEMO_SCHOOL_ID,
+    staffId: "H02",
+  },
   security: {
     password: "sh123",
     role: "security_head" as const,
     displayName: "Security Head",
+    id: "U-SH",
+    schoolId: DEMO_SCHOOL_ID,
+    schoolCode: DEMO_SCHOOL_ID,
+    staffId: null,
+  },
+  "pranay.admin": {
+    password: "PranayAdmin@2026",
+    role: "admin" as const,
+    displayName: "Pranay School Admin",
+    id: "U-PRANAY-ADMIN",
+    schoolId: "SCH-PRANAY-01",
+    schoolCode: "PRANAY",
+    staffId: "PS-H02",
+  },
+  "pranay.sh": {
+    password: "PranaySH@2026",
+    role: "security_head" as const,
+    displayName: "Pranay Security Head",
+    id: "U-PRANAY-SH",
+    schoolId: "SCH-PRANAY-01",
+    schoolCode: "PRANAY",
+    staffId: "PS-H01",
   },
 } as const;

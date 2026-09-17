@@ -16,7 +16,7 @@ npm run build
 ```
 
 Demo logins: `admin` / `admin123` · `security` / `sh123`.  
-Default API: `VITE_API_BASE_URL=https://pensions-usb-loops-direction.trycloudflare.com/v1`. If that tunnel drops, the UI falls back to `admin/public/data/admin-mvp-fixtures.json`.
+Default API: `VITE_API_BASE_URL=https://replacing-spyware-yes-due.trycloudflare.com/v1`. If that tunnel drops, the UI falls back to `admin/public/data/admin-mvp-fixtures.json`.
 
 Walkthrough: **Priya Sharma** · pass **P-4F21** · **Main Gate** · host **Anita Joshi**.
 

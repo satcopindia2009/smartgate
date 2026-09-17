@@ -70,7 +70,8 @@ export function LoginPage() {
         <p className="login-hint">
           Demo: <code>admin</code> / <code>admin123</code> · <code>security</code> / <code>sh123</code>
           <br />
-          Pranay School Pune: <code>pranay.admin</code> / <code>PranayAdmin@2026</code>
+          Pranay School Pune: <code>pranay.admin</code> / <code>PranayAdmin@2026</code> ·{" "}
+          <code>pranay.sh</code> / <code>PranaySH@2026</code>
         </p>
         <p className="login-hold">No production · no live school gates (V4 HOLD)</p>
       </div>
