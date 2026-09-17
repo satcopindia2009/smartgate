@@ -21,6 +21,10 @@ python3 -m http.server 8768
 # http://127.0.0.1:8768/?passId=P-4F21
 ```
 
+## Light / dark theme
+
+Same tokens as host-web / Admin (`tokens-admin.css`). Header **Light / Dark** toggle; persists `localStorage` key `satcop-theme` = `light` | `dark`. Default is `prefers-color-scheme` when unset.
+
 The mock currently requires a Bearer token for pass GET. This page logs in with the **demo gate** account (`gate` / `gate123`) only to read the badge — visitors would get a public/signed link later.
 
 If the tunnel is down, fixtures render the Priya / P-4F21 / `V-20260916-014` story (token is a demo placeholder).

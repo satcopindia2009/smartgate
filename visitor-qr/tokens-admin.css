@@ -1,0 +1,142 @@
+/* Satcop Smart Visitor / Smart Gate — Admin theme tokens
+ * Hub order 2026-09-17: light + dark, teal accents, school-friendly.
+ * Brand: Satcop only — never vizmo.
+ * Apply: set data-theme="light"|"dark" on <html>; persist localStorage key satcop-theme.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root,
+[data-theme="light"] {
+  --font: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+  --transition: 0.18s ease;
+  --tap-min: 44px;
+  --row-min: 52px;
+  --sidebar-width: 220px;
+
+  --bg: #f3f4f6;
+  --sidebar: #0f172a;
+  --sidebar-text: #e2e8f0;
+  --sidebar-muted: #94a3b8;
+  --card: #ffffff;
+  --card-hover: #f8fafc;
+  --border: #e5e7eb;
+  --border-subtle: #f1f5f9;
+  --text: #0f172a;
+  --text-muted: #6b7280;
+  --text-dim: #9ca3af;
+  --table-header: #f8fafc;
+  --row-hover: #f0fdfa;
+
+  --accent: #0d9488;
+  --accent-hover: #0f766e;
+  --accent-bright: #14b8a6;
+  --accent-muted: rgba(13, 148, 136, 0.12);
+  --accent-glow: rgba(13, 148, 136, 0.28);
+
+  --success: #16a34a;
+  --success-muted: rgba(22, 163, 74, 0.12);
+  --danger: #dc2626;
+  --danger-muted: rgba(220, 38, 38, 0.12);
+  --warning: #d97706;
+  --warning-muted: rgba(217, 119, 6, 0.12);
+
+  /* legacy aliases used by existing admin.css (map purple/blue → accent) */
+  --purple: var(--accent);
+  --purple-bright: var(--accent-bright);
+  --purple-dim: var(--accent-muted);
+  --purple-glow: var(--accent-glow);
+  --blue: #2563eb;
+  --blue-bright: #3b82f6;
+  --blue-dim: rgba(37, 99, 235, 0.12);
+  --cyan: #0891b2;
+  --cyan-bright: #22d3ee;
+  --cyan-dim: rgba(8, 145, 178, 0.12);
+  --teal: var(--accent);
+  --green: var(--success);
+  --green-dim: var(--success-muted);
+  --red: var(--danger);
+  --red-dim: var(--danger-muted);
+  --orange: var(--warning);
+  --orange-dim: var(--warning-muted);
+  --pink: #db2777;
+}
+
+[data-theme="dark"],
+.theme-dark {
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+
+  --bg: #0f1115;
+  --sidebar: #15171c;
+  --sidebar-text: #e5e7eb;
+  --sidebar-muted: #9ca3af;
+  --card: #1a1d24;
+  --card-hover: #1f232c;
+  --border: #2a2e38;
+  --border-subtle: #23262f;
+  --text: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-dim: #6b7280;
+  --table-header: #15171c;
+  --row-hover: #1f232c;
+
+  --accent: #2dd4bf;
+  --accent-hover: #5eead4;
+  --accent-bright: #5eead4;
+  --accent-muted: rgba(45, 212, 191, 0.15);
+  --accent-glow: rgba(45, 212, 191, 0.35);
+
+  --success: #4ade80;
+  --success-muted: rgba(74, 222, 128, 0.15);
+  --danger: #f87171;
+  --danger-muted: rgba(248, 113, 113, 0.15);
+  --warning: #fbbf24;
+  --warning-muted: rgba(251, 191, 36, 0.15);
+
+  --purple: var(--accent);
+  --purple-bright: var(--accent-bright);
+  --purple-dim: var(--accent-muted);
+  --purple-glow: var(--accent-glow);
+  --blue: #60a5fa;
+  --blue-bright: #93c5fd;
+  --blue-dim: rgba(96, 165, 250, 0.15);
+  --cyan: #22d3ee;
+  --cyan-bright: #67e8f9;
+  --cyan-dim: rgba(34, 211, 238, 0.15);
+  --teal: var(--accent);
+  --green: var(--success);
+  --green-dim: var(--success-muted);
+  --red: var(--danger);
+  --red-dim: var(--danger-muted);
+  --orange: var(--warning);
+  --orange-dim: var(--warning-muted);
+  --pink: #f472b6;
+}
+
+html {
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+button,
+.btn,
+[role="button"] {
+  min-height: var(--tap-min);
+}
+
+.table tr,
+table tbody tr {
+  min-height: var(--row-min);
+}

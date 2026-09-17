@@ -15,6 +15,8 @@ Shared story: **Priya Sharma** (Parent, `+91 98220 11122`) → **Anita Joshi** (
 | 3 | **Visitor QR** (read-only badge) | `cd visitor-qr && python3 -m http.server 8768` → http://127.0.0.1:8768/?passId=P-4F21 |
 | 4 | **Gate pickup** (Priority P2 · PickupEvent) | `cd pickup-gate && python3 -m http.server 8769` → http://127.0.0.1:8769/ · defaults to **Pranay** · kiosk header **Pickup** is an entry only |
 
+**Theme (host-web + visitor-qr):** header Light / Dark toggle. Persists `localStorage` `satcop-theme` = `light` | `dark`. Unset → `prefers-color-scheme`. Same teal token pack as Admin. Product flows unchanged.
+
 Pills: cyan **LIVE mock** when the tunnel answers; amber **FIXTURES** when it does not. Demo still works offline.
 
 P2 pickup GATE default is **Pranay School Pune** (`SCH-PRANAY-01` / `PRANAY`): **Asha Patil 5-B** → **Ramesh Patil (parent)** / **Smita Patil (guardian)**; **Rohan Shah** on the same tenant. Login `pranay.gate` / `PranayGate@2026`. Isolated demo P6 (Aarav / Kabir) remains `SCH-DEMO-01` via `gate` / `gate123`. See `pickup-gate/README.md`.

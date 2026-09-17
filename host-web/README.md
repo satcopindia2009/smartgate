@@ -22,7 +22,19 @@ python3 -m http.server 8767
 # http://127.0.0.1:8767/
 ```
 
-On a phone viewport the chrome goes full-bleed. On desktop you get the dark phone shell.
+On a phone viewport the chrome goes full-bleed. On desktop you get the themed phone shell.
+
+## Light / dark theme
+
+Same UX pack as Admin (`tokens-admin.css`). Teal accents, Satcop Smart Visitor branding only.
+
+- Header **Light / Dark** toggle (sun / moon)
+- Preference persists in `localStorage` key `satcop-theme` = `light` | `dark`
+- If unset, follows `prefers-color-scheme`
+- Sets `data-theme` on `<html>` (no reload)
+- Min tap 44px
+
+Toggle on host-web, reload — the choice stays. Visitor QR uses the same `satcop-theme` key (shared when both pages are on the same origin; separate `http.server` ports keep their own storage).
 
 ## API
 
