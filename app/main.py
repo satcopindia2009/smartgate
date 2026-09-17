@@ -4,21 +4,33 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.errors import AppError, app_error_handler, unhandled_error_handler
+from app.errors import (
+    AppError,
+    app_error_handler,
+    unhandled_error_handler,
+    validation_error_handler,
+)
 from app.seed import seed
 from app.routers import (
+    access_rules,
     auth,
     blacklist,
+    emergency,
     exports,
     gates,
     media,
     outbox,
     passes,
+    pickups,
     reports,
+    schools,
     staff,
+    students,
     visits,
+    zones,
 )
 
 
@@ -30,8 +42,13 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="Satcop Smart Visitor API",
-    version="0.1.0",
-    description="MVP Wave 1–2 in-memory stub for Mobile/Admin demos. Demo watermark; no production deploy.",
+    version="0.6.0",
+    description=(
+        "MVP FastAPI stub + Priority P2 Pickup (P1–P6+H1) + after-hours (A1–A6) "
+        "+ escort/zones Access Rules (B4) + Emergency Blast (E3 / B1–B6). "
+        "Contract §§0–5 visit lifecycle unchanged. SMS mock / WA skipped_hold. "
+        "Demo watermark; no production / live-school deploy."
+    ),
     lifespan=lifespan,
 )
 
@@ -44,6 +61,7 @@ app.add_middleware(
 )
 
 app.add_exception_handler(AppError, app_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
 app.add_exception_handler(Exception, unhandled_error_handler)
 
 app.include_router(auth.router, prefix="/v1")
@@ -56,6 +74,12 @@ app.include_router(blacklist.router, prefix="/v1")
 app.include_router(reports.router, prefix="/v1")
 app.include_router(exports.router, prefix="/v1")
 app.include_router(outbox.router, prefix="/v1")
+app.include_router(students.router, prefix="/v1")
+app.include_router(pickups.router, prefix="/v1")
+app.include_router(access_rules.router, prefix="/v1")
+app.include_router(zones.router, prefix="/v1")
+app.include_router(emergency.router, prefix="/v1")
+app.include_router(schools.router, prefix="/v1")
 
 
 @app.get("/health")

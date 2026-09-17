@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>After-hours / Holiday — Gate Access Rules</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    body.page { background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; }
+    .story-strip {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 24px; background: var(--sidebar); border-bottom: 1px solid var(--border-subtle);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .story-strip .label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-dim); margin-right: 4px;
+    }
+    .story-btn {
+      padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text-muted); font-size: 12px; font-weight: 500; min-height: 36px;
+    }
+    .story-btn:hover { border-color: var(--orange); color: var(--text); }
+    .story-btn.active { background: var(--orange-dim); border-color: var(--orange); color: #fbbf24; }
+    .source-pill {
+      margin-left: auto; padding: 6px 12px; border-radius: 999px; font-size: 10px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; background: var(--cyan-dim); color: var(--cyan-bright);
+    }
+    .source-pill.fallback { background: var(--orange-dim); color: #fbbf24; }
+    .shell { max-width: 1180px; width: 100%; margin: 0 auto; padding: 20px 24px 48px; flex: 1; }
+    .gate-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+    .gate-brand { display: flex; align-items: center; gap: 12px; }
+    .gate-brand-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #f59e0b, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .gate-brand-mark svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+    .gate-brand h1 { font-size: 18px; font-weight: 600; }
+    .gate-brand span { display: block; font-size: 12px; color: var(--text-muted); }
+    .meta-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+    .pill-gate { background: var(--cyan-dim); color: var(--cyan-bright); }
+    .pill-p2 { background: var(--purple-dim); color: var(--purple-bright); }
+    .pill-time { background: var(--orange-dim); color: #fbbf24; }
+    .panel {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl);
+      padding: 24px 28px; box-shadow: var(--shadow);
+    }
+    .state { display: none; }
+    .state.active { display: block; animation: fadeUp 0.25s ease; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .ah-banner {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: linear-gradient(135deg, rgba(245,158,11,0.22), rgba(239,68,68,0.12));
+      border: 2px solid #f59e0b; border-radius: var(--radius-lg);
+      padding: 16px 18px; margin-bottom: 20px;
+    }
+    .ah-banner .ico {
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      background: rgba(245,158,11,0.3); display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .ah-banner h3 { font-size: 16px; font-weight: 700; color: #fbbf24; margin-bottom: 4px; }
+    .ah-banner p { font-size: 13px; color: var(--text); line-height: 1.45; }
+    .ah-banner .sub { color: var(--text-muted); font-size: 12px; margin-top: 6px; }
+    .visitor-card {
+      display: flex; gap: 16px; align-items: center; padding: 16px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 16px;
+    }
+    .visitor-card h2 { font-size: 18px; font-weight: 600; }
+    .visitor-card .muted { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+    .tags { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .phone-wrap { display: flex; justify-content: center; padding: 12px 0 24px; }
+    .phone-shell {
+      width: 390px; max-width: 100%; background: #0b0e14; border: 1px solid var(--border);
+      border-radius: 36px; padding: 14px 14px 20px; box-shadow: var(--shadow); position: relative;
+      min-height: 720px;
+    }
+    .status-bar {
+      display: flex; justify-content: space-between; font-size: 12px; font-weight: 600;
+      color: var(--text-muted); padding: 4px 8px 12px;
+    }
+    .app-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 0 4px; }
+    .app-header .mark {
+      width: 32px; height: 32px; border-radius: 9px;
+      background: linear-gradient(135deg, #f59e0b, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .app-header .mark svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2.2; }
+    .app-header h1 { font-size: 16px; font-weight: 600; }
+    .app-header p { font-size: 11px; color: var(--text-dim); }
+    .notif-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 18px; margin: 0 4px;
+    }
+    .fyi-badge, .sh-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; margin-bottom: 14px;
+    }
+    .fyi-badge { background: var(--orange-dim); color: #fbbf24; }
+    .sh-badge { background: var(--purple-dim); color: var(--purple-bright); }
+    .meta-list { display: flex; flex-direction: column; gap: 10px; margin: 14px 0 18px; }
+    .meta-row {
+      display: flex; justify-content: space-between; gap: 12px; font-size: 13px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border-subtle);
+    }
+    .meta-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .meta-row span { color: var(--text-dim); }
+    .meta-row strong { color: var(--text); font-weight: 500; text-align: right; }
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .hint-box {
+      margin-top: 14px; padding: 12px; border-radius: var(--radius);
+      background: var(--orange-dim); border: 1px solid rgba(245,158,11,0.35);
+      font-size: 12px; color: #fbbf24; line-height: 1.4;
+    }
+    .reason-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .reason-chips .chip { min-height: 40px; padding: 8px 14px; font-size: 12px; }
+    .admin-layout { display: grid; grid-template-columns: 220px 1fr; gap: 0; min-height: 560px;
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; }
+    .admin-side { background: var(--sidebar); padding: 20px 14px; border-right: 1px solid var(--border); }
+    .admin-side .logo { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; padding: 0 6px; }
+    .admin-side .logo strong { font-size: 13px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-sm);
+      color: var(--text-muted); font-size: 13px; margin-bottom: 4px;
+    }
+    .nav-item.active { background: var(--purple-dim); color: var(--purple-bright); font-weight: 500; }
+    .admin-main { padding: 20px 24px; }
+    .admin-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+    .admin-top h2 { font-size: 18px; font-weight: 600; }
+    .filter-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .filter-chip {
+      padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text-muted); font-size: 12px; min-height: 32px;
+    }
+    .filter-chip.active { background: var(--orange-dim); border-color: var(--orange); color: #fbbf24; }
+    table.live { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.live th {
+      text-align: left; color: var(--text-dim); font-weight: 500; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 1px solid var(--border);
+    }
+    table.live td { padding: 12px 10px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+    .flag-ah {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--orange-dim); color: #fbbf24; font-size: 10px; font-weight: 600;
+      padding: 2px 8px; border-radius: 999px;
+    }
+    .hours-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 800px) {
+      .admin-layout { grid-template-columns: 1fr; }
+      .hours-grid { grid-template-columns: 1fr; }
+    }
+    .hours-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .hours-table th, .hours-table td { padding: 10px 8px; border-bottom: 1px solid var(--border-subtle); text-align: left; }
+    .hours-table th { color: var(--text-dim); font-size: 11px; text-transform: uppercase; }
+    .holiday-list { display: flex; flex-direction: column; gap: 8px; }
+    .holiday-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    }
+    .policy-lock {
+      margin-top: 16px; padding: 12px 14px; border-radius: var(--radius);
+      background: var(--purple-dim); border: 1px solid rgba(139,92,246,0.35);
+      font-size: 12px; color: var(--purple-bright);
+    }
+    .back-hub { color: var(--text-dim); font-size: 12px; margin-top: 16px; display: inline-block; }
+    .back-hub:hover { color: var(--text-muted); }
+    .demo-note { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+    #host-result { display: none; margin-top: 12px; font-size: 12px; color: #fbbf24; }
+    #host-result.visible { display: block; }
+  </style>
+</head>
+<body class="page">
+  <div class="demo-watermark">DEMO · not live</div>
+  <div class="story-strip">
+    <span class="label">Story</span>
+    <button type="button" class="story-btn active" data-state="gate">1 · Gate banner</button>
+    <button type="button" class="story-btn" data-state="host">2 · Host FYI</button>
+    <button type="button" class="story-btn" data-state="sh">3 · SH decision</button>
+    <button type="button" class="story-btn" data-state="holiday">4 · Holiday pass</button>
+    <button type="button" class="story-btn" data-state="hours">5 · Hours + holidays</button>
+    <span id="source-pill" class="source-pill">Checking mock…</span>
+  </div>
+
+  <div class="shell">
+    <div class="state active" id="state-gate">
+      <div class="gate-top">
+        <div class="gate-brand">
+          <div class="gate-brand-mark"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <div>
+            <h1>Gate check-in</h1>
+            <span>Demo International School · tablet</span>
+          </div>
+        </div>
+        <div class="meta-pills">
+          <span class="pill pill-gate">Main Gate</span>
+          <span class="pill pill-time" id="gate-clock">Wed 16 Sep · 19:42 IST</span>
+          <span class="pill pill-p2">P2 · After-hours</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ah-banner" role="alert" id="gate-banner">
+          <div class="ico" aria-hidden="true">⏰</div>
+          <div>
+            <h3 id="gate-banner-title">After hours / holiday — Admin or Security Head approval required</h3>
+            <p id="gate-banner-body">Campus hours ended at <strong>18:00</strong>. This visit is flagged <strong>after_hours</strong> (<span id="gate-trigger">outside_hours</span>). Host can be notified FYI, but only Admin or Security Head can Approve or Reject.</p>
+            <p class="sub">Gate cannot self-approve · Hold visitor until SH decides · DEMO · not live</p>
+          </div>
+        </div>
+        <div class="visitor-card">
+          <div class="avatar avatar-xl avatar-orange">RD</div>
+          <div>
+            <h2 id="ravi-name">Ravi Deshmukh</h2>
+            <div class="muted" id="ravi-meta">+91 98765 44021 · Vendor · A/C maintenance — Block B</div>
+            <div class="tags">
+              <span class="tag tag-vendor">Vendor</span>
+              <span class="status-pill status-pending" id="ravi-status">Pending · SH</span>
+              <span class="flag-ah">After hours</span>
+            </div>
+          </div>
+        </div>
+        <div class="meta-list" style="max-width:480px;">
+          <div class="meta-row"><span>Host (FYI)</span><strong id="ravi-host">Anita Joshi · Primary Coordinator (H03)</strong></div>
+          <div class="meta-row"><span>Policy trigger</span><strong id="ravi-trigger">outside_hours</strong></div>
+          <div class="meta-row"><span>Evaluated at</span><strong id="ravi-eval">16 Sep 2026, 19:42 IST</strong></div>
+          <div class="meta-row"><span>visitId</span><strong id="ravi-id">V-AH-VENDOR</strong></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--border-subtle);">
+          <button type="button" class="btn btn-ghost" disabled>Self-approve (blocked)</button>
+          <div style="display:flex;gap:10px;">
+            <button type="button" class="btn btn-ghost" onclick="showState('hours')">Hours calendar</button>
+            <button type="button" class="btn btn-cyan btn-lg" onclick="showState('host')">Notify host FYI →</button>
+          </div>
+        </div>
+        <p class="demo-note">Sticky after_hours at registration · AC-C4a / A5 · evening Vendor story</p>
+      </div>
+    </div>
+
+    <div class="state" id="state-host">
+      <div class="phone-wrap">
+        <div class="phone-shell">
+          <div class="demo-watermark" style="position:absolute;">DEMO</div>
+          <div class="status-bar"><span>9:42 PM</span><span>LTE · 78%</span></div>
+          <div class="app-header">
+            <div class="mark"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+            <div>
+              <h1>Host notify</h1>
+              <p>Anita Joshi · Primary Coordinator</p>
+            </div>
+          </div>
+          <div class="notif-card">
+            <div class="fyi-badge">FYI · After hours · you cannot Approve</div>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+              <div class="avatar avatar-lg avatar-orange">RD</div>
+              <div>
+                <div style="font-size:17px;font-weight:600;">Ravi Deshmukh</div>
+                <div style="font-size:12px;color:var(--text-muted);">Vendor · Main Gate</div>
+              </div>
+            </div>
+            <div class="meta-list">
+              <div class="meta-row"><span>Purpose</span><strong>A/C maintenance — Block B</strong></div>
+              <div class="meta-row"><span>Mobile</span><strong>+91 98765 44021</strong></div>
+              <div class="meta-row"><span>Campus</span><strong>Closed (ended 18:00)</strong></div>
+              <div class="meta-row"><span>Decision</span><strong>Admin or Security Head</strong></div>
+            </div>
+            <div class="action-row">
+              <button type="button" class="btn btn-success btn-lg" id="btn-host-approve">Approve</button>
+              <button type="button" class="btn btn-danger btn-lg" disabled>Reject</button>
+            </div>
+            <div class="hint-box">
+              After hours / holiday visits need <strong>Admin or Security Head</strong>. Host Approve does not move this visit to Approved (AC-C4d).
+            </div>
+            <p id="host-result"></p>
+            <button type="button" class="btn btn-ghost btn-block" id="btn-ack-fyi" style="margin-top:12px;">Ack FYI (optional)</button>
+            <button type="button" class="btn btn-primary btn-block" style="margin-top:10px;" onclick="showState('sh')">View as Security Head →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="state" id="state-sh">
+      <div class="phone-wrap">
+        <div class="phone-shell">
+          <div class="demo-watermark" style="position:absolute;">DEMO</div>
+          <div class="status-bar"><span>9:44 PM</span><span>Wi-Fi · 91%</span></div>
+          <div class="app-header">
+            <div class="mark"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <div>
+              <h1>Security Head</h1>
+              <p>Meera Kulkarni · after-hours decision</p>
+            </div>
+          </div>
+          <div class="notif-card">
+            <div class="sh-badge">SH gate · outside_hours · reason required</div>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
+              <div class="avatar avatar-lg avatar-orange">RD</div>
+              <div>
+                <div style="font-size:17px;font-weight:600;">Ravi Deshmukh</div>
+                <div style="font-size:12px;color:var(--text-muted);">Vendor · Host: Anita Joshi (FYI)</div>
+              </div>
+            </div>
+            <div class="meta-list">
+              <div class="meta-row"><span>Gate</span><strong>Main Gate</strong></div>
+              <div class="meta-row"><span>Registered</span><strong id="sh-registered">19:42 IST</strong></div>
+              <div class="meta-row"><span>Hours window</span><strong id="sh-window">Mon–Fri 08:00–18:00</strong></div>
+              <div class="meta-row"><span>Trigger</span><strong>outside_hours</strong></div>
+            </div>
+            <div class="field">
+              <label>Decision reason (required)</label>
+              <div class="reason-chips">
+                <button type="button" class="chip reason active">Urgent facility work</button>
+                <button type="button" class="chip reason">Pre-arranged vendor</button>
+                <button type="button" class="chip reason">Reject — return tomorrow</button>
+              </div>
+              <textarea id="sh-reason" rows="2" placeholder="Reason required for audit…">Emergency A/C for Block B exam hall — approved after hours.</textarea>
+            </div>
+            <div class="action-row">
+              <button type="button" class="btn btn-success btn-lg" id="btn-sh-approve">Approve</button>
+              <button type="button" class="btn btn-danger btn-lg" id="btn-sh-reject">Reject</button>
+            </div>
+            <p id="sh-result" class="demo-note" style="margin-top:12px;color:#fbbf24;"></p>
+            <p class="demo-note" style="margin-top:8px;">A6 · SH login <code>pranay.sh</code> / <code>PranaySH@2026</code> · reason required</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="state" id="state-holiday">
+      <div class="admin-layout">
+        <aside class="admin-side">
+          <div class="logo">
+            <div class="avatar avatar-sm avatar-purple">SI</div>
+            <strong>Smart Visitor</strong>
+          </div>
+          <div class="nav-item active">Who’s inside</div>
+          <div class="nav-item">History</div>
+          <div class="nav-item">Blacklist</div>
+          <div class="nav-item">Gates</div>
+          <div class="nav-item">Access rules</div>
+        </aside>
+        <div class="admin-main">
+          <div class="admin-top">
+            <div>
+              <h2>Holiday Parent · pass P-7K88</h2>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">Deepak Nair → Meera H01 · SH already approved · AC-C4b flag</p>
+            </div>
+            <span class="pill pill-p2">Meera Kulkarni · H01</span>
+          </div>
+          <div class="ah-banner" role="alert">
+            <div class="ico" aria-hidden="true">📅</div>
+            <div>
+              <h3>Holiday — Admin or Security Head approval required</h3>
+              <p>Campus closed for <strong>Diwali</strong> (2026-10-20). Sticky <strong>after_hours</strong> · trigger <strong>holiday</strong>. Host Approve does not clear.</p>
+              <p class="sub">Pass <strong id="deepak-pass">P-7K88</strong> · visit <span id="deepak-id">V-AH-HOLIDAY</span> · DEMO · not live</p>
+            </div>
+          </div>
+          <div class="filter-chips">
+            <button type="button" class="filter-chip">All</button>
+            <button type="button" class="filter-chip active">After-hours</button>
+            <button type="button" class="filter-chip">Holiday</button>
+            <button type="button" class="filter-chip">Pending SH</button>
+          </div>
+          <table class="live">
+            <thead>
+              <tr>
+                <th>Visitor</th>
+                <th>Type</th>
+                <th>Host</th>
+                <th>Flags</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div style="display:flex;gap:8px;align-items:center;">
+                    <div class="avatar avatar-sm avatar-blue">DN</div>
+                    <div>
+                      <strong>Deepak Nair</strong>
+                      <div style="font-size:11px;color:var(--text-dim);">P-7K88 · Main Gate</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="tag tag-parent">Parent</span></td>
+                <td>Meera Kulkarni</td>
+                <td><span class="flag-ah">holiday</span></td>
+                <td><span class="status-pill status-approved" id="deepak-status">Approved</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="display:flex;gap:8px;align-items:center;">
+                    <div class="avatar avatar-sm avatar-orange">RD</div>
+                    <div>
+                      <strong>Ravi Deshmukh</strong>
+                      <div style="font-size:11px;color:var(--text-dim);">Evening vendor · Main Gate</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="tag tag-vendor">Vendor</span></td>
+                <td>Anita Joshi</td>
+                <td><span class="flag-ah">outside_hours</span></td>
+                <td><span class="status-pill status-pending">Pending · SH</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="demo-note">Live board + history filter on afterHours / policyTrigger · AC-C4b · Pass P-7K88 (never P-4F21)</p>
+          <button type="button" class="btn btn-ghost" style="margin-top:12px;" onclick="showState('hours')">Open hours + holiday calendar →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state" id="state-hours">
+      <div class="admin-layout">
+        <aside class="admin-side">
+          <div class="logo">
+            <div class="avatar avatar-sm avatar-purple">SI</div>
+            <strong>Smart Visitor</strong>
+          </div>
+          <div class="nav-item">Who’s inside</div>
+          <div class="nav-item">History</div>
+          <div class="nav-item active">Access rules</div>
+          <div class="nav-item">Gates</div>
+        </aside>
+        <div class="admin-main">
+          <div class="admin-top">
+            <div>
+              <h2>Campus hours + holidays</h2>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">Read-only Gate / Host glance · Asia/Kolkata · editor is Admin desk (not this PR)</p>
+            </div>
+          </div>
+          <div class="hours-grid">
+            <div class="panel" style="padding:16px;box-shadow:none;">
+              <h3 style="font-size:14px;margin-bottom:12px;">Weekday hours</h3>
+              <table class="hours-table" id="hours-table">
+                <thead><tr><th>Day</th><th>Open</th><th>Close</th></tr></thead>
+                <tbody></tbody>
+              </table>
+              <p class="demo-note">Close exclusive · exact 18:00 = after_hours (C4-E1)</p>
+            </div>
+            <div class="panel" style="padding:16px;box-shadow:none;">
+              <h3 style="font-size:14px;margin-bottom:12px;">Holiday calendar</h3>
+              <div class="holiday-list" id="holiday-list"></div>
+              <p class="demo-note">CRUD lives on Admin / SH · CSV import = Later</p>
+            </div>
+          </div>
+          <div class="policy-lock">
+            After-hours / holiday Approve policy: <strong>Admin or Security Head</strong> (not dual host+SH) · Priority-P2 lock A4
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <a class="back-hub" href="../host-web/index.html">← Host approve</a>
+    <span class="back-hub" style="margin-left:16px;">Gate kiosk Compose banner hooks the same copy</span>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="fixtures.js"></script>
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
