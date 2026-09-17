@@ -1,11 +1,13 @@
-"""In-memory multi-tenant store (single demo school)."""
+"""In-memory multi-tenant store (demo school + additional tenants)."""
 from __future__ import annotations
 
 from copy import deepcopy
 from typing import Any, Optional
 
+from app.config import SCHOOL_ID
+
 _state: dict[str, Any] = {
-    "school": None,
+    "schools": {},
     "gates": {},
     "staff": {},
     "users": {},  # id -> user
@@ -40,6 +42,7 @@ _state: dict[str, Any] = {
         "template_seq": 10,
         "blast_seq": 10,
         "recipient_seq": 10,
+        "school_seq": 1,
     },
 }
 
@@ -47,7 +50,7 @@ _state: dict[str, Any] = {
 def reset() -> None:
     global _state
     _state = {
-        "school": None,
+        "schools": {},
         "gates": {},
         "staff": {},
         "users": {},
@@ -82,16 +85,30 @@ def reset() -> None:
             "template_seq": 10,
             "blast_seq": 10,
             "recipient_seq": 10,
+            "school_seq": 1,
         },
     }
 
 
-def school() -> dict:
-    return _state["school"]
+def school() -> Optional[dict]:
+    """Demo school (SCH-DEMO-01) for existing callers. Prefer get_school(id)."""
+    return get_school(SCHOOL_ID) or next(iter(_state["schools"].values()), None)
+
+
+def get_school(school_id: str) -> Optional[dict]:
+    return _state["schools"].get(school_id)
+
+
+def list_schools() -> list[dict]:
+    return list(_state["schools"].values())
+
+
+def put_school(s: dict) -> None:
+    _state["schools"][s["id"]] = s
 
 
 def set_school(s: dict) -> None:
-    _state["school"] = s
+    put_school(s)
 
 
 def next_seq(name: str) -> int:
@@ -124,20 +141,30 @@ def list_users(school_id: str) -> list[dict]:
 
 
 def put_gate(g: dict) -> None:
-    _state["gates"][g["id"]] = g
+    _state["gates"][(g["schoolId"], g["id"])] = g
 
 
 def list_gates(school_id: str) -> list[dict]:
     return [g for g in _state["gates"].values() if g["schoolId"] == school_id]
 
 
-def get_gate(gate_id: str) -> Optional[dict]:
-    return _state["gates"].get(gate_id)
+def get_gate(gate_id: str, school_id: Optional[str] = None) -> Optional[dict]:
+    if school_id:
+        return _state["gates"].get((school_id, gate_id))
+    matches = [g for (_sid, gid), g in _state["gates"].items() if gid == gate_id]
+    if not matches:
+        return None
+    if len(matches) == 1:
+        return matches[0]
+    for g in matches:
+        if g.get("schoolId") == SCHOOL_ID:
+            return g
+    return matches[0]
 
 
-def gate_by_name(name: str) -> Optional[dict]:
+def gate_by_name(name: str, school_id: Optional[str] = None) -> Optional[dict]:
     for g in _state["gates"].values():
-        if g["name"] == name:
+        if g["name"] == name and (school_id is None or g.get("schoolId") == school_id):
             return g
     return None
 
@@ -275,6 +302,16 @@ def list_students(school_id: str) -> list[dict]:
     return [s for s in _state["students"].values() if s["schoolId"] == school_id]
 
 
+def get_student_by_roster_id(school_id: str, roster_student_id: str) -> Optional[dict]:
+    key = (roster_student_id or "").strip()
+    if not key:
+        return None
+    for s in _state["students"].values():
+        if s.get("schoolId") == school_id and (s.get("studentId") or "").strip() == key:
+            return s
+    return None
+
+
 def put_authorized_person(p: dict) -> None:
     _state["authorized_pickup"][p["id"]] = p
 
@@ -288,6 +325,20 @@ def list_authorized_people(school_id: str, student_id: Optional[str] = None) -> 
     if student_id:
         out = [p for p in out if p["studentId"] == student_id]
     return out
+
+
+def get_authorized_person_by_mobile(
+    school_id: str, student_id: str, mobile: str
+) -> Optional[dict]:
+    from app.util import normalize_mobile
+
+    want = normalize_mobile(mobile)
+    if not want:
+        return None
+    for p in list_authorized_people(school_id, student_id):
+        if normalize_mobile(p.get("mobile")) == want:
+            return p
+    return None
 
 
 def put_custody_flag(flag: dict) -> None:

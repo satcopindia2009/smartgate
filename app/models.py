@@ -945,3 +945,90 @@ class BlastConfigPatch(BaseModel):
     blastStaffLaneEnabled: Optional[bool] = None
     blastChannelsVisitor: Optional[list[str]] = None
     blastChannelsStaff: Optional[list[str]] = None
+
+
+# --- School tenant create + roster import ---
+
+
+class SchoolCreate(BaseModel):
+    name: str = Field(min_length=1)
+    timezone: str = "Asia/Kolkata"
+    slug: Optional[str] = None
+    adminPassword: Optional[str] = None
+    securityHeadPassword: Optional[str] = None
+
+    @field_validator("name", "timezone")
+    @classmethod
+    def strip_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("must not be empty")
+        return v
+
+    @field_validator("slug", "adminPassword", "securityHeadPassword")
+    @classmethod
+    def strip_optional(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+
+class SchoolCredentialOut(BaseModel):
+    username: str
+    password: str
+    userId: str
+    role: str
+
+
+class SchoolCreateResponse(BaseModel):
+    schoolId: str
+    id: str
+    name: str
+    timezone: str
+    slug: Optional[str] = None
+    overdueHoursDefault: int = 4
+    emergencyBlastEnabled: bool = False
+    blastStaffLaneEnabled: bool = False
+    gates: list[GateOut] = Field(default_factory=list)
+    hours: list[CampusHoursRow] = Field(default_factory=list)
+    holidayCount: int = 0
+    credentials: Optional[dict[str, SchoolCredentialOut]] = None
+    meta: Optional[dict] = None
+
+
+class SchoolMeOut(BaseModel):
+    schoolId: str
+    id: str
+    name: str
+    timezone: str
+    slug: Optional[str] = None
+    overdueHoursDefault: int = 4
+    emergencyBlastEnabled: bool = False
+    blastStaffLaneEnabled: bool = False
+    gates: list[GateOut] = Field(default_factory=list)
+    hours: list[CampusHoursRow] = Field(default_factory=list)
+    holidayCount: int = 0
+    meta: Optional[dict] = None
+
+
+class RosterImportError(BaseModel):
+    row: int
+    message: str
+    field: Optional[str] = None
+    file: Optional[str] = None
+
+
+class RosterImportCounts(BaseModel):
+    created: int = 0
+    updated: int = 0
+    errors: list[RosterImportError] = Field(default_factory=list)
+
+
+class RosterImportResult(BaseModel):
+    created: int = 0
+    updated: int = 0
+    errors: list[RosterImportError] = Field(default_factory=list)
+    students: Optional[RosterImportCounts] = None
+    pickup: Optional[RosterImportCounts] = None
+    meta: Optional[dict] = None

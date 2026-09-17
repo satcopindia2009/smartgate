@@ -42,11 +42,13 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="Satcop Smart Visitor API",
-    version="0.6.0",
+    version="0.7.0",
     description=(
         "MVP FastAPI stub + Priority P2 Pickup (P1–P6+H1) + after-hours (A1–A6) "
-        "+ escort/zones Access Rules (B4) + Emergency Blast (E3 / B1–B6). "
+        "+ escort/zones Access Rules (B4) + Emergency Blast (E3 / B1–B6) "
+        "+ school tenant create + student/authorized-pickup CSV/Excel import. "
         "Contract §§0–5 visit lifecycle unchanged. SMS mock / WA skipped_hold. "
+        "Demo school SCH-DEMO-01 is reserved and is not overwritten. "
         "Demo watermark; no production / live-school deploy."
     ),
     lifespan=lifespan,

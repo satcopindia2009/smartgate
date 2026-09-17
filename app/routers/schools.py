@@ -1,25 +1,55 @@
-"""School-scoped config — blast toggle (P2 E3)."""
+"""School tenant create / me + blast toggle (P2 E3) + roster import."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from typing import Optional
 
-from app.auth import require_roles
+from fastapi import APIRouter, Depends, File, UploadFile
+
+from app.auth import CurrentUser, require_roles, require_school_create
 from app.blast import school_blast_config
 from app.config import (
     BLAST_DEFAULT_STAFF_CHANNELS,
     BLAST_DEFAULT_VISITOR_CHANNELS,
+    RESERVED_SCHOOL_ID,
     WATERMARK,
 )
 from app.errors import AppError
-from app.models import BlastChannel, BlastConfigPatch, Role
+from app.models import BlastChannel, BlastConfigPatch, Role, SchoolCreate
+from app.roster_import import (
+    CSV_CONTRACT,
+    import_pickup,
+    import_students,
+    merge_import_results,
+    read_upload,
+)
+from app.school_bootstrap import create_school, public_school
 from app.util import now_iso
 from app import store
 
 router = APIRouter(prefix="/schools", tags=["schools"])
 
 _BLAST_ROLES = (Role.admin, Role.security_head)
+_WRITE_ROLES = (Role.admin, Role.security_head)
 _ALLOWED_VISITOR = {BlastChannel.sms.value, BlastChannel.whatsapp.value}
 _ALLOWED_STAFF = {BlastChannel.in_app.value, BlastChannel.push.value}
+
+_CREATE_DESC = (
+    "Create a **new** school tenant (not SCH-DEMO-01). "
+    "Admin / Security Head JWT **or** documented header `X-Bootstrap-Token: satcop-school-bootstrap`. "
+    "Auto-seeds 4 gates (G-MAIN / G-PED / G-STAFF / G-BUS), Mon–Fri 08:00–18:00 campus hours "
+    "(weekend closed, empty holidays), EscortZoneRule defaults (Vendor escort ON reception+admin), "
+    "and Admin + Security Head users. Generated credentials are returned **once**. "
+    f"`{RESERVED_SCHOOL_ID}` is reserved and cannot be created or overwritten."
+)
+_IMPORT_DESC = (
+    "Admin / Security Head multipart roster import for the JWT school. "
+    "Upload `students` and/or `pickup` as .csv or .xlsx. "
+    f"{CSV_CONTRACT} "
+    "Upsert students by (schoolId + studentId) and pickup people by "
+    "(schoolId + studentId + mobile). Returns `{ created, updated, errors[] }` with row numbers. "
+    "JWT schoolId is source of truth; a mismatched schoolId column is a per-row error. "
+    f"Does not wipe the {RESERVED_SCHOOL_ID} demo seed."
+)
 
 
 def _config_public(school: dict) -> dict:
@@ -48,11 +78,100 @@ def _validate_channels(values: list[str] | None, allowed: set[str], field: str) 
     return cleaned
 
 
+def _require_user_school(user: dict) -> dict:
+    school = store.get_school(user["schoolId"])
+    if not school:
+        raise AppError("NOT_FOUND", "School not found", 404)
+    return school
+
+
+@router.post(
+    "",
+    summary="Create school tenant",
+    description=_CREATE_DESC,
+)
+def post_school(
+    body: SchoolCreate,
+    actor: dict = Depends(require_school_create),
+):
+    created = create_school(
+        name=body.name,
+        timezone=body.timezone,
+        slug=body.slug,
+        admin_password=body.adminPassword,
+        security_head_password=body.securityHeadPassword,
+        created_by_user_id=actor.get("id"),
+    )
+    created["meta"] = {
+        "watermark": WATERMARK,
+        "reservedSchoolId": RESERVED_SCHOOL_ID,
+        "credentialsOnce": True,
+        "note": (
+            f"{RESERVED_SCHOOL_ID} demo seed is reserved and was not modified. "
+            "Store generated credentials now — they are not returned again."
+        ),
+    }
+    return created
+
+
+@router.get(
+    "/me",
+    summary="Current school from JWT",
+    description="Returns the school bound to the access token. Any authenticated role.",
+)
+def get_school_me(user: CurrentUser):
+    school = _require_user_school(user)
+    out = public_school(school)
+    out["meta"] = {"watermark": WATERMARK, "reservedSchoolId": RESERVED_SCHOOL_ID}
+    return out
+
+
+@router.post(
+    "/me/roster/import",
+    summary="Import students + authorized pickup CSV/Excel",
+    description=_IMPORT_DESC,
+)
+async def import_roster(
+    students: Optional[UploadFile] = File(default=None),
+    pickup: Optional[UploadFile] = File(default=None),
+    user: dict = Depends(require_roles(*_WRITE_ROLES)),
+):
+    _require_user_school(user)
+    if students is None and pickup is None:
+        raise AppError(
+            "VALIDATION",
+            "multipart fields `students` and/or `pickup` required (.csv or .xlsx)",
+            400,
+            {"contract": CSV_CONTRACT},
+        )
+    student_result = None
+    pickup_result = None
+    if students is not None:
+        data, filename, ctype = await read_upload(students)
+        student_result = import_students(
+            data,
+            school_id=user["schoolId"],
+            user_id=user["id"],
+            filename=filename,
+            content_type=ctype,
+            file_label="students",
+        )
+    if pickup is not None:
+        data, filename, ctype = await read_upload(pickup)
+        pickup_result = import_pickup(
+            data,
+            school_id=user["schoolId"],
+            user_id=user["id"],
+            filename=filename,
+            content_type=ctype,
+            file_label="pickup",
+        )
+    return merge_import_results(student_result, pickup_result)
+
+
 @router.get("/me/blast-config")
 def get_blast_config(user: dict = Depends(require_roles(*_BLAST_ROLES))):
-    school = store.school()
-    if not school or school.get("id") != user["schoolId"]:
-        raise AppError("NOT_FOUND", "School not found", 404)
+    school = _require_user_school(user)
     return _config_public(school)
 
 
@@ -69,9 +188,7 @@ def patch_blast_config(
     body: BlastConfigPatch,
     user: dict = Depends(require_roles(*_BLAST_ROLES)),
 ):
-    school = store.school()
-    if not school or school.get("id") != user["schoolId"]:
-        raise AppError("NOT_FOUND", "School not found", 404)
+    school = _require_user_school(user)
     visitor = _validate_channels(
         body.blastChannelsVisitor, _ALLOWED_VISITOR, "blastChannelsVisitor"
     )
@@ -92,5 +209,5 @@ def patch_blast_config(
         school["blastChannelsStaff"] = list(BLAST_DEFAULT_STAFF_CHANNELS)
     school["blastConfigUpdatedByUserId"] = user["id"]
     school["blastConfigUpdatedAt"] = now_iso()
-    store.set_school(school)
+    store.put_school(school)
     return _config_public(school)

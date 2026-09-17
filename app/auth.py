@@ -5,10 +5,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
 import jwt
-from fastapi import Depends
+from fastapi import Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.config import JWT_ALG, JWT_SECRET, JWT_TTL_SECONDS
+from app.config import BOOTSTRAP_TOKEN, JWT_ALG, JWT_SECRET, JWT_TTL_SECONDS
 from app.errors import AppError
 from app.models import Role
 from app import store
@@ -56,6 +56,53 @@ def get_current_user(
 
 
 CurrentUser = Annotated[dict, Depends(get_current_user)]
+
+BOOTSTRAP_ACTOR = {
+    "id": "U-BOOTSTRAP",
+    "username": "bootstrap",
+    "schoolId": None,
+    "role": "bootstrap",
+    "staffId": None,
+    "gateIds": None,
+    "displayName": "Platform bootstrap",
+    "active": True,
+    "bootstrap": True,
+}
+
+
+def get_optional_user(
+    creds: Annotated[Optional[HTTPAuthorizationCredentials], Depends(_bearer)] = None,
+) -> Optional[dict]:
+    if creds is None or not creds.credentials:
+        return None
+    return get_current_user(creds)
+
+
+def require_school_create(
+    creds: Annotated[Optional[HTTPAuthorizationCredentials], Depends(_bearer)] = None,
+    x_bootstrap_token: Annotated[Optional[str], Header(alias="X-Bootstrap-Token")] = None,
+) -> dict:
+    """Admin / Security Head JWT, or documented X-Bootstrap-Token (first-bootstrap)."""
+    token = (x_bootstrap_token or "").strip()
+    if token and token == BOOTSTRAP_TOKEN:
+        return dict(BOOTSTRAP_ACTOR)
+    if token:
+        raise AppError("FORBIDDEN", "Invalid bootstrap token", 403)
+    user = get_optional_user(creds)
+    if user is None:
+        raise AppError(
+            "UNAUTHORIZED",
+            "Bearer token or X-Bootstrap-Token required to create a school",
+            401,
+        )
+    if user["role"] not in {Role.admin.value, Role.security_head.value}:
+        raise AppError(
+            "FORBIDDEN",
+            f"Role '{user['role']}' not allowed for this action",
+            403,
+            {"allowed": ["admin", "security_head"]},
+        )
+    return user
 
 
 def require_roles(*roles: Role | str):

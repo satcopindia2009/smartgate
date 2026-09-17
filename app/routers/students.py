@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 
 from app.auth import require_roles
 from app.config import WATERMARK
@@ -20,6 +20,13 @@ from app.pickup_match import (
     default_custody_flag,
     denormalize_blocked_by_custody,
     get_or_default_flag,
+)
+from app.roster_import import (
+    CSV_CONTRACT,
+    import_pickup,
+    import_students,
+    merge_import_results,
+    read_upload,
 )
 from app.util import last4, normalize_mobile, now_iso
 from app import store
@@ -133,6 +140,57 @@ def create_student(
     store.put_student(row)
     store.put_custody_flag(default_custody_flag(sid, user["schoolId"]))
     return _meta(row)
+
+
+@router.post(
+    "/students/import",
+    summary="Import students CSV/Excel",
+    description=(
+        "Admin / Security Head. Multipart field `file` (.csv or .xlsx). "
+        f"{CSV_CONTRACT} "
+        "Upsert by (JWT schoolId + studentId). Returns `{ created, updated, errors[] }`."
+    ),
+)
+async def import_students_csv(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(*_WRITE_ROLES)),
+):
+    data, filename, ctype = await read_upload(file)
+    result = import_students(
+        data,
+        school_id=user["schoolId"],
+        user_id=user["id"],
+        filename=filename,
+        content_type=ctype,
+        file_label="students",
+    )
+    return merge_import_results(result, None)
+
+
+@router.post(
+    "/students/authorized-pickup/import",
+    summary="Import authorized pickup CSV/Excel",
+    description=(
+        "Admin / Security Head. Multipart field `file` (.csv or .xlsx). "
+        f"{CSV_CONTRACT} "
+        "Upsert by (JWT schoolId + studentId + mobile). Student must already exist. "
+        "Returns `{ created, updated, errors[] }`."
+    ),
+)
+async def import_authorized_pickup_csv(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(*_WRITE_ROLES)),
+):
+    data, filename, ctype = await read_upload(file)
+    result = import_pickup(
+        data,
+        school_id=user["schoolId"],
+        user_id=user["id"],
+        filename=filename,
+        content_type=ctype,
+        file_label="pickup",
+    )
+    return merge_import_results(None, result)
 
 
 @router.get("/students/{student_id}")
