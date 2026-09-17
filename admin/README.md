@@ -28,7 +28,6 @@ Walkthrough story: **Priya Sharma** → pass **`P-4F21`** → **Main Gate** → 
 
 ### Out of this slice
 
-- Emergency blast
 - Production deploy, live school, kiosk / gate tablet pickup
 
 ## Pickup & custody (Priority P2)
@@ -42,7 +41,7 @@ Admin/Security Head surfaces only — no visit-flow or kiosk changes.
 
 ## After-hours / holidays (Priority P2 · Hub A1–A6 / AC-C4)
 
-Same Admin light/dark tokens — no alternate layout pack. Escort/zones and blast stay out.
+Same Admin light/dark tokens — no alternate layout pack.
 
 - **Hours + holidays** (`/access-rules`): 7-day campus hours + holiday calendar CRUD. Admin / Security Head write; Gate cannot. Policy copy locked **Security Head only** (not dual). Wire: `GET|PUT /access-rules/hours`, `GET|POST /access-rules/holidays`, `DELETE /access-rules/holidays/{id}`.
 - **Live / History**: `afterHours` + `policyTrigger` flag and filters (After-hours / Holiday / Pending SH). SH Approve/Reject with reason on pending after-hours; Host Approve is a no-op on the API. Sticky eval at registration.
@@ -55,6 +54,20 @@ Same Access Rules page. Keys fixed; labels school-renamable. Admin / Security He
 - `GET /zones` · `PATCH /zones/{key}` `{ label }`
 - `GET|PUT /access-rules/escort` (Vendor default escort ON · reception + admin)
 - Live / History escort name + allowed-zones columns (Priya: escort no · reception)
+
+## Emergency blast (Priority P2 · Hub B1–B6)
+
+Same Admin light/dark tokens. CTA on Live only — never one-click send.
+
+- **Live** Emergency blast button → confirm modal with template preview → results/audit.
+- **B1** Audience = `GET /v1/visits/inside` (after-hours inside in; escort staff out).
+- **B2** Admin | Security Head; `POST /emergency/blasts/{id}/confirm` body `{ confirm: true }`.
+- **B3** SMS mock; WhatsApp → `skipped_hold`.
+- **B4** Template-only + optional short instruction (≤160).
+- **B5** Full audit (blast id, actor, template, instruction snapshot, per-recipient).
+- **B6** No auto-checkout / no visit status change.
+- Wire: `GET /schools/me/blast-config`, `GET /emergency/blast-templates`, `GET|POST /emergency/blasts/preview`, `POST /emergency/blasts`, `GET /emergency/blasts/{id}`, `POST …/confirm`, `POST …/retry-failed`.
+- Seed: templates `tpl_evac_assembly` + `tpl_shelter_in_place`; last blast **`B-20260916-03`** (5 SMS sent / 1 failed / WA hold). **Priya Sharma `P-4F21` stays inside.**
 
 ## Run
 
@@ -90,6 +103,7 @@ Default `VITE_API_BASE_URL` is `https://pensions-usb-loops-direction.trycloudfla
 | Custody `court_order` | no | yes           |
 | Hours / holiday write | yes | yes           |
 | After-hours Approve | no | yes           |
+| Emergency blast confirm | yes | yes           |
 
 Gate / Host accounts are rejected at login on this surface.
 

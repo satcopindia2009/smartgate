@@ -20,13 +20,15 @@ Default API: `VITE_API_BASE_URL=https://pensions-usb-loops-direction.trycloudfla
 
 Walkthrough: **Priya Sharma** · pass **P-4F21** · **Main Gate** · host **Anita Joshi**.
 
-**Out of Day-1 / this Admin P2 slice:** emergency blast, kiosk/gate pickup, production / live school.
+**Out of Day-1 / this Admin P2 slice:** kiosk/gate pickup, production / live school.
 
 Admin Priority P2 pickup (separate from visit Live/History): `/pickup` authorized-list CRUD + custody flags, `/pickup-history` proof trail. Same `/v1` tunnel. Seed **Aarav Mehta 5-B / Neha Mehta**.
 
 Admin Priority P2 after-hours (Hub A1–A6 / AC-C4): `/access-rules` campus hours + holiday calendar; Live/History `afterHours` flag + filter. Seed weekday close **18:00 Asia/Kolkata**, **Diwali 2026-10-20 `HOL-DIWALI`**, Evening Vendor **Ravi Deshmukh `V-AH-VENDOR`**, Holiday Parent **Deepak Nair / `P-7K88`**. **Priya Sharma `P-4F21` unchanged.**
 
 Admin Priority P2 escort/zones (B4): zone label rename + escort rules by visitor type on `/access-rules`; Live/History escort + allowed-zones columns. Keys fixed. Gate cannot write.
+
+Admin Priority P2 emergency blast (Hub B1–B6 / E3): Live **Emergency blast** CTA → confirm modal with template preview → results/audit. Never one-click. Audience = currently inside; Admin|SH `{ confirm: true }`; SMS mock / WA `skipped_hold`; template-only + optional short instruction; full audit; **no auto-checkout**. Seed **`B-20260916-03`**. **Priya Sharma `P-4F21` stays inside.**
 
 Mobile kiosk lives under `kiosk/` when present — Admin Day-1 does not own, overwrite, or rewrite that tree.
 
