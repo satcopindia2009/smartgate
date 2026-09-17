@@ -515,6 +515,60 @@ def seed() -> None:
         }
     )
 
+    # Approved, not yet inside — pass scan check-in walkthrough
+    ready_token = gen_qr_token()
+    store.put_visit(
+        {
+            "id": "V-20260916-041",
+            "schoolId": SCHOOL_ID,
+            "visitorName": "Kiran Desai",
+            "mobile": "9811223344",
+            "visitorType": "Guest",
+            "purpose": "Approved — ready for Main Gate scan",
+            "hostId": "H03",
+            "livePhotoKey": "media/live_photo/priya",
+            "idType": "Voter",
+            "idNumber": "MH/99/0000001",
+            "idImageKey": None,
+            "vehicleNumber": None,
+            "accompanyingCount": 0,
+            "notes": "",
+            "signatureKey": None,
+            "gateId": "G-MAIN",
+            "registeredByUserId": "U-GATE",
+            "status": "approved",
+            "rejectReason": None,
+            "decidedAt": "2026-09-16T14:40:00+05:30",
+            "decidedByUserId": "U-HOST",
+            "passId": "P-C101",
+            "qrToken": ready_token,
+            "timeIn": None,
+            "timeOut": None,
+            "gateInId": None,
+            "gateOutId": None,
+            "checkoutType": None,
+            "forceCheckoutReason": None,
+            "forceCheckoutByUserId": None,
+            "blacklistHit": False,
+            "blacklistId": None,
+            "blacklistOverrideByUserId": None,
+            "meetingDoneAt": None,
+            "createdAt": "2026-09-16T14:35:00+05:30",
+            "updatedAt": "2026-09-16T14:40:00+05:30",
+        }
+    )
+    store.put_pass(
+        {
+            "passId": "P-C101",
+            "token": ready_token,
+            "visitId": "V-20260916-041",
+            "schoolId": SCHOOL_ID,
+            "issuedAt": "2026-09-16T14:40:00+05:30",
+            "expiresAt": None,
+            "revoked": False,
+        }
+    )
+
     # Pending visit for host approve walkthrough (extra)
     store.put_visit(
         {
@@ -572,3 +626,370 @@ def seed() -> None:
             "createdAt": ts,
         }
     )
+
+    _seed_after_hours(ts)
+    _seed_pickup(ts)
+
+
+def _seed_after_hours(ts: str) -> None:
+    """A1–A2 + P6-style after-hours demos — separate from Priya MVP walkthrough."""
+    from app.config import CAMPUS_TZ
+
+    week = [
+        ("mon", "08:00", "18:00", False, False),
+        ("tue", "08:00", "18:00", False, False),
+        ("wed", "08:00", "18:00", False, False),
+        ("thu", "08:00", "18:00", False, False),
+        ("fri", "08:00", "18:00", False, False),
+        ("sat", "08:00", "13:00", False, False),
+        ("sun", None, None, True, False),
+    ]
+    for weekday, open_t, close_t, closed, overnight in week:
+        store.put_hours_row(
+            {
+                "schoolId": SCHOOL_ID,
+                "timezone": CAMPUS_TZ,
+                "weekday": weekday,
+                "openTime": open_t,
+                "closeTime": close_t,
+                "closed": closed,
+                "overnight": overnight,
+                "updatedByUserId": "U-ADMIN",
+                "updatedAt": "2026-09-01T09:00:00+05:30",
+            }
+        )
+
+    store.put_holiday(
+        {
+            "id": "HOL-DIWALI",
+            "schoolId": SCHOOL_ID,
+            "date": "2026-10-20",
+            "label": "Diwali",
+            "createdByUserId": "U-ADMIN",
+            "updatedByUserId": "U-ADMIN",
+            "createdAt": "2026-09-01T09:00:00+05:30",
+            "updatedAt": "2026-09-01T09:00:00+05:30",
+        }
+    )
+
+    # Evening Vendor — pending SH (outside hours). Not Priya.
+    store.put_visit(
+        {
+            "id": "V-AH-VENDOR",
+            "schoolId": SCHOOL_ID,
+            "visitorName": "Ravi Deshmukh",
+            "mobile": "9822098801",
+            "visitorType": "Vendor",
+            "purpose": "After-hours AC repair — Main Gate",
+            "hostId": "H03",
+            "livePhotoKey": "media/live_photo/arjun",
+            "idType": "DL",
+            "idNumber": "MH12AH8801",
+            "idImageKey": None,
+            "vehicleNumber": "MH12AH8801",
+            "accompanyingCount": 0,
+            "notes": "After-hours Vendor demo — SH approve required",
+            "signatureKey": None,
+            "gateId": "G-MAIN",
+            "registeredByUserId": "U-GATE",
+            "status": "pending",
+            "rejectReason": None,
+            "decidedAt": None,
+            "decidedByUserId": None,
+            "passId": None,
+            "qrToken": None,
+            "timeIn": None,
+            "timeOut": None,
+            "gateInId": None,
+            "gateOutId": None,
+            "checkoutType": None,
+            "forceCheckoutReason": None,
+            "forceCheckoutByUserId": None,
+            "blacklistHit": False,
+            "blacklistId": None,
+            "blacklistOverrideByUserId": None,
+            "meetingDoneAt": None,
+            "afterHours": True,
+            "policyTrigger": "outside_hours",
+            "afterHoursEvaluatedAt": "2026-09-16T19:30:00+05:30",
+            "afterHoursApproveReason": None,
+            "createdAt": "2026-09-16T19:30:00+05:30",
+            "updatedAt": "2026-09-16T19:30:00+05:30",
+        }
+    )
+    store.add_outbox(
+        {
+            "schoolId": SCHOOL_ID,
+            "event": "visit.pending",
+            "visitId": "V-AH-VENDOR",
+            "payload": {
+                "hostPhone": "9000000003",
+                "visitorName": "Ravi Deshmukh",
+                "purpose": "After-hours AC repair — Main Gate",
+                "afterHours": True,
+                "policyTrigger": "outside_hours",
+                "hostFyi": True,
+            },
+            "channelHints": ["in_app", "security_head"],
+            "status": "pending",
+            "createdAt": "2026-09-16T19:30:00+05:30",
+        }
+    )
+
+    # Holiday Parent Deepak Nair → Meera Kulkarni (H01) → P-7K88. Not Priya.
+    deepak_token = gen_qr_token()
+    store.put_visit(
+        {
+            "id": "V-AH-HOLIDAY",
+            "schoolId": SCHOOL_ID,
+            "visitorName": "Deepak Nair",
+            "mobile": "9822098802",
+            "visitorType": "Parent",
+            "purpose": "Holiday walk-in — collect notebooks",
+            "hostId": "H01",
+            "livePhotoKey": "media/live_photo/priya",
+            "idType": "Aadhaar",
+            "idNumber": "888877776666",
+            "idImageKey": None,
+            "vehicleNumber": None,
+            "accompanyingCount": 1,
+            "notes": "Holiday Parent demo — SH approved; pass P-7K88",
+            "signatureKey": None,
+            "gateId": "G-MAIN",
+            "registeredByUserId": "U-GATE",
+            "status": "approved",
+            "rejectReason": None,
+            "decidedAt": "2026-10-20T10:40:00+05:30",
+            "decidedByUserId": "U-SH",
+            "passId": "P-7K88",
+            "qrToken": deepak_token,
+            "timeIn": None,
+            "timeOut": None,
+            "gateInId": None,
+            "gateOutId": None,
+            "checkoutType": None,
+            "forceCheckoutReason": None,
+            "forceCheckoutByUserId": None,
+            "blacklistHit": False,
+            "blacklistId": None,
+            "blacklistOverrideByUserId": None,
+            "meetingDoneAt": None,
+            "afterHours": True,
+            "policyTrigger": "holiday",
+            "afterHoursEvaluatedAt": "2026-10-20T10:30:00+05:30",
+            "afterHoursApproveReason": "Holiday walk-in verified by Security Head",
+            "createdAt": "2026-10-20T10:30:00+05:30",
+            "updatedAt": "2026-10-20T10:40:00+05:30",
+        }
+    )
+    store.put_pass(
+        {
+            "passId": "P-7K88",
+            "token": deepak_token,
+            "visitId": "V-AH-HOLIDAY",
+            "schoolId": SCHOOL_ID,
+            "issuedAt": "2026-10-20T10:40:00+05:30",
+            "expiresAt": None,
+            "revoked": False,
+        }
+    )
+    store.add_outbox(
+        {
+            "schoolId": SCHOOL_ID,
+            "event": "visit.approved",
+            "visitId": "V-AH-HOLIDAY",
+            "payload": {
+                "hostPhone": "9000000001",
+                "visitorName": "Deepak Nair",
+                "purpose": "Holiday walk-in — collect notebooks",
+                "afterHours": True,
+                "policyTrigger": "holiday",
+                "hostFyi": True,
+                "passId": "P-7K88",
+            },
+            "channelHints": ["in_app", "security_head"],
+            "status": "pending",
+            "createdAt": "2026-10-20T10:40:00+05:30",
+        }
+    )
+
+
+def _seed_pickup(ts: str) -> None:
+    """P6 demo fixtures — separate from Priya visitor walkthrough. No real Aadhaar."""
+    from app.config import PICKUP_CONSENT_VERSION
+    from app.pickup_match import denormalize_blocked_by_custody
+
+    for key, kind in (
+        ("media/collector_live_photo/neha-mehta", "collector_live_photo"),
+        ("media/collector_live_photo/rohan-mehta", "collector_live_photo"),
+        ("media/pickup_list_photo/neha-mehta", "pickup_list_photo"),
+    ):
+        store.put_media(
+            {
+                "key": key,
+                "schoolId": SCHOOL_ID,
+                "kind": kind,
+                "visitId": None,
+                "pickupId": None,
+                "contentType": "image/jpeg",
+                "createdAt": ts,
+                "createdByUserId": "U-GATE",
+                "bytes": b"",
+                "retainUntilDays": 90 if kind == "collector_live_photo" else None,
+            }
+        )
+
+    store.put_student(
+        {
+            "id": "STU-AARAV",
+            "schoolId": SCHOOL_ID,
+            "studentId": "5B-17",
+            "name": "Aarav Mehta",
+            "class": "5",
+            "section": "B",
+            "active": True,
+            "enrollmentEndedAt": None,
+            "legalHold": False,
+            "createdAt": "2026-06-01T09:00:00+05:30",
+            "updatedAt": "2026-06-01T09:00:00+05:30",
+        }
+    )
+    store.put_student(
+        {
+            "id": "STU-KABIR",
+            "schoolId": SCHOOL_ID,
+            "studentId": "3A-09",
+            "name": "Kabir Singh",
+            "class": "3",
+            "section": "A",
+            "active": True,
+            "enrollmentEndedAt": None,
+            "legalHold": True,
+            "createdAt": "2026-06-01T09:00:00+05:30",
+            "updatedAt": "2026-09-10T11:00:00+05:30",
+        }
+    )
+
+    consent_at = "2026-06-15T10:00:00+05:30"
+    people = [
+        {
+            "id": "APP-NEHA",
+            "schoolId": SCHOOL_ID,
+            "studentId": "STU-AARAV",
+            "name": "Neha Mehta",
+            "relation": "parent",
+            "mobile": "9822011001",
+            "idType": "DL",
+            "idNumber": None,
+            "idLast4": "1001",
+            "photoRef": "media/pickup_list_photo/neha-mehta",
+            "active": True,
+            "effectiveFrom": None,
+            "effectiveTo": None,
+            "blockedByCustody": False,
+            "pickupConsentVersion": PICKUP_CONSENT_VERSION,
+            "pickupConsentAt": consent_at,
+            "createdByUserId": "U-ADMIN",
+            "updatedByUserId": "U-ADMIN",
+            "createdAt": consent_at,
+            "updatedAt": consent_at,
+        },
+        {
+            "id": "APP-ROHAN",
+            "schoolId": SCHOOL_ID,
+            "studentId": "STU-AARAV",
+            "name": "Rohan Mehta",
+            "relation": "relative",
+            "mobile": "9822011002",
+            "idType": "Other",
+            "idNumber": None,
+            "idLast4": "2002",
+            "photoRef": None,
+            "active": True,
+            "effectiveFrom": "2026-09-01",
+            "effectiveTo": "2026-12-31",
+            "blockedByCustody": False,
+            "pickupConsentVersion": PICKUP_CONSENT_VERSION,
+            "pickupConsentAt": consent_at,
+            "createdByUserId": "U-ADMIN",
+            "updatedByUserId": "U-ADMIN",
+            "createdAt": consent_at,
+            "updatedAt": consent_at,
+        },
+        {
+            "id": "APP-SUNITA",
+            "schoolId": SCHOOL_ID,
+            "studentId": "STU-KABIR",
+            "name": "Sunita Singh",
+            "relation": "parent",
+            "mobile": "9822012001",
+            "idType": "Voter",
+            "idNumber": None,
+            "idLast4": "3003",
+            "photoRef": None,
+            "active": True,
+            "effectiveFrom": None,
+            "effectiveTo": None,
+            "blockedByCustody": False,
+            "pickupConsentVersion": PICKUP_CONSENT_VERSION,
+            "pickupConsentAt": consent_at,
+            "createdByUserId": "U-SH",
+            "updatedByUserId": "U-SH",
+            "createdAt": consent_at,
+            "updatedAt": consent_at,
+        },
+        {
+            "id": "APP-RAJESH",
+            "schoolId": SCHOOL_ID,
+            "studentId": "STU-KABIR",
+            "name": "Rajesh Singh",
+            "relation": "parent",
+            "mobile": "9822012002",
+            "idType": "DL",
+            "idNumber": None,
+            "idLast4": "4004",
+            "photoRef": None,
+            "active": True,
+            "effectiveFrom": None,
+            "effectiveTo": None,
+            "blockedByCustody": True,
+            "pickupConsentVersion": PICKUP_CONSENT_VERSION,
+            "pickupConsentAt": consent_at,
+            "createdByUserId": "U-SH",
+            "updatedByUserId": "U-SH",
+            "createdAt": consent_at,
+            "updatedAt": "2026-09-10T11:00:00+05:30",
+        },
+    ]
+    for person in people:
+        store.put_authorized_person(person)
+
+    store.put_custody_flag(
+        {
+            "studentId": "STU-AARAV",
+            "schoolId": SCHOOL_ID,
+            "flag": "none",
+            "gateInstruction": "",
+            "blockedPersonIds": [],
+            "allowedPersonIds": None,
+            "updatedByUserId": "U-ADMIN",
+            "updatedAt": "2026-06-15T10:05:00+05:30",
+        }
+    )
+    store.put_custody_flag(
+        {
+            "studentId": "STU-KABIR",
+            "schoolId": SCHOOL_ID,
+            "flag": "court_order",
+            "gateInstruction": (
+                "Release only to Sunita Singh (Mother). Block Rajesh Singh. "
+                "Do not discuss case details at gate."
+            ),
+            "blockedPersonIds": ["APP-RAJESH"],
+            "allowedPersonIds": ["APP-SUNITA"],
+            "updatedByUserId": "U-SH",
+            "updatedAt": "2026-09-10T11:00:00+05:30",
+        }
+    )
+    denormalize_blocked_by_custody("STU-AARAV", SCHOOL_ID)
+    denormalize_blocked_by_custody("STU-KABIR", SCHOOL_ID)

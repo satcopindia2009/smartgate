@@ -9,7 +9,7 @@ from app.blacklist_match import match_blacklist
 from app.config import WATERMARK
 from app.errors import AppError
 from app.models import BlacklistCreate, BlacklistMatchRequest, BlacklistPatch, Role
-from app.util import now_iso
+from app.util import normalize_id, normalize_mobile, now_iso
 from app import store
 
 router = APIRouter(prefix="/blacklist", tags=["blacklist"])
@@ -42,13 +42,22 @@ def create_blacklist(
             400,
         )
     bid = f"BL-{store.next_seq('bl_seq'):02d}"
+    mobile = normalize_mobile(body.mobile) if body.mobile else None
+    if body.mobile and not mobile:
+        raise AppError("VALIDATION", "Invalid mobile — expected IN 10-digit or E.164", 400)
+    id_number = body.idNumber
+    if id_number:
+        # Persist display form; match path normalizes. Keep dashes for fixtures.
+        id_number = body.idNumber.strip() or None
+        if id_number and not normalize_id(id_number):
+            id_number = None
     row = {
         "id": bid,
         "schoolId": user["schoolId"],
         "name": body.name,
-        "mobile": body.mobile,
+        "mobile": mobile,
         "idType": body.idType.value if body.idType else None,
-        "idNumber": body.idNumber,
+        "idNumber": id_number,
         "reason": body.reason,
         "severity": body.severity.value,
         "active": True,

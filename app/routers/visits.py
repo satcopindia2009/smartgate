@@ -6,10 +6,12 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 
-from app.auth import CurrentUser, require_roles
+from app.after_hours import stamp_after_hours
+from app.auth import CurrentUser, assert_gate_allowed, require_roles
 from app.config import SCHOOL_TZ, WATERMARK
 from app.errors import AppError
 from app.models import (
+    ApproveBody,
     CheckInBody,
     ForceCheckoutBody,
     RejectBody,
@@ -20,7 +22,6 @@ from app.util import (
     gen_pass_id,
     gen_qr_token,
     gen_visit_id,
-    normalize_id,
     normalize_mobile,
     now_iso,
     parse_iso,
@@ -48,18 +49,38 @@ def _emit(event: str, visit: dict, extra: Optional[dict] = None) -> None:
         "passId": visit.get("passId"),
         "status": visit["status"],
     }
+    if visit.get("afterHours"):
+        payload["afterHours"] = True
+        payload["policyTrigger"] = visit.get("policyTrigger")
+        payload["hostFyi"] = True
     if extra:
         payload.update(extra)
+    hints = ["in_app"]
+    if event == "visit.pending" and visit.get("afterHours"):
+        hints = ["in_app", "security_head"]
     store.add_outbox(
         {
             "schoolId": visit["schoolId"],
             "event": event,
             "visitId": visit["id"],
             "payload": payload,
-            "channelHints": ["in_app"],
+            "channelHints": hints,
             "status": "pending",
             "createdAt": now_iso(),
         }
+    )
+
+
+def _after_hours_sh_required(visit: dict) -> None:
+    raise AppError(
+        "AFTER_HOURS_SH_REQUIRED",
+        "After hours / holiday — Security Head approval required",
+        403,
+        {
+            "afterHours": True,
+            "policyTrigger": visit.get("policyTrigger"),
+            "afterHoursEvaluatedAt": visit.get("afterHoursEvaluatedAt"),
+        },
     )
 
 
@@ -86,6 +107,47 @@ def _require_id_fields(body: VisitCreate) -> None:
         )
 
 
+def _require_media_key(key: Optional[str], school_id: str, field: str) -> None:
+    if not key:
+        return
+    media = store.get_media(key)
+    if not media or media.get("schoolId") != school_id:
+        raise AppError("VALIDATION", f"Unknown {field}", 400, {"key": key})
+
+
+def _require_active_gate(gate_id: str, school_id: str) -> dict:
+    gate = store.get_gate(gate_id)
+    if not gate or gate.get("schoolId") != school_id:
+        raise AppError("VALIDATION", f"Unknown gateId {gate_id}", 400)
+    if not gate.get("active", True):
+        raise AppError("VALIDATION", f"Gate {gate_id} is inactive", 400)
+    return gate
+
+
+def _require_active_host(host_id: str, school_id: str) -> dict:
+    staff = store.get_staff(host_id)
+    if not staff or staff.get("schoolId") != school_id:
+        raise AppError("VALIDATION", f"Unknown hostId {host_id}", 400)
+    if not staff.get("active", True):
+        raise AppError("VALIDATION", f"Host {host_id} is inactive", 400)
+    return staff
+
+
+def _block_without_override(visit: dict, action: str) -> None:
+    if not visit.get("blacklistHit") or not visit.get("blacklistId"):
+        return
+    if visit.get("blacklistOverrideByUserId"):
+        return
+    bl = store.get_blacklist(visit["blacklistId"])
+    if bl and bl.get("severity") == "Block":
+        raise AppError(
+            "BLACKLIST_BLOCK",
+            f"Cannot {action} Block hit without security_head override on visit",
+            403,
+            {"blacklistId": bl["id"], "severity": bl.get("severity")},
+        )
+
+
 @router.get("/inside")
 def visits_inside(
     user: CurrentUser,
@@ -94,6 +156,8 @@ def visits_inside(
     hostId: Optional[str] = None,
     overdueOnly: bool = False,
     q: Optional[str] = None,
+    afterHours: Optional[bool] = None,
+    policyTrigger: Optional[str] = None,
 ):
     school = store.school()
     overdue_h = school.get("overdueHoursDefault", 4) if school else 4
@@ -109,6 +173,10 @@ def visits_inside(
         if visitorType and v.get("visitorType") != visitorType:
             continue
         if hostId and v.get("hostId") != hostId:
+            continue
+        if afterHours is not None and bool(v.get("afterHours")) != afterHours:
+            continue
+        if policyTrigger and v.get("policyTrigger") != policyTrigger:
             continue
         if q:
             ql = q.lower()
@@ -147,6 +215,8 @@ def list_visits(
     checkoutStatus: Optional[str] = None,
     blacklistHit: Optional[bool] = None,
     q: Optional[str] = None,
+    afterHours: Optional[bool] = None,
+    policyTrigger: Optional[str] = None,
 ):
     today = datetime.now(TZ).date()
     if not dateFrom:
@@ -186,6 +256,10 @@ def list_visits(
                 continue
         if blacklistHit is not None and bool(v.get("blacklistHit")) != blacklistHit:
             continue
+        if afterHours is not None and bool(v.get("afterHours")) != afterHours:
+            continue
+        if policyTrigger and v.get("policyTrigger") != policyTrigger:
+            continue
         if q:
             ql = q.lower()
             blob = " ".join(
@@ -214,17 +288,23 @@ def get_visit(visit_id: str, user: CurrentUser):
 @router.post("")
 def create_visit(
     body: VisitCreate,
-    user: dict = Depends(require_roles(Role.gate)),
+    user: dict = Depends(require_roles(Role.gate, Role.security_head)),
 ):
     _require_id_fields(body)
-    if not store.get_gate(body.gateId):
-        raise AppError("VALIDATION", f"Unknown gateId {body.gateId}", 400)
-    if not store.get_staff(body.hostId):
-        raise AppError("VALIDATION", f"Unknown hostId {body.hostId}", 400)
+    _require_active_gate(body.gateId, user["schoolId"])
+    _require_active_host(body.hostId, user["schoolId"])
+    assert_gate_allowed(user, body.gateId)
+    _require_media_key(body.livePhotoKey, user["schoolId"], "livePhotoKey")
+    _require_media_key(body.idImageKey, user["schoolId"], "idImageKey")
+    _require_media_key(body.signatureKey, user["schoolId"], "signatureKey")
 
     mobile = normalize_mobile(body.mobile)
     if not mobile:
-        raise AppError("VALIDATION", "Invalid mobile", 400)
+        raise AppError(
+            "VALIDATION",
+            "Invalid mobile — expected IN 10-digit or E.164",
+            400,
+        )
 
     hit = match_blacklist_internal(
         user["schoolId"], mobile, body.idType.value if body.idType else None, body.idNumber
@@ -239,8 +319,6 @@ def create_visit(
         )
     if hit and hit["severity"] == "Block" and body.blacklistOverride:
         if user["role"] != "security_head":
-            # Gate cannot self-override Block; SH must approve separately.
-            # For MVP stub: allow only if caller is SH — gate must not set override alone.
             raise AppError(
                 "FORBIDDEN",
                 "Blacklist Block override requires security_head",
@@ -290,6 +368,7 @@ def create_visit(
         "createdAt": ts,
         "updatedAt": ts,
     }
+    stamp_after_hours(visit)
     store.put_visit(visit)
     _emit("visit.pending", visit, {"blacklistHit": bool(hit)})
     if hit:
@@ -300,6 +379,7 @@ def create_visit(
 @router.post("/{visit_id}/approve")
 def approve_visit(
     visit_id: str,
+    body: ApproveBody = ApproveBody(),
     user: dict = Depends(require_roles(Role.host, Role.admin, Role.security_head)),
 ):
     v = store.get_visit(visit_id)
@@ -310,14 +390,17 @@ def approve_visit(
     if v["status"] != "pending":
         raise AppError("INVALID_STATE", f"Cannot approve from status {v['status']}", 409)
 
-    # Block without override cannot leave pending into pass issuance
-    if v.get("blacklistHit") and v.get("blacklistId"):
-        bl = store.get_blacklist(v["blacklistId"])
-        if bl and bl.get("severity") == "Block" and not v.get("blacklistOverrideByUserId"):
+    _block_without_override(v, "approve")
+
+    # A3/A4: sticky afterHours — do not re-evaluate; Host/Admin Approve is no-op
+    if v.get("afterHours"):
+        if user["role"] != "security_head":
+            _after_hours_sh_required(v)
+        if not body.reason:
             raise AppError(
-                "BLACKLIST_BLOCK",
-                "Cannot approve Block hit without security_head override on visit",
-                403,
+                "VALIDATION",
+                "reason is required for Security Head after-hours approve",
+                400,
             )
 
     ts = now_iso()
@@ -330,6 +413,8 @@ def approve_visit(
     v["passId"] = pass_id
     v["qrToken"] = token
     v["updatedAt"] = ts
+    if v.get("afterHours"):
+        v["afterHoursApproveReason"] = body.reason
     store.put_visit(v)
     store.put_pass(
         {
@@ -359,6 +444,9 @@ def reject_visit(
         raise AppError("FORBIDDEN", "Host may only reject own visits", 403)
     if v["status"] != "pending":
         raise AppError("INVALID_STATE", f"Cannot reject from status {v['status']}", 409)
+    # A4/A6: after-hours reject is SH-only; reason already required by RejectBody
+    if v.get("afterHours") and user["role"] != "security_head":
+        _after_hours_sh_required(v)
     ts = now_iso()
     v["status"] = "rejected"
     v["rejectReason"] = body.reason
@@ -366,6 +454,11 @@ def reject_visit(
     v["decidedByUserId"] = user["id"]
     v["checkoutType"] = "never"
     v["updatedAt"] = ts
+    if v.get("passId"):
+        p = store.get_pass(v["passId"])
+        if p:
+            p["revoked"] = True
+            store.put_pass(p)
     store.put_visit(v)
     _emit("visit.rejected", v, {"reason": body.reason})
     return _meta_visit(v)
@@ -386,13 +479,10 @@ def _do_check_in(visit_id: str, user: dict, gate_id: Optional[str] = None) -> di
         raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
     if v["status"] != "approved":
         raise AppError("INVALID_STATE", f"Cannot check-in from status {v['status']}", 409)
-    if v.get("blacklistHit") and v.get("blacklistId"):
-        bl = store.get_blacklist(v["blacklistId"])
-        if bl and bl.get("severity") == "Block" and not v.get("blacklistOverrideByUserId"):
-            raise AppError("BLACKLIST_BLOCK", "Block hit — check-in denied", 403)
+    _block_without_override(v, "check-in")
     gid = gate_id or v["gateId"]
-    if not store.get_gate(gid):
-        raise AppError("VALIDATION", f"Unknown gateId {gid}", 400)
+    _require_active_gate(gid, user["schoolId"])
+    assert_gate_allowed(user, gid)
     ts = now_iso()
     v["status"] = "inside"
     v["timeIn"] = ts
@@ -418,6 +508,8 @@ def _do_check_out(visit_id: str, user: dict, gate_id: Optional[str] = None) -> d
     if v["status"] != "inside":
         raise AppError("INVALID_STATE", f"Cannot check-out from status {v['status']}", 409)
     gid = gate_id or v.get("gateInId") or v["gateId"]
+    _require_active_gate(gid, user["schoolId"])
+    assert_gate_allowed(user, gid)
     ts = now_iso()
     v["status"] = "completed"
     v["timeOut"] = ts
