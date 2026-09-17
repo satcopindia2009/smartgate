@@ -39,6 +39,10 @@ def test_pranay_students_not_aarav_as_default_story():
     assert "Asha Patil" in INDEX
     assert "python3 -m http.server 8769" in README
     assert "PranayGate@2026" in README
+    assert "NOT" in README and "pranay123" in README
+    assert "PS-G01" in README
+    assert "PS-S-001" in README
+    assert "PS-S-002" in README
     assert "Aarav Mehta" in FIXTURES
     assert "SCH-DEMO-01" in FIXTURES
 

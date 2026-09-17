@@ -17,6 +17,15 @@ python3 -m http.server 8769
 # http://127.0.0.1:8769/?tenant=demo      → Demo International (gate / gate123)
 ```
 
+**Confirmed living seed** (`https://replacing-spyware-yes-due.trycloudflare.com/v1`):
+
+| | |
+|---|---|
+| Username / password | `pranay.gate` / `PranayGate@2026` (**NOT** `pranay123`) |
+| schoolId | `SCH-PRANAY-01` |
+| staffId | `PS-G01` |
+| Students | **Asha Patil** `PS-S-001` · **Rohan Shah** `PS-S-002` |
+
 Lookup **Asha Patil** (5-B / `PS-S-001`) → Ramesh Patil (parent) + Smita Patil (guardian). **Rohan Shah** (`PS-S-002`) is the second Pranay student. Amber **FIXTURES** if the tunnel flaps.
 
 Kiosk (Android) has a **Pickup** mode entry that points here — visitor register is unchanged. See `../kiosk/README.md`.
@@ -30,7 +39,9 @@ Admin CRUD / history is a separate desk. Link only (not this UI): https://saver-
 | schoolId | `SCH-PRANAY-01` |
 | school_code | `PRANAY` |
 | name | Pranay School Pune |
+| Gate user | `pranay.gate` / `PranayGate@2026` · staffId `PS-G01` |
 | Gate | `PS-G-MAIN` (Main Gate) |
+| Students | Asha Patil `PS-S-001` · Rohan Shah `PS-S-002` |
 | Demo (isolated) | `SCH-DEMO-01` — Aarav / Kabir — never overwrite |
 
 ## Mock URL + seed logins
