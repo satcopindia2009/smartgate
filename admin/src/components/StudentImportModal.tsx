@@ -87,6 +87,10 @@ export function StudentImportModal({
     setCommitLocal(false);
     setBusy(false);
     setDragOver(false);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" && !busy) onClose();
     }
@@ -129,12 +133,22 @@ export function StudentImportModal({
             rows: local.rows,
             csvText,
           });
-          const failedRows = new Set(apiResult.errors.map((e) => e.row));
-          const validRows = local.validRows.filter((r) => !failedRows.has(r.rowNumber));
+          const failedRows = new Set(apiResult.errors.filter((e) => e.row > 0).map((e) => e.row));
+          const validRows = failedRows.size
+            ? local.validRows.filter((r) => !failedRows.has(r.rowNumber))
+            : local.validRows;
+          const errors = apiResult.errors.length ? apiResult.errors : local.result.errors;
           next = {
             ...local,
             validRows,
-            result: { ...apiResult, valid: apiResult.valid ?? validRows.length },
+            result: {
+              ...apiResult,
+              errors,
+              imported: apiResult.imported || local.result.imported,
+              updated: apiResult.updated || local.result.updated,
+              valid: apiResult.valid ?? validRows.length,
+              failed: apiResult.failed || errors.filter((e) => e.row > 0).length,
+            },
           };
           localValidate = false;
         } catch (err) {
