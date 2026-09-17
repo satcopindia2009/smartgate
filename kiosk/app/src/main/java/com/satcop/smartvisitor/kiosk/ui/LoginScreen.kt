@@ -63,7 +63,7 @@ fun LoginScreen(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Gate check-in · sign in to continue",
+                    text = "Gate or Host · sign in to continue",
                     color = KioskColors.textMuted,
                     fontSize = if (compact) 11.sp else 12.sp,
                     fontFamily = KioskFont,
@@ -89,7 +89,7 @@ fun LoginScreen(
             fontFamily = KioskFont,
         )
         Text(
-            text = "Use your school gate account. Host accounts are accepted on this same kiosk.",
+            text = "Use a school gate or host account. After sign-in the home matches your role.",
             color = KioskColors.textMuted,
             fontSize = 14.sp,
             fontFamily = KioskFont,

@@ -27,4 +27,9 @@ class PhoneLayoutTest {
         assertTrue(urls.contains("https://ethernet-prairie-carefully-furnishings.trycloudflare.com/?passId=P-7K88"))
         assertTrue(urls.contains("https://votes-carlos-charter-damaged.trycloudflare.com"))
     }
+
+    @Test
+    fun compactBreakpointStaysPhonePortrait() {
+        assertEquals(600, com.satcop.smartvisitor.kiosk.ui.CompactWidthBreakpoint.value.toInt())
+    }
 }

@@ -100,6 +100,8 @@ fun KioskApp(
                         onSubmit = viewModel::login,
                     )
                 } else {
+                    val role = state.homeRole()
+                    val context = LocalContext.current
                     KioskHeader(
                         schoolName = state.schoolName,
                         schoolId = state.schoolId,
@@ -109,6 +111,8 @@ fun KioskApp(
                         dataSource = state.dataSource,
                         displayName = state.meDisplayName,
                         compact = compact,
+                        showGateMenu = role == KioskRole.GATE,
+                        showDemoHub = role == KioskRole.GATE,
                         onSelectGate = viewModel::selectGate,
                         onLogout = viewModel::logout,
                     )
@@ -122,28 +126,44 @@ fun KioskApp(
                             .border(1.dp, KioskColors.border, CardShape)
                             .padding(horizontal = cardHPad, vertical = cardVPad),
                     ) {
-                        Column(
-                            modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
-                        ) {
-                            StepDots(current = state.step)
-                            AnimatedContent(
-                                targetState = state.step,
-                                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                                label = "kiosk-step",
-                                modifier = if (compact) {
-                                    Modifier.fillMaxWidth()
-                                } else {
-                                    Modifier
-                                        .weight(1f)
-                                        .verticalScroll(rememberScrollState())
-                                },
-                            ) { step ->
-                                KioskStep(
-                                    step = step,
-                                    state = state,
-                                    viewModel = viewModel,
-                                )
+                        when (role) {
+                            KioskRole.GATE -> {
+                                Column(
+                                    modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
+                                ) {
+                                    StepDots(current = state.step)
+                                    AnimatedContent(
+                                        targetState = state.step,
+                                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                        label = "kiosk-step",
+                                        modifier = if (compact) {
+                                            Modifier.fillMaxWidth()
+                                        } else {
+                                            Modifier
+                                                .weight(1f)
+                                                .verticalScroll(rememberScrollState())
+                                        },
+                                    ) { step ->
+                                        KioskStep(
+                                            step = step,
+                                            state = state,
+                                            viewModel = viewModel,
+                                        )
+                                    }
+                                }
                             }
+                            KioskRole.HOST -> HostHomeScreen(
+                                displayName = state.meDisplayName,
+                                schoolId = state.schoolId,
+                                staffId = state.meStaffId,
+                                compact = compact,
+                                onOpenUrl = { url -> openExternalUrl(context, url) },
+                            )
+                            KioskRole.UNSUPPORTED -> UnsupportedRoleScreen(
+                                role = state.meRole,
+                                compact = compact,
+                                onLogout = viewModel::logout,
+                            )
                         }
                     }
                 }
@@ -248,6 +268,8 @@ private fun KioskHeader(
     dataSource: DataSource,
     displayName: String,
     compact: Boolean,
+    showGateMenu: Boolean,
+    showDemoHub: Boolean,
     onSelectGate: (String) -> Unit,
     onLogout: () -> Unit,
 ) {
@@ -295,14 +317,16 @@ private fun KioskHeader(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box {
-                    GatePill(name = gateName, onClick = { menuOpen = true })
-                    GateMenu(
-                        expanded = menuOpen,
-                        gates = gates,
-                        onDismiss = { menuOpen = false },
-                        onSelectGate = onSelectGate,
-                    )
+                if (showGateMenu) {
+                    Box {
+                        GatePill(name = gateName, onClick = { menuOpen = true })
+                        GateMenu(
+                            expanded = menuOpen,
+                            gates = gates,
+                            onDismiss = { menuOpen = false },
+                            onSelectGate = onSelectGate,
+                        )
+                    }
                 }
                 Spacer(Modifier.weight(1f))
                 KioskGhostButton(
@@ -310,7 +334,9 @@ private fun KioskHeader(
                     onClick = onLogout,
                     modifier = Modifier.heightIn(min = 48.dp),
                 )
-                DemoHubButton(onLogout = onLogout)
+                if (showDemoHub) {
+                    DemoHubButton(onLogout = onLogout)
+                }
             }
         }
     } else {
@@ -347,27 +373,31 @@ private fun KioskHeader(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SourcePill(live = dataSource == DataSource.LIVE)
-                Box {
-                    GatePill(name = gateName, onClick = { menuOpen = true })
-                    GateMenu(
-                        expanded = menuOpen,
-                        gates = gates,
-                        onDismiss = { menuOpen = false },
-                        onSelectGate = onSelectGate,
+                if (showGateMenu) {
+                    Box {
+                        GatePill(name = gateName, onClick = { menuOpen = true })
+                        GateMenu(
+                            expanded = menuOpen,
+                            gates = gates,
+                            onDismiss = { menuOpen = false },
+                            onSelectGate = onSelectGate,
+                        )
+                    }
+                    Text(
+                        text = clockLabel.ifBlank { "—" },
+                        color = KioskColors.textMuted,
+                        fontSize = 13.sp,
+                        fontFamily = KioskFont,
                     )
                 }
-                Text(
-                    text = clockLabel.ifBlank { "—" },
-                    color = KioskColors.textMuted,
-                    fontSize = 13.sp,
-                    fontFamily = KioskFont,
-                )
                 KioskGhostButton(
                     text = "Log out",
                     onClick = onLogout,
                     modifier = Modifier.heightIn(min = 48.dp),
                 )
-                DemoHubButton(onLogout = onLogout)
+                if (showDemoHub) {
+                    DemoHubButton(onLogout = onLogout)
+                }
             }
         }
     }
@@ -423,9 +453,7 @@ private fun DemoHubButton(onLogout: () -> Unit) {
                     },
                     onClick = {
                         open = false
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link.url))
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        runCatching { context.startActivity(intent) }
+                        openExternalUrl(context, link.url)
                     },
                 )
             }
@@ -440,4 +468,10 @@ private fun DemoHubButton(onLogout: () -> Unit) {
             )
         }
     }
+}
+
+internal fun openExternalUrl(context: android.content.Context, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
 }

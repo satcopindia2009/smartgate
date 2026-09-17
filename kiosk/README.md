@@ -1,6 +1,6 @@
 # Satcop Smart Visitor — Gate kiosk (Wave 4)
 
-Android gate / reception kiosk. Phone-friendly `fullUser` orientation (portrait on phones, landscape still works on tablets). **Login first** (typed username + password), then registration steps 1–4 against the live mock when reachable, fixtures otherwise.
+Android gate / reception kiosk. Phone-friendly `fullUser` orientation (portrait on phones, landscape still works on tablets). **Login first** (typed username + password). JWT `user.role` picks the home: **gate** keeps registration steps 1–4; **host** opens host-web only; other roles get a stay-put message + Log out.
 
 On compact width (`< 600.dp`, phone portrait) the shell uses 16.dp padding, a wrap-content card under the header (no empty 40% band), stacked title + full-width Prefill, 2-up type cards, and the school/queue/recent strip below the cards. Tablet/landscape keeps the two-column 280.dp context strip. Header **Demo** overflow opens after-hours / host / visitor QR / escort seed URLs in the external browser.
 
@@ -24,8 +24,9 @@ Demo story: **Priya Sharma** → **Anita Joshi** (`H03`) → **Main Gate** (`G-M
 Default base: `https://pensions-usb-loops-direction.trycloudflare.com/v1`  
 Typed login → `POST /v1/auth/login` → Bearer JWT on later calls. **No** hardcoded `gate`/`gate123` auto-login.
 
-Gate seed: `pranay.gate` / `PranayGate@2026` → `SCH-PRANAY-01` / role `gate` / `PS-G01` / "Pranay Gate".  
-A successful **host** JWT is accepted on the same APK (host-web remains the host UI).
+Gate seed: `pranay.gate` / `PranayGate@2026` → `SCH-PRANAY-01` / role `gate` / `PS-G01` / "Pranay Gate" → visitor types + demo hub.  
+Host seed: `pranay.host` / `PranayHost@2026` → `SCH-PRANAY-01` / role `host` → **Host approve** (no visitor-type stepper / Prefill). Primary button opens `https://england-content-resulting-heavily.trycloudflare.com` in the external browser. Optional Pending / After-hours use `#pending` and `#afterhours`.  
+Admin / SH / escort: "This APK is for Gate or Host" + Log out.
 
 Never use the retired `weed-pumps-laura-upc` host.
 
