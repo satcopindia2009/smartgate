@@ -21,7 +21,7 @@ Lookup **Asha Patil** (5-B / `PS-S-001`) → Ramesh Patil (parent) + Smita Patil
 
 Kiosk (Android) has a **Pickup** mode entry that points here — visitor register is unchanged. See `../kiosk/README.md`.
 
-Admin CRUD / history is the Admin desk (`config.js` `adminPreview`). This slice only stubs that link.
+Admin CRUD / history is a separate desk. Link only (not this UI): https://saver-recognised-daughter-revolutionary.trycloudflare.com
 
 ## Locked tenant
 
@@ -43,12 +43,15 @@ Admin preview: `https://saver-recognised-daughter-revolutionary.trycloudflare.co
 
 | Username | Password | Role | Tenant |
 |----------|----------|------|--------|
-| `pranay.gate` | `PranayGate@2026` | gate | **Default.** Pranay School Pune |
-| `pranay.sh` | `PranaySH@2026` | security_head | Pranay SH override (preferred) |
-| `gate` | `gate123` | gate | Demo `SCH-DEMO-01` (Switch → Demo gate) |
-| `security` | `sh123` | security_head | Demo SH, or Pranay fallback if `pranay.sh` seed is missing |
+| `pranay.gate` | `PranayGate@2026` | gate | **Shipped living seed.** Pranay JWT · Asha + Rohan Shah |
+| `pranay.sh` | `PranaySH@2026` | security_head | Pranay SH override |
+| `pranay.admin` | `PranayAdmin@2026` | admin | Admin desk only — not this UI |
+| `gate` | `gate123` | gate | **SCH-DEMO-01 only** (not a Pranay JWT) |
+| `security` | `sh123` | security_head | Demo SH fallback |
 
-**How to show:** `cd pickup-gate && python3 -m http.server 8769` → http://127.0.0.1:8769/ · auto-login `pranay.gate` / `PranayGate@2026`. Fixtures still run the Pranay click-path when the tunnel 401s / 502s / times out (~6s). Edit `config.js` or pass `?api=` if the URL changes.
+`pranay.gate` / `pranay123` **401s** on this API. Do not use it.
+
+**How to show:** `cd pickup-gate && python3 -m http.server 8769` → http://127.0.0.1:8769/ · auto-login `pranay.gate` / `PranayGate@2026`. Fixtures still run Asha / Rohan Shah when the tunnel flaps. Edit `config.js` or pass `?api=` if the URL changes.
 
 Cyan **LIVE mock** when the tunnel answers as that login’s school; amber **FIXTURES** otherwise.
 

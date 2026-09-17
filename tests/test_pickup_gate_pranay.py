@@ -23,6 +23,7 @@ def test_living_api_and_pranay_login():
     assert "weed-pumps-laura-upc" not in CONFIG
     assert 'gateUser: "pranay.gate"' in CONFIG
     assert 'gatePass: "PranayGate@2026"' in CONFIG
+    assert "pranay123" not in CONFIG.split("not pranay123")[-1]
     assert "SCH-PRANAY-01" in CONFIG
     assert "PRANAY" in CONFIG
     assert "Pranay School Pune" in CONFIG

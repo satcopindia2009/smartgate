@@ -20,10 +20,10 @@
       name: "Pranay School Pune",
       gateUser: "pranay.gate",
       gatePass: "PranayGate@2026",
-      gatePassFallbacks: ["pranay123"],
+      gatePassFallbacks: [],
       shUser: "pranay.sh",
       shPass: "PranaySH@2026",
-      shPassFallbacks: ["pranay123"],
+      shPassFallbacks: [],
       shFallbackUser: "security",
       shFallbackPass: "sh123",
       gateId: "PS-G-MAIN",
@@ -52,7 +52,6 @@
 
   global.VMS_PICKUP_CONFIG = {
     apiBase: String(envBase).replace(/\/$/, ""),
-    adminPreview: "https://saver-recognised-daughter-revolutionary.trycloudflare.com",
     defaultTenant: defaultTenant,
     tenants: tenants,
     gateUser: tenants[defaultTenant].gateUser,
