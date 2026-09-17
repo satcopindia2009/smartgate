@@ -24,7 +24,7 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard"
             android:exported="true"
             android:lockTaskMode="if_whitelisted"
-            android:screenOrientation="landscape"
+            android:screenOrientation="fullUser"
             android:theme="@style/Theme.SatcopGateKiosk"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
