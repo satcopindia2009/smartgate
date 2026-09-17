@@ -9,12 +9,13 @@ import org.junit.Test
 
 class PhoneLayoutTest {
     @Test
-    fun liveApiStaysOnPensionsUsbTunnel() {
+    fun liveApiStaysOnReplacingSpywareTunnel() {
         assertEquals(
-            "https://pensions-usb-loops-direction.trycloudflare.com/v1",
+            "https://replacing-spyware-yes-due.trycloudflare.com/v1",
             ApiConfig.BASE_URL,
         )
         assertFalse(ApiConfig.BASE_URL.contains("weed-pumps"))
+        assertFalse(ApiConfig.BASE_URL.contains("pensions-usb"))
         assertFalse(ApiConfig.BASE_URL.contains("gate123"))
     }
 
