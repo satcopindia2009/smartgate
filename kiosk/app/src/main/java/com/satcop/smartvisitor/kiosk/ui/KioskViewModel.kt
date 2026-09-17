@@ -33,7 +33,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class KioskUiState(
-    val step: Int = 1,
+    val step: Int = 0,
     val schoolName: String = DemoFixtures.school.name,
     val timezone: String = DemoFixtures.SCHOOL_TZ,
     val clockLabel: String = "",
@@ -237,6 +237,14 @@ class KioskViewModel(
                 createdVisit = null,
             )
         }
+    }
+
+    fun openDemoHub() {
+        _state.update { it.copy(step = 0, toast = null, fieldErrors = emptyMap(), blocked = false) }
+    }
+
+    fun openGateCheckIn() {
+        _state.update { it.copy(step = 1, toast = null) }
     }
 
     fun continueFromStep1() {
@@ -541,8 +549,17 @@ class KioskViewModel(
 
     fun back() {
         _state.update {
-            val prev = (it.step - 1).coerceAtLeast(1)
+            val prev = (it.step - 1).coerceAtLeast(0)
             it.copy(step = prev, toast = null, fieldErrors = emptyMap(), blocked = false)
+        }
+    }
+
+    fun previewOpenFailed() {
+        _state.update {
+            it.copy(
+                toast = "No browser to open preview",
+                toastKind = ToastKind.WARNING,
+            )
         }
     }
 

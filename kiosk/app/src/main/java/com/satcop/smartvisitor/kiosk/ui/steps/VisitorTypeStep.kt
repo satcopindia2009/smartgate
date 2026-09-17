@@ -51,6 +51,7 @@ fun VisitorTypeStep(
     gates: List<Gate>,
     onSelectType: (String) -> Unit,
     onPrefill: () -> Unit,
+    onDemoHub: () -> Unit,
     onContinue: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
@@ -75,7 +76,10 @@ fun VisitorTypeStep(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-            KioskGhostButton(text = "Prefill sample", onClick = onPrefill)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                KioskGhostButton(text = "Demo hub", onClick = onDemoHub)
+                KioskGhostButton(text = "Prefill sample", onClick = onPrefill)
+            }
         }
 
         Row(

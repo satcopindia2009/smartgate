@@ -1,6 +1,6 @@
 # Satcop Smart Visitor — Gate kiosk (Wave 4)
 
-Android gate / reception kiosk. Phone-friendly `fullUser` orientation (portrait on phones, landscape still works on tablets) + registration steps 1–4 against the live mock when reachable, fixtures otherwise.
+Android gate / reception kiosk. Phone-friendly `fullUser` orientation (portrait on phones, landscape still works on tablets) + a **Demo hub** (step 0 / header overflow) that opens public web previews in the external browser, plus registration steps 1–4 against the live mock when reachable, fixtures otherwise.
 
 **Not for live school deploy.** DEMO watermark stays on until Viren says go.
 
@@ -8,6 +8,7 @@ Android gate / reception kiosk. Phone-friendly `fullUser` orientation (portrait 
 
 | Step | What |
 |------|------|
+| 0 | **Demo hub** cards + header **Demo hub** overflow. In-app visitor gate, plus `ACTION_VIEW` previews: after-hours gate, host approve (`#afterhours`), visitor QR `P-7K88`, escort/zones. Tunnels ephemeral — 502 → FIXTURES / this app. |
 | 1 | Visitor type cards (Parent / Vendor / Guest / Official / Alumni) + gate pill + peak strip |
 | 2 | Name, +91 mobile, purpose, staff picker, optional vehicle / accompanying / notes |
 | 3 | Live photo (camera, placeholder if no camera), ID type + number **or** ID image (V1), optional signature. `POST /v1/media/upload`, `POST /v1/blacklist/match`, `POST /v1/visits` |
@@ -23,6 +24,13 @@ Default base: `https://pensions-usb-loops-direction.trycloudflare.com/v1`
 Gate login: `gate` / `gate123` (see `ApiConfig.kt`). Never use the retired `weed-pumps-laura-upc` host.
 
 Amber **FIXTURES** pill = tunnel down or later 5xx/timeout. The kiosk keeps working from `DemoFixtures` + `LocalVisitStore`. Do not block a demo on a dead tunnel. Gate never auto-approves a live visit.
+
+Public Demo hub previews (ephemeral Cloudflare tunnels; 502 → FIXTURES / in-app gate):
+
+- After-hours gate: `https://simon-configure-hiking-cms.trycloudflare.com`
+- Host approve (After-hours tab): `https://england-content-resulting-heavily.trycloudflare.com/#afterhours`
+- Visitor QR P-7K88: `https://ethernet-prairie-carefully-furnishings.trycloudflare.com/?passId=P-7K88`
+- Escort/zones: `https://votes-carlos-charter-damaged.trycloudflare.com`
 
 ## Open in Android Studio
 
