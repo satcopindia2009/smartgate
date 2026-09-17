@@ -6,7 +6,7 @@ package com.satcop.smartvisitor.kiosk.data.api
  * falls back to fixtures — login itself is still required.
  */
 object ApiConfig {
-    const val BASE_URL = "https://pensions-usb-loops-direction.trycloudflare.com/v1"
+    const val BASE_URL = "https://replacing-spyware-yes-due.trycloudflare.com/v1"
     const val CONNECT_TIMEOUT_MS = 4_000L
     const val CALL_TIMEOUT_MS = 8_000L
 }
