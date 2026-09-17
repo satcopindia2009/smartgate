@@ -74,7 +74,7 @@
     $("#gate-trigger").textContent = ravi.policyTrigger || "outside_hours";
     $("#gate-banner-body").innerHTML = "Campus hours ended at <strong>" + weekdayClose() +
       "</strong>. This visit is flagged <strong>after_hours</strong> (" +
-      (ravi.policyTrigger || "outside_hours") + "). Host can be notified FYI, but only Security Head can Approve or Reject.";
+      (ravi.policyTrigger || "outside_hours") + "). Host can be notified FYI, but only Admin or Security Head can Approve or Reject.";
     $("#gate-clock").textContent = clockLabel(ravi.afterHoursEvaluatedAt || ravi.createdAt);
     var shReg = $("#sh-registered");
     if (shReg) shReg.textContent = api.formatIst(ravi.createdAt);
@@ -117,7 +117,7 @@
 
   $("#btn-ack-fyi").addEventListener("click", function () {
     var el = $("#host-result");
-    el.textContent = "FYI acknowledged · Security Head still must approve (AC-C4d).";
+    el.textContent = "FYI acknowledged · Admin or Security Head still must approve (AC-C4d).";
     el.classList.add("visible");
   });
 

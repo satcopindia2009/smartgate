@@ -133,7 +133,7 @@
 
   async function shDecide(id, action, reason) {
     if (!reason || !String(reason).trim()) {
-      var missing = new Error("Reason required for Security Head after-hours decide");
+      var missing = new Error("Reason required for Admin or Security Head after-hours decide");
       missing.code = "VALIDATION";
       throw missing;
     }

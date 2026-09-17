@@ -426,3 +426,13 @@ cd afterhours-gate && python3 -m http.server 8790
 
 Open `http://127.0.0.1:8790/`. Points at living API `https://replacing-spyware-yes-due.trycloudflare.com/v1` with Pranay demo logins.
 
+## Gate escort / zones UI (demo)
+
+Static Access Rules glance for escort / zones:
+
+```bash
+cd escort-zones && python3 -m http.server 8791
+```
+
+Open `http://127.0.0.1:8791/`. Points at living API `https://replacing-spyware-yes-due.trycloudflare.com/v1` with Pranay demo logins.
+
