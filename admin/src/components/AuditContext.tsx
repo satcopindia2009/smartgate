@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import type { ExportScope } from "./ExportModal";
 
-export type AuditScope = ExportScope | "pickup_history";
+export type AuditScope = ExportScope | "pickup_history" | "pickup_import";
 
 export interface AuditRow {
   who: string;
@@ -16,6 +16,7 @@ const LABELS: Record<AuditScope, string> = {
   blacklist: "Blacklist",
   gates: "Daily gate summary",
   pickup_history: "Pickup history",
+  pickup_import: "Pickup CSV import",
 };
 
 const AuditContext = createContext<{
@@ -42,7 +43,7 @@ export function AuditPanel() {
   const { rows } = useAudit();
   return (
     <div className="audit-panel" aria-live="polite">
-      <h3>CSV export audit (demo)</h3>
+      <h3>CSV export / import audit (demo)</h3>
       <div className="audit-list">
         {rows.length === 0 ? (
           <div className="audit-empty">No exports yet · Admin / Security Head · max 10k · UTF-8 · IST</div>

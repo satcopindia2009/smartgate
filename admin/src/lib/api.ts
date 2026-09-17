@@ -20,7 +20,10 @@ import type {
   BlastTemplate,
   BlastPreview,
   EmergencyBlast,
+  StudentImportResult,
+  StudentImportRow,
 } from "./types";
+import { normalizeImportApiResult } from "./studentImport";
 
 export class ApiError extends Error {
   status: number;
@@ -411,5 +414,148 @@ export function retryFailedBlast(token: string, blastId: string) {
   return apiRequest<EmergencyBlast>(
     `/emergency/blasts/${encodeURIComponent(blastId)}/retry-failed`,
     { method: "POST", token },
+  );
+}
+
+export function getSchoolMe(token: string) {
+  return apiRequest<{ schoolId?: string; name?: string; schoolCode?: string; timezone?: string }>(
+    "/schools/me",
+    { token },
+  );
+}
+
+export class ImportEndpointMissingError extends Error {
+  constructor(message = "Student import API is not available") {
+    super(message);
+    this.name = "ImportEndpointMissingError";
+  }
+}
+
+function isImportEndpointMissing(err: unknown): boolean {
+  if (isNetworkError(err)) return true;
+  if (!(err instanceof ApiError)) return false;
+  if (err.status === 404 || err.status === 405 || err.status === 501) return true;
+  return /method not allowed|not found|not implemented/i.test(err.message);
+}
+
+async function apiRequestForm<T>(path: string, token: string, body: FormData): Promise<T> {
+  const headers = new Headers();
+  headers.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(`${API_BASE}${path}`, { method: "POST", headers, body });
+  const data = await parseBody(res);
+  if (!res.ok) {
+    const err = (data.error as { code?: string; message?: string } | undefined) || {};
+    const detail = typeof data.detail === "string" ? data.detail : "";
+    throw new ApiError(
+      res.status,
+      err.code || "ERROR",
+      err.message || detail || res.statusText || "Request failed",
+    );
+  }
+  return data as T;
+}
+
+function looksLikeImportResult(data: Record<string, unknown>): boolean {
+  return (
+    Array.isArray(data.errors) ||
+    typeof data.imported === "number" ||
+    typeof data.created === "number" ||
+    typeof data.updated === "number" ||
+    typeof data.failed === "number" ||
+    typeof data.ok === "boolean" ||
+    typeof data.peopleInFile === "number"
+  );
+}
+
+function needsMultipartFile(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    (err.status === 400 || err.status === 415 || err.status === 422) &&
+    /file is required|multipart|unsupported media/i.test(err.message)
+  );
+}
+
+async function postImportMultipart(
+  path: string,
+  token: string,
+  payload: { filename: string; csvText: string; dryRun: boolean },
+): Promise<Record<string, unknown>> {
+  const fd = new FormData();
+  fd.append("file", new Blob([payload.csvText], { type: "text/csv;charset=utf-8" }), payload.filename);
+  fd.append("filename", payload.filename);
+  fd.append("dryRun", payload.dryRun ? "true" : "false");
+  return apiRequestForm<Record<string, unknown>>(path, token, fd);
+}
+
+async function postStudentImport(
+  token: string,
+  paths: string[],
+  payload: { filename: string; rows: StudentImportRow[]; csvText: string; dryRun: boolean },
+): Promise<StudentImportResult> {
+  let sawMissing = 0;
+  let lastErr: unknown;
+  for (const path of paths) {
+    try {
+      const data = await postImportMultipart(path, token, payload);
+      if (!looksLikeImportResult(data)) {
+        sawMissing += 1;
+        continue;
+      }
+      return normalizeImportApiResult(data, payload.filename, payload.dryRun);
+    } catch (err) {
+      lastErr = err;
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) throw err;
+      if (isImportEndpointMissing(err)) {
+        sawMissing += 1;
+        continue;
+      }
+      if (needsMultipartFile(err)) {
+        sawMissing += 1;
+        continue;
+      }
+      throw err;
+    }
+  }
+  try {
+    const data = await apiRequest<Record<string, unknown>>(paths[0], {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        filename: payload.filename,
+        dryRun: payload.dryRun,
+        rows: payload.rows,
+      }),
+    });
+    if (looksLikeImportResult(data)) {
+      return normalizeImportApiResult(data, payload.filename, payload.dryRun);
+    }
+  } catch (err) {
+    lastErr = err;
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) throw err;
+    if (!isImportEndpointMissing(err) && !needsMultipartFile(err)) throw err;
+  }
+  if (sawMissing || lastErr) throw new ImportEndpointMissingError();
+  throw lastErr instanceof Error ? lastErr : new ImportEndpointMissingError();
+}
+
+export function validateStudentImport(
+  token: string,
+  payload: { filename: string; rows: StudentImportRow[]; csvText: string },
+) {
+  return postStudentImport(
+    token,
+    ["/students/import/validate", "/students/import:validate"],
+    { ...payload, dryRun: true },
+  );
+}
+
+export function commitStudentImport(
+  token: string,
+  payload: { filename: string; rows: StudentImportRow[]; csvText: string },
+) {
+  return postStudentImport(
+    token,
+    ["/students/import/commit", "/students/import"],
+    { ...payload, dryRun: false },
   );
 }

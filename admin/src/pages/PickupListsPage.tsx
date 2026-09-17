@@ -1,10 +1,14 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { canEditPickupList, canSetCourtOrder, useAuth } from "../auth/AuthContext";
+import { canEditPickupList, canImportStudents, canSetCourtOrder, useAuth } from "../auth/AuthContext";
+import { useAudit } from "../components/AuditContext";
+import { IconDownload } from "../components/Icons";
+import { ImportCsvButton, StudentImportModal } from "../components/StudentImportModal";
 import { useToast } from "../components/Toast";
 import {
   ApiError,
   createAuthorizedPickup,
   getCustodyFlag,
+  getSchoolMe,
   isNetworkError,
   listAuthorizedPickup,
   listStudents,
@@ -20,6 +24,14 @@ import {
   saveCustodyLocal,
   upsertPickupPersonLocal,
 } from "../lib/pickupFixtures";
+import {
+  downloadImportTemplate,
+  isDemoSchoolId,
+  loadImportOverlay,
+  mergeOverlayStudents,
+  overlayCustodyFor,
+  overlayPeopleFor,
+} from "../lib/studentImport";
 import type {
   AuthorizedPickupPerson,
   CustodyFlagRecord,
@@ -44,13 +56,17 @@ function studentAvatar(student: Student) {
 export function PickupListsPage() {
   const { token, user, source } = useAuth();
   const { showToast } = useToast();
+  const { pushAudit } = useAudit();
   const canEdit = canEditPickupList(user?.role);
+  const canImport = canImportStudents(user?.role);
   const canCourt = canSetCourtOrder(user?.role);
+  const tenantId = (user?.schoolId || "").trim();
+  const tenantIsDemo = isDemoSchoolId(tenantId);
   const [students, setStudents] = useState<Student[]>([]);
   const [people, setPeople] = useState<AuthorizedPickupPerson[]>([]);
   const [custodyById, setCustodyById] = useState<Record<string, CustodyFlagRecord>>({});
   const [custody, setCustody] = useState<CustodyFlagRecord | null>(null);
-  const [selectedId, setSelectedId] = useState("STU-AARAV");
+  const [selectedId, setSelectedId] = useState("");
   const [q, setQ] = useState("");
   const [usingFixtures, setUsingFixtures] = useState(source === "fixtures");
   const [loading, setLoading] = useState(true);
@@ -58,23 +74,37 @@ export function PickupListsPage() {
   const [flagDraft, setFlagDraft] = useState<CustodyFlagValue>("none");
   const [instructionDraft, setInstructionDraft] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [schoolName, setSchoolName] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyPersonForm);
 
   const useLocal = usingFixtures || source === "fixtures" || !token || Boolean(token?.startsWith("fixture:"));
 
+  const applyOverlay = useCallback(
+    (base: Student[], flags: Record<string, CustodyFlagRecord>) => {
+      const overlay = tenantId ? loadImportOverlay(tenantId) : { schoolId: "", students: [], people: {}, custody: {} };
+      const merged = tenantId ? mergeOverlayStudents(base, overlay, tenantId) : base;
+      setStudents(merged);
+      setCustodyById({ ...flags, ...overlay.custody });
+    },
+    [tenantId],
+  );
+
   const loadStudents = useCallback(async () => {
     if (source === "fixtures" || !token || token.startsWith("fixture:")) {
-      const sess = getPickupFixtureSession();
-      setStudents(sess.students);
-      setCustodyById(sess.custody);
+      if (tenantId && !tenantIsDemo) {
+        applyOverlay([], {});
+      } else {
+        const sess = getPickupFixtureSession();
+        applyOverlay(sess.students, sess.custody);
+      }
       setUsingFixtures(true);
       setLoading(false);
       return;
     }
     try {
       const res = await listStudents(token, { active: true });
-      setStudents(res.data);
       const flags = await Promise.all(
         res.data.map(async (s) => {
           try {
@@ -84,22 +114,43 @@ export function PickupListsPage() {
           }
         }),
       );
-      setCustodyById(Object.fromEntries(flags));
+      applyOverlay(res.data, Object.fromEntries(flags));
       setUsingFixtures(false);
+      try {
+        const me = await getSchoolMe(token);
+        setSchoolName(me.name || null);
+      } catch {
+        setSchoolName(null);
+      }
     } catch {
-      const sess = getPickupFixtureSession();
-      setStudents(sess.students);
-      setCustodyById(sess.custody);
+      if (tenantId && !tenantIsDemo) {
+        applyOverlay([], {});
+      } else {
+        const sess = getPickupFixtureSession();
+        applyOverlay(sess.students, sess.custody);
+      }
       setUsingFixtures(true);
     } finally {
       setLoading(false);
     }
-  }, [source, token]);
+  }, [source, token, tenantId, tenantIsDemo, applyOverlay]);
 
   const loadDetail = useCallback(
     async (studentId: string, preferLocal = false) => {
       if (!studentId) return;
+      const overlayPeople = tenantId ? overlayPeopleFor(tenantId, studentId) : null;
+      const overlayFlag = tenantId ? overlayCustodyFor(tenantId, studentId) : null;
       if (preferLocal || source === "fixtures" || !token || token.startsWith("fixture:")) {
+        if (overlayPeople || overlayFlag) {
+          setPeople(overlayPeople || []);
+          setCustody(overlayFlag || emptyCustody(studentId));
+          return;
+        }
+        if (tenantId && !tenantIsDemo) {
+          setPeople([]);
+          setCustody(emptyCustody(studentId));
+          return;
+        }
         const sess = getPickupFixtureSession();
         setPeople(sess.people[studentId] || []);
         setCustody(sess.custody[studentId] || emptyCustody(studentId));
@@ -111,10 +162,20 @@ export function PickupListsPage() {
           listAuthorizedPickup(token, studentId),
           getCustodyFlag(token, studentId),
         ]);
-        setPeople(plist.data);
-        setCustody(flag);
+        setPeople(overlayPeople || plist.data);
+        setCustody(overlayFlag || flag);
         setUsingFixtures(false);
       } catch (err) {
+        if (overlayPeople || overlayFlag) {
+          setPeople(overlayPeople || []);
+          setCustody(overlayFlag || emptyCustody(studentId));
+          return;
+        }
+        if (tenantId && !tenantIsDemo) {
+          setPeople([]);
+          setCustody(emptyCustody(studentId));
+          return;
+        }
         const sess = getPickupFixtureSession();
         setPeople(sess.people[studentId] || []);
         setCustody(sess.custody[studentId] || emptyCustody(studentId));
@@ -124,7 +185,7 @@ export function PickupListsPage() {
         }
       }
     },
-    [source, token],
+    [source, token, tenantId, tenantIsDemo],
   );
 
   useEffect(() => {
@@ -135,8 +196,10 @@ export function PickupListsPage() {
     if (!students.length) return;
     const exists = students.some((s) => s.id === selectedId);
     if (!exists) {
-      const aarav = students.find((s) => /aarav/i.test(s.name)) || students[0];
-      setSelectedId(aarav.id);
+      const preferred = tenantIsDemo
+        ? students.find((s) => /aarav/i.test(s.name)) || students[0]
+        : students[0];
+      setSelectedId(preferred?.id || "");
       return;
     }
     void loadDetail(selectedId);
@@ -160,10 +223,11 @@ export function PickupListsPage() {
         );
       })
       .sort((a, b) => {
+        if (!tenantIsDemo) return a.name.localeCompare(b.name);
         const seed = (s: Student) => (/aarav/i.test(s.name) ? 0 : 1);
         return seed(a) - seed(b) || a.name.localeCompare(b.name);
       });
-  }, [students, q]);
+  }, [students, q, tenantIsDemo]);
 
   const selected = students.find((s) => s.id === selectedId) || null;
   const courtLocked = Boolean(custody?.flag === "court_order" && !canCourt);
@@ -247,7 +311,7 @@ export function PickupListsPage() {
     const existing = editId ? (sess.people[selected.id] || []).find((p) => p.id === editId) : null;
     const person: AuthorizedPickupPerson = {
       id: existing?.id || `APP-${Date.now()}`,
-      schoolId: "SCH-DEMO-01",
+      schoolId: tenantId || undefined,
       studentId: selected.id,
       name,
       relation: form.relation,
@@ -337,11 +401,27 @@ export function PickupListsPage() {
         <div>
           <h1>Students & authorized pickup</h1>
           <p>
-            Manual CRUD · custody flag + gate_instruction only · no court PDF
+            Manual CRUD · Import CSV · custody flag + gate_instruction only · no court PDF
+            {tenantId ? ` · tenant ${tenantId}` : ""}
             {usingFixtures && <span className="source-inline"> · fixtures fallback</span>}
           </p>
         </div>
-        <span className="tag type-parent">Priority P2</span>
+        <div className="topbar-actions">
+          {canImport && (
+            <>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => downloadImportTemplate(tenantId, user?.schoolCode)}
+              >
+                <IconDownload />
+                Template CSV
+              </button>
+              <ImportCsvButton onClick={() => setImportOpen(true)} disabled={!tenantId} />
+            </>
+          )}
+          <span className="tag type-parent">Priority P2</span>
+        </div>
       </div>
 
       <div className="pickup-split">
@@ -507,6 +587,29 @@ export function PickupListsPage() {
           )}
         </div>
       </div>
+
+      <StudentImportModal
+        open={importOpen}
+        students={students}
+        schoolName={schoolName}
+        onClose={() => setImportOpen(false)}
+        onCommitted={() => {
+          void loadStudents();
+        }}
+        onOpenCustody={(externalId) => {
+          const match = students.find(
+            (s) => String(s.studentId || "").toLowerCase() === externalId.toLowerCase(),
+          );
+          if (match) {
+            setSelectedId(match.id);
+            setImportOpen(false);
+            showToast(`Opened custody editor for ${match.name}`, "info");
+          } else {
+            showToast("Student not on this tenant list yet — import valid rows or fix the CSV", "warning");
+          }
+        }}
+        onAudit={(who, when, filter) => pushAudit(who, when, "pickup_import", filter)}
+      />
 
       {modalOpen && (
         <div

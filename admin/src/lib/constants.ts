@@ -27,6 +27,7 @@ export const ID_TYPES = ["Aadhaar", "DL", "Voter", "Passport", "Other"] as const
 export const AUTH_STORAGE_KEY = "satcop-admin-auth";
 export const FIXTURE_STATE_KEY = "satcop-admin-fixture-state";
 export const PICKUP_FIXTURE_STATE_KEY = "satcop-admin-pickup-fixture-state";
+export const PICKUP_IMPORT_STATE_KEY = "satcop-admin-pickup-import-overlay";
 export const AFTER_HOURS_FIXTURE_STATE_KEY = "satcop-admin-afterhours-fixture-state";
 export const BLAST_FIXTURE_STATE_KEY = "satcop-admin-blast-fixture-state";
 export const LAST_BLAST_ID_KEY = "satcop-admin-last-blast-id";
@@ -43,6 +44,13 @@ export const PICKUP_STATUSES = [
   "ReleasedWithOverride",
   "Matching",
 ] as const;
+
+/** Reserved demo tenant — never the import default. */
+export const DEMO_SCHOOL_ID = "SCH-DEMO-01";
+/** First real school. Template school_code is PRANAY; JWT schoolId is SCH-PRANAY-01. */
+export const FIRST_SCHOOL_NAME_EXAMPLE = "Pranay School Pune";
+export const FIRST_SCHOOL_CODE_EXAMPLE = "PRANAY";
+export const IMPORT_MAX_ROWS = 5_000;
 
 export const DEMO_LOGINS = {
   admin: { password: "admin123", role: "admin" as const, displayName: "Office Admin" },
