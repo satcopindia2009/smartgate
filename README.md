@@ -13,22 +13,31 @@ Shared story: **Priya Sharma** (Parent, `+91 98220 11122`) → **Anita Joshi** (
 | 1 | **Gate kiosk** (Android tablet landscape) | Android Studio → **File → Open** `kiosk/` → Run `app` (CAMERA + INTERNET). Tablet AVD ~1280×800 if you have one. |
 | 2 | **Host approve** (phone ~390) | `cd host-web && python3 -m http.server 8767` → http://127.0.0.1:8767/ |
 | 3 | **Visitor QR** (read-only badge) | `cd visitor-qr && python3 -m http.server 8768` → http://127.0.0.1:8768/?passId=P-4F21 |
+| 4 | **Gate pickup** (Priority P2 · PickupEvent) | `cd pickup-gate && python3 -m http.server 8769` → http://127.0.0.1:8769/ · defaults to **Pranay** · kiosk header **Pickup** is an entry only |
 
 Pills: cyan **LIVE mock** when the tunnel answers; amber **FIXTURES** when it does not. Demo still works offline.
 
+P2 pickup GATE default is **Pranay School Pune** (`SCH-PRANAY-01` / `PRANAY`): **Asha Patil 5-B** → **Ramesh Patil (parent)** / **Smita Patil (guardian)**; **Rohan Shah** on the same tenant. Login `pranay.gate` / `PranayGate@2026`. Isolated demo P6 (Aarav / Kabir) remains `SCH-DEMO-01` via `gate` / `gate123`. See `pickup-gate/README.md`.
+
 ## Mock URL + seed logins
 
-API base (ephemeral Cloudflare tunnel):
+Living API (Cloudflare; **pensions-usb is dead — do not use it**):
 
-`https://weed-pumps-laura-upc.trycloudflare.com/v1`
+`https://replacing-spyware-yes-due.trycloudflare.com/v1`
 
-School: **Demo International School** · `SCH-DEMO-01` · TZ `Asia/Calcutta`
+Admin pickup preview: `https://saver-recognised-daughter-revolutionary.trycloudflare.com`
+
+Visitor MVP school: **Demo International School** · `SCH-DEMO-01` · TZ `Asia/Calcutta`  
+Pickup GATE default: **Pranay School Pune** · `SCH-PRANAY-01` · `PRANAY`
 
 | Username | Password | Role | Who |
 |----------|----------|------|-----|
-| `gate` | `gate123` | gate | Gate — Ramesh (all 4 gates) |
-| `host` | `host123` | host | Anita Joshi (`H03`) |
-| `admin` | `admin123` | admin | Office Admin (not needed for this demo) |
+| `pranay.gate` | `PranayGate@2026` | gate | Pranay pickup (default on `pickup-gate/`) |
+| `pranay.sh` | `PranaySH@2026` | security_head | Pranay SH override (preferred) |
+| `gate` | `gate123` | gate | Demo visitor kiosk + isolated Aarav/Kabir pickup |
+| `host` | `host123` | host | Anita Joshi (`H03`) — visitor host-web |
+| `admin` | `admin123` | admin | Office Admin (visitor + Admin desk; not needed for Priya walk) |
+| `security` | `sh123` | security_head | Demo pickup override; Pranay fallback if `pranay.sh` seed is missing |
 
 Blacklist samples on the kiosk: **Block** Vikram More `9876500001` · **Alert** Neha Salunkhe `9876500002`.
 
@@ -49,4 +58,4 @@ cd kiosk
 
 ## Out of scope
 
-P2 pickup / access / blast, guard patrol, production or school SSO, inventing Aadhaar / real PII. Local FastAPI stub (`uvicorn app.main:app`) is the backend desk — Mobile does not change `app/`.
+Access / blast, guard patrol, production or school SSO, inventing Aadhaar / real PII. Admin pickup CRUD/history is the Admin desk (stub link only on the gate). Local FastAPI stub (`uvicorn app.main:app`) is the backend desk — Mobile does not change `app/` (pickup API is Backend PR #4).

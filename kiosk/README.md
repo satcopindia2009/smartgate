@@ -19,8 +19,8 @@ Demo story: **Priya Sharma** → **Anita Joshi** (`H03`) → **Main Gate** (`G-M
 
 ## Live mock + fallback
 
-Default base: `https://weed-pumps-laura-upc.trycloudflare.com/v1`  
-Gate login: `gate` / `gate123` (see `ApiConfig.kt`).
+Default base: `https://replacing-spyware-yes-due.trycloudflare.com/v1`  
+Visitor gate login stays `gate` / `gate123` (see `ApiConfig.kt`). Pickup-gate web defaults to `pranay.gate` / `PranayGate@2026`.
 
 Amber **FIXTURES** pill = tunnel down or later 5xx/timeout. The kiosk keeps working from `DemoFixtures` + `LocalVisitStore`. Do not block a demo on a dead tunnel. Gate never auto-approves a live visit.
 
@@ -47,6 +47,12 @@ Point `local.properties` at your SDK (`sdk.dir=...`). Gitignored.
 
 Unchanged: `schoolId`, `hostId`, `gateId`, `livePhotoKey`, `idImageKey`, `idType`, `idNumber`, `passId`, `qrToken`, visit `status`. Scan body: `passId` or `token`, `action`, `gateId`.
 
+## Pickup mode (P2 entry)
+
+Header **Visitor | Pickup**, plus a **Student pickup** card on step 1. This is an entry point only — the wired Day-1 gate flow is `../pickup-gate/` (`python3 -m http.server 8769`). Visitor steps 1–4 are unchanged.
+
+Pickup chrome / copy defaults to **Pranay School Pune** (`SCH-PRANAY-01`): Asha Patil 5-B · Ramesh Patil (parent) + Smita Patil (guardian); Rohan Shah. Login `pranay.gate` / `PranayGate@2026`. Isolated demo P6 (Aarav / Kabir) stays on `SCH-DEMO-01`. Mother / guardian is not Priya. Visitor steps 1–4 and `gate` / `gate123` are unchanged.
+
 ## Out of scope
 
-Host-approve web (`../host-web/`), visitor QR (`../visitor-qr/`), guard patrol, production/school deploy, real PII/Aadhaar, P2 pickup.
+Host-approve web (`../host-web/`), visitor QR (`../visitor-qr/`), guard patrol, production/school deploy, real PII/Aadhaar. Admin pickup CRUD/history is the Admin desk.
