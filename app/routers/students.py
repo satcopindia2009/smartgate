@@ -25,7 +25,6 @@ from app.roster_import import (
     CSV_CONTRACT,
     import_locked_rows,
     import_pickup,
-    import_students,
     merge_import_results,
     read_upload,
 )
