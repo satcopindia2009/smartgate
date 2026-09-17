@@ -235,8 +235,14 @@ def _blank_row(row: dict[str, str]) -> bool:
     return not any((row.get(k) or "").strip() for k in LOCKED_HEADERS)
 
 
-def _err(row_no: int, message: str, field: Optional[str] = None, file: Optional[str] = None) -> dict:
-    item: dict[str, Any] = {"row": row_no, "message": message}
+def _err(
+    row_no: int,
+    message: str,
+    field: Optional[str] = None,
+    file: Optional[str] = None,
+    code: str = "VALIDATION",
+) -> dict:
+    item: dict[str, Any] = {"row": row_no, "message": message, "code": code}
     if field:
         item["field"] = field
     if file:
@@ -251,6 +257,12 @@ def _check_school_code(row_code: str, jwt_school: str) -> Optional[str]:
     if raw.upper() in {"SCH-PRANAY-PUNE-01", "PRANAY-PUNE"}:
         return "SCH-PRANAY-PUNE-01 is not a valid school_code — use PRANAY / SCH-PRANAY-01"
     found = store.get_school_by_code(raw)
+    if jwt_school == PRANAY_SCHOOL_ID:
+        if raw.upper() not in {PRANAY_SCHOOL_CODE, PRANAY_SCHOOL_ID}:
+            return (
+                f"school_code must be {PRANAY_SCHOOL_CODE} for tenant {PRANAY_SCHOOL_ID}"
+            )
+        return None
     if found:
         if found["id"] != jwt_school:
             return (
@@ -680,10 +692,15 @@ def merge_import_results(
     if school_id:
         stored = store.add_roster_import(audit)
         audit["id"] = stored["id"]
+    school = store.get_school(school_id) if school_id else None
     out = {
         "created": created,
+        "imported": created,
         "updated": updated,
+        "failed": len(errors),
         "errors": errors,
+        "schoolId": school_id,
+        "school_code": (school or {}).get("schoolCode") if school else None,
         "mode": mode,
         "dryRun": mode != "commit",
         "audit": audit,

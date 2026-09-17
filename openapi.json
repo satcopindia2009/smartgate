@@ -1876,13 +1876,103 @@
         }
       }
     },
+    "/v1/students/import:validate": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Validate roster CSV/Excel (dry-run)",
+        "description": "AC-IMP-9 dry-run. Admin / Security Head. Multipart `file` using the locked template. No writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes.",
+        "operationId": "import_students_validate_v1_students_import_validate_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_students_validate_v1_students_import_validate_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/students/import:commit": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Commit roster CSV/Excel",
+        "description": "Admin / Security Head. Multipart `file` using the locked template. Writes valid rows. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes.",
+        "operationId": "import_students_commit_v1_students_import_commit_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_students_commit_v1_students_import_commit_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/students/import": {
       "post": {
         "tags": [
           "students"
         ],
-        "summary": "Import students CSV/Excel",
-        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Upsert by (JWT schoolId + student_external_id). `mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`.",
+        "summary": "Import roster CSV/Excel (commit alias)",
+        "description": "Admin / Security Head. Alias of `/students/import:commit` (pass `mode=validate` for dry-run). Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Returns `{ imported, updated, failed, errors[], schoolId, school_code }`.",
         "operationId": "import_students_csv_v1_students_import_post",
         "security": [
           {
@@ -4787,6 +4877,20 @@
         "type": "object",
         "title": "Body_import_roster_v1_schools_me_roster_import_post"
       },
+      "Body_import_students_commit_v1_students_import_commit_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_students_commit_v1_students_import_commit_post"
+      },
       "Body_import_students_csv_v1_students_import_post": {
         "properties": {
           "file": {
@@ -4800,6 +4904,20 @@
           "file"
         ],
         "title": "Body_import_students_csv_v1_students_import_post"
+      },
+      "Body_import_students_validate_v1_students_import_validate_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_students_validate_v1_students_import_validate_post"
       },
       "Body_upload_media_v1_media_upload_post": {
         "properties": {

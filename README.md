@@ -78,9 +78,11 @@ Real school load is **CSV/Excel import + school API push**. Demo school stays se
 |--------|------|-------|
 | `POST /v1/schools` | Admin / Security Head **or** `X-Bootstrap-Token` | Body `{ name, timezone?, slug?, adminPassword?, securityHeadPassword? }` → `{ schoolId, name, gates, hours, credentials }`. Credentials returned **once**. |
 | `GET /v1/schools/me` | any authed | Current school from JWT |
-| `POST /v1/schools/me/roster/import` | Admin/SH | Multipart `students` + `pickup` (`.csv` or `.xlsx`) |
-| `POST /v1/students/import` | Admin/SH | Multipart `file` (students only) |
-| `POST /v1/students/authorized-pickup/import` | Admin/SH | Multipart `file` (pickup only; student must already exist) |
+| `POST /v1/schools/me/roster/import` | Admin/SH | Multipart `file` locked template; `mode=validate\|commit` |
+| `POST /v1/students/import:validate` | Admin/SH | Dry-run (AC-IMP-9), no writes |
+| `POST /v1/students/import:commit` | Admin/SH | Writes valid rows |
+| `POST /v1/students/import` | Admin/SH | Commit alias (`mode=validate` still works) |
+| `POST /v1/students/authorized-pickup/import` | Admin/SH | Same locked headers |
 
 **Reserved:** `schoolId=SCH-DEMO-01` cannot be created or overwritten. New tenants get the same gate keys (`G-MAIN`, `G-PED`, `G-STAFF`, `G-BUS`) scoped by `schoolId` on each gate row.
 
@@ -198,7 +200,7 @@ Matching → Released
 | Action | Role | Notes |
 |--------|------|-------|
 | `GET/POST /students` · `PATCH /students/{id}` | Gate read; Admin/SH write | Manual CRUD (no MSR) |
-| `POST /schools/me/roster/import` · `POST /students/import` · `POST /students/authorized-pickup/import` | Admin/SH | CSV/Excel upsert; JWT schoolId is SoT |
+| `POST /schools/me/roster/import` · `POST /students/import:validate` · `POST /students/import:commit` | Admin/SH | Locked CSV/Excel; JWT schoolId is SoT |
 | `GET/POST/PATCH …/authorized-pickup` | Gate read; Admin/SH write | Consent version required on create; soft-deactivate only |
 | `GET/PUT …/custody-flag` | Gate sees **flag + `gateInstruction` ≤280 only**; Admin `none`/`restricted`; SH writes `court_order` | No court PDF / narrative |
 | `POST /pickups` | Gate | Starts `Matching`; claimed collector = person id **or** mobile/id |

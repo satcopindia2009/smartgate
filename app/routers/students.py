@@ -23,6 +23,7 @@ from app.pickup_match import (
 )
 from app.roster_import import (
     CSV_CONTRACT,
+    import_locked_rows,
     import_pickup,
     import_students,
     merge_import_results,
@@ -142,14 +143,68 @@ def create_student(
     return _meta(row)
 
 
+async def _run_locked_import(file: UploadFile, user: dict, mode: str) -> dict:
+    mode_n = (mode or "commit").strip().lower()
+    if mode_n not in {"validate", "commit"}:
+        raise AppError("VALIDATION", "mode must be validate or commit", 400)
+    data, filename, ctype = await read_upload(file)
+    result = import_locked_rows(
+        data,
+        school_id=user["schoolId"],
+        user=user,
+        filename=filename,
+        content_type=ctype,
+        file_label="file",
+        mode=mode_n,
+    )
+    return merge_import_results(
+        unified=result,
+        mode=mode_n,
+        user=user,
+        filenames=[filename or "file"],
+        school_id=user["schoolId"],
+    )
+
+
+@router.post(
+    "/students/import:validate",
+    summary="Validate roster CSV/Excel (dry-run)",
+    description=(
+        "AC-IMP-9 dry-run. Admin / Security Head. Multipart `file` using the locked template. "
+        "No writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. "
+        f"{CSV_CONTRACT}"
+    ),
+)
+async def import_students_validate(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(*_WRITE_ROLES)),
+):
+    return await _run_locked_import(file, user, "validate")
+
+
+@router.post(
+    "/students/import:commit",
+    summary="Commit roster CSV/Excel",
+    description=(
+        "Admin / Security Head. Multipart `file` using the locked template. Writes valid rows. "
+        "Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. "
+        f"{CSV_CONTRACT}"
+    ),
+)
+async def import_students_commit(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(*_WRITE_ROLES)),
+):
+    return await _run_locked_import(file, user, "commit")
+
+
 @router.post(
     "/students/import",
-    summary="Import students CSV/Excel",
+    summary="Import roster CSV/Excel (commit alias)",
     description=(
-        "Admin / Security Head. Multipart field `file` (.csv or .xlsx). "
+        "Admin / Security Head. Alias of `/students/import:commit` (pass `mode=validate` for dry-run). "
         f"{CSV_CONTRACT} "
-        "Upsert by (JWT schoolId + student_external_id). "
-        "`mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`."
+        "Returns `{ imported, updated, failed, errors[], schoolId, school_code }`."
     ),
 )
 async def import_students_csv(
@@ -157,28 +212,7 @@ async def import_students_csv(
     mode: str = Query(default="commit"),
     user: dict = Depends(require_roles(*_WRITE_ROLES)),
 ):
-    mode_n = (mode or "commit").strip().lower()
-    if mode_n not in {"validate", "commit"}:
-        raise AppError("VALIDATION", "mode must be validate or commit", 400)
-    data, filename, ctype = await read_upload(file)
-    result = import_students(
-        data,
-        school_id=user["schoolId"],
-        user_id=user["id"],
-        user=user,
-        filename=filename,
-        content_type=ctype,
-        file_label="students",
-        mode=mode_n,
-    )
-    return merge_import_results(
-        result,
-        None,
-        mode=mode_n,
-        user=user,
-        filenames=[filename or "file"],
-        school_id=user["schoolId"],
-    )
+    return await _run_locked_import(file, user, mode)
 
 
 @router.post(

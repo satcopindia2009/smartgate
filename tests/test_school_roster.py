@@ -537,6 +537,57 @@ def test_ac_imp_xlsx_and_pranay_import_does_not_touch_demo(client):
     assert store.get_student("STU-KABIR")["legalHold"] is True
 
 
+def test_ac_imp_colon_validate_commit_and_pranay_school_code(client):
+    token = login(client, "pranay.admin", "pranay123")
+    row = _person_row(
+        school_code=PRANAY_SCHOOL_CODE,
+        student_external_id="7C-01",
+        student_name="Colon Kid",
+        person_name="Colon Parent",
+        mobile="9822016001",
+    )
+    dry = client.post(
+        "/v1/students/import:validate",
+        headers=auth(token),
+        files={"file": ("roster.csv", _csv_bytes([row]), "text/csv")},
+    )
+    assert dry.status_code == 200, dry.text
+    assert dry.json()["dryRun"] is True
+    assert dry.json()["imported"] >= 1
+    assert dry.json()["schoolId"] == PRANAY_SCHOOL_ID
+    assert dry.json()["school_code"] == PRANAY_SCHOOL_CODE
+    assert client.get("/v1/students?q=Colon", headers=auth(token)).json()["data"] == []
+
+    committed = client.post(
+        "/v1/students/import:commit",
+        headers=auth(token),
+        files={"file": ("roster.csv", _csv_bytes([row]), "text/csv")},
+    )
+    assert committed.status_code == 200, committed.text
+    assert committed.json()["dryRun"] is False
+    assert committed.json()["imported"] >= 1
+    assert committed.json()["failed"] == 0
+    assert {e.get("code") for e in committed.json()["errors"]} <= {None} or committed.json()["errors"] == []
+    listed = client.get("/v1/students?q=Colon", headers=auth(token))
+    assert listed.json()["data"][0]["schoolId"] == PRANAY_SCHOOL_ID
+
+    bad = client.post(
+        "/v1/students/import:commit",
+        headers=auth(token),
+        files={
+            "file": (
+                "bad.csv",
+                _csv_bytes([_person_row(school_code="DEMO", student_external_id="7C-02")]),
+                "text/csv",
+            )
+        },
+    )
+    assert bad.status_code == 200, bad.text
+    assert bad.json()["failed"] >= 1
+    assert any("PRANAY" in e["message"] for e in bad.json()["errors"])
+    assert store.get_student("STU-AARAV")["schoolId"] == SCHOOL_ID
+
+
 def test_security_head_can_create_and_import(client):
     sh = login(client, "security", "sh123")
     r = _create_school(client, sh, name="SH Created School", slug="sh-created")
