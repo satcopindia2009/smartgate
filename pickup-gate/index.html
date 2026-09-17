@@ -90,6 +90,25 @@
       background: var(--cyan-dim); color: var(--cyan-bright);
     }
     .source-pill.fallback { background: var(--orange-dim); color: #fbbf24; }
+    .account-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text-muted); font-size: 12px;
+    }
+    .account-chip button {
+      border: 0; background: transparent; color: var(--cyan-bright);
+      font-size: 11px; font-weight: 600; padding: 0;
+    }
+    .login-panel {
+      display: none; margin-top: 10px; padding: 12px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--bg); gap: 8px; flex-wrap: wrap;
+      align-items: center; max-width: 520px;
+    }
+    .login-panel.visible { display: flex; }
+    .login-panel input {
+      flex: 1; min-width: 140px; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text); min-height: 40px;
+    }
     .gate-panel {
       background: var(--card);
       border: 1px solid var(--border);
@@ -346,13 +365,17 @@
         </div>
         <div>
           <h1>Satcop Smart Visitor</h1>
-          <span>Demo International School · Student pickup (PickupEvent)</span>
+          <span id="school-chrome">Pranay School Pune · SCH-PRANAY-01 · PRANAY · Student pickup</span>
         </div>
       </div>
       <div class="gate-meta">
         <span class="p2-pill">Priority P2</span>
-        <span class="gate-pill">Main Gate</span>
+        <span class="gate-pill" id="gate-pill">Main Gate</span>
         <span id="source-pill" class="source-pill">Checking mock…</span>
+        <span class="account-chip" id="account-chip">
+          <span id="account-label">pranay.gate</span>
+          <button type="button" id="btn-switch-account">Switch</button>
+        </span>
         <span id="gate-clock">—</span>
       </div>
     </header>
@@ -372,6 +395,12 @@
             <h2>Purpose at gate</h2>
             <p>Choose <strong>Student pickup</strong> for early / sick / appointment release (separate from visitor register)</p>
           </div>
+        </div>
+        <div class="login-panel" id="login-panel">
+          <input type="text" id="login-user" placeholder="pranay.gate" autocomplete="username" />
+          <input type="password" id="login-pass" placeholder="PranayGate@2026" autocomplete="current-password" />
+          <button type="button" class="btn btn-cyan" id="btn-login">Sign in</button>
+          <button type="button" class="btn btn-ghost" id="btn-login-demo">Demo gate</button>
         </div>
         <div class="type-cards" role="group" aria-label="Gate purpose">
           <button type="button" class="type-card active" data-purpose="pickup" id="purpose-pickup">
@@ -438,9 +467,9 @@
           </div>
         </div>
         <div class="student-banner" id="student-banner">
-          <div class="avatar avatar-xl avatar-cyan" id="student-avatar">AM</div>
+          <div class="avatar avatar-xl avatar-cyan" id="student-avatar">AP</div>
           <div class="meta">
-            <h3 id="student-name">Aarav Mehta</h3>
+            <h3 id="student-name">Asha Patil</h3>
             <div class="class-line" id="student-class">Class 5-B</div>
           </div>
         </div>
@@ -512,7 +541,7 @@
           </div>
           <div class="status-chip released" id="result-chip">Released</div>
           <h2 id="result-title">Release logged</h2>
-          <div class="prompt" id="result-prompt">Release logged for Aarav Mehta → Rohan Mehta (Uncle).</div>
+          <div class="prompt" id="result-prompt">Release logged for Asha Patil → Ramesh Patil (Parent).</div>
           <div class="result-meta" id="result-meta">
             <div><span>Gate</span><strong>G-MAIN</strong></div>
             <div><span>Match</span><strong id="meta-match">manual_list_select</strong></div>
@@ -525,7 +554,7 @@
           </div>
           <p class="proof-note">Proof fields above are stored on the PickupEvent for later Admin search. This Gate slice does not invent Admin CRUD/history UI.</p>
           <div class="demo-control-bar" id="override-demo-bar">
-            <span class="hint">Gate cannot self-override. Security Head only (reason required) · login <code>security</code> / <code>sh123</code>:</span>
+            <span class="hint" id="sh-hint">Gate cannot self-override. Security Head only (reason required) · login <code>pranay.sh</code> / <code>PranaySH@2026</code> (fallback <code>security</code> / <code>sh123</code>):</span>
             <div class="override-reason-row">
               <input type="text" id="sh-override-reason" placeholder="SH override reason (required)" value="Parent called SH; same-day release confirmed by phone" />
               <button type="button" class="btn btn-primary" id="btn-sh-approve">SH approve → ReleasedWithOverride</button>

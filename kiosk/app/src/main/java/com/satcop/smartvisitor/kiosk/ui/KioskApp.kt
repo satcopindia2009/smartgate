@@ -42,6 +42,7 @@ import com.satcop.smartvisitor.kiosk.ui.components.ShieldMark
 import com.satcop.smartvisitor.kiosk.ui.components.SourcePill
 import com.satcop.smartvisitor.kiosk.ui.components.StepDots
 import com.satcop.smartvisitor.kiosk.ui.components.ToastBanner
+import com.satcop.smartvisitor.kiosk.data.fixture.PickupStory
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.ui.components.StatusPill
 import com.satcop.smartvisitor.kiosk.ui.steps.OutcomeStep
@@ -236,7 +237,7 @@ private fun KioskHeader(
                 )
                 Text(
                     text = if (mode == KioskMode.PICKUP) {
-                        "$schoolName · Student pickup (P2)"
+                        "${PickupStory.SCHOOL_PRANAY} · Student pickup (P2)"
                     } else if (roleLabel.isBlank()) {
                         "$schoolName · Gate check-in"
                     } else {

@@ -4,9 +4,51 @@
   var token = null;
   var shToken = null;
   var live = false;
+  var currentUser = null;
+  var activeTenantId = cfg.defaultTenant || "pranay";
   var TIMEOUT_MS = 6000;
   var localEvents = {};
   var localSeq = 1;
+
+  function tenants() {
+    return cfg.tenants || {};
+  }
+
+  function tenantById(id) {
+    return tenants()[id] || tenants().pranay;
+  }
+
+  function currentTenant() {
+    return tenantById(activeTenantId);
+  }
+
+  function inferTenantId(username, schoolId) {
+    if (schoolId === "SCH-PRANAY-01") return "pranay";
+    if (schoolId === "SCH-DEMO-01") return "demo";
+    var u = String(username || "").toLowerCase();
+    if (u.indexOf("pranay") === 0) return "pranay";
+    if (u === "gate" || u === "security" || u === "admin" || u === "host") return "demo";
+    return cfg.defaultTenant || "pranay";
+  }
+
+  function applyTenant(id) {
+    activeTenantId = tenantById(id).id;
+    var t = currentTenant();
+    cfg.gateUser = t.gateUser;
+    cfg.gatePass = t.gatePass;
+    cfg.shUser = t.shUser;
+    cfg.shPass = t.shPass;
+    cfg.gateId = t.gateId;
+    return t;
+  }
+
+  function uniquePasswords(primary, fallbacks) {
+    var out = [];
+    [primary].concat(fallbacks || []).forEach(function (p) {
+      if (p && out.indexOf(p) < 0) out.push(p);
+    });
+    return out;
+  }
 
   function formatMobile(raw) {
     var d = String(raw || "").replace(/\D/g, "");
@@ -79,6 +121,10 @@
       "Sunita Singh": "Mother",
       "Rajesh Singh": "Father",
       "Sneha Patel": "Mother",
+      "Ramesh Patil": "Parent",
+      "Smita Patil": "Guardian",
+      "Kavita Shah": "Parent",
+      "Nisha Joshi": "Guardian",
     };
     if (known[person.name]) return known[person.name];
     var map = {
@@ -130,39 +176,91 @@
     }
   }
 
-  async function warmup() {
-    try {
-      var login = await request("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ username: cfg.gateUser, password: cfg.gatePass }),
-      });
-      token = login.accessToken;
-      live = true;
-      return { live: true, user: login.user };
-    } catch (e) {
-      live = false;
-      token = null;
-      return { live: false, error: e.message };
+  async function loginWithFallbacks(username, passwords) {
+    var lastErr = null;
+    for (var i = 0; i < passwords.length; i++) {
+      try {
+        return await request("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ username: username, password: passwords[i] }),
+        });
+      } catch (e) {
+        lastErr = e;
+        if (e && e.status && e.status !== 401 && e.code !== "INVALID_CREDENTIALS") throw e;
+      }
     }
+    throw lastErr || new Error("Login failed");
   }
 
-  async function ensureSh() {
-    if (shToken) return shToken;
-    var login = await request("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username: cfg.shUser, password: cfg.shPass }),
-    });
-    shToken = login.accessToken;
-    return shToken;
+  function fixtureStudents() {
+    var schoolId = currentTenant().schoolId;
+    return (fx.students || []).filter(function (s) { return s.schoolId === schoolId; });
   }
 
   function searchLocal(q) {
     var query = String(q || "").trim().toLowerCase();
-    return fx.students.filter(function (s) {
+    return fixtureStudents().filter(function (s) {
       if (!query) return true;
       var label = (s.name + " " + classLabel(s) + " " + (s.class || "") + "-" + (s.section || "")).toLowerCase();
       return label.indexOf(query) >= 0 || s.name.toLowerCase().indexOf(query) >= 0;
     });
+  }
+
+  async function login(username, password) {
+    token = null;
+    shToken = null;
+    live = false;
+    currentUser = null;
+    var inferred = inferTenantId(username);
+    applyTenant(inferred);
+    var t = currentTenant();
+    var passes = password
+      ? uniquePasswords(password, [])
+      : uniquePasswords(t.gatePass, t.gatePassFallbacks);
+    try {
+      var result = await loginWithFallbacks(username, passes);
+      token = result.accessToken;
+      live = true;
+      currentUser = result.user || { username: username };
+      applyTenant(inferTenantId(username, currentUser.schoolId));
+      return { live: true, user: currentUser, tenant: currentTenant() };
+    } catch (e) {
+      live = false;
+      token = null;
+      currentUser = { username: username, schoolId: t.schoolId, role: "gate", fixture: true };
+      return { live: false, error: e.message, user: currentUser, tenant: t };
+    }
+  }
+
+  async function warmup(username, password) {
+    var t = currentTenant();
+    return login(username || t.gateUser, password);
+  }
+
+  async function ensureSh() {
+    if (shToken) return shToken;
+    var t = currentTenant();
+    var attempts = [];
+    uniquePasswords(t.shPass, t.shPassFallbacks).forEach(function (p) {
+      attempts.push({ username: t.shUser, password: p });
+    });
+    if (t.shFallbackUser && t.shFallbackPass) {
+      attempts.push({ username: t.shFallbackUser, password: t.shFallbackPass });
+    }
+    var lastErr = null;
+    for (var i = 0; i < attempts.length; i++) {
+      try {
+        var result = await request("/auth/login", {
+          method: "POST",
+          body: JSON.stringify(attempts[i]),
+        });
+        shToken = result.accessToken;
+        return shToken;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("Security Head login failed");
   }
 
   async function searchStudents(q) {
@@ -175,20 +273,40 @@
   }
 
   async function getStudent(id) {
-    if (live) return request("/students/" + encodeURIComponent(id));
-    return fx.students.find(function (s) { return s.id === id; }) || null;
+    if (live) {
+      try {
+        return await request("/students/" + encodeURIComponent(id));
+      } catch (e) {
+        var local = fixtureStudents().find(function (s) { return s.id === id; });
+        if (local) return local;
+        throw e;
+      }
+    }
+    return fixtureStudents().find(function (s) { return s.id === id; }) || null;
   }
 
   async function listAuthorized(studentId) {
     if (live) {
-      var out = await request("/students/" + encodeURIComponent(studentId) + "/authorized-pickup");
-      return out.data || [];
+      try {
+        var out = await request("/students/" + encodeURIComponent(studentId) + "/authorized-pickup");
+        return out.data || [];
+      } catch (e) {
+        if (fx.authorized[studentId]) return fx.authorized[studentId].slice();
+        throw e;
+      }
     }
     return (fx.authorized[studentId] || []).slice();
   }
 
   async function getCustody(studentId) {
-    if (live) return request("/students/" + encodeURIComponent(studentId) + "/custody-flag");
+    if (live) {
+      try {
+        return await request("/students/" + encodeURIComponent(studentId) + "/custody-flag");
+      } catch (e) {
+        if (fx.custody[studentId]) return fx.custody[studentId];
+        throw e;
+      }
+    }
     return fx.custody[studentId] || { studentId: studentId, flag: "none", gateInstruction: "" };
   }
 
@@ -197,22 +315,26 @@
     var id = "PK-LOCAL-" + String(localSeq++).padStart(3, "0");
     var ev = Object.assign({
       id: id,
-      schoolId: "SCH-DEMO-01",
+      schoolId: currentTenant().schoolId,
       gateId: cfg.gateId,
       status: "Matching",
       override: false,
       attemptedAt: now,
       createdAt: now,
       updatedAt: now,
-      gateUserId: "U-GATE",
+      gateUserId: currentUser && currentUser.id || "U-GATE",
       meta: { watermark: "DEMO", fixture: true },
     }, partial);
     localEvents[id] = ev;
     return ev;
   }
 
+  function isFixtureOnlyStudent(studentId) {
+    return String(studentId || "").indexOf("-FX-") >= 0;
+  }
+
   async function createPickup(body) {
-    if (live) {
+    if (live && !isFixtureOnlyStudent(body.studentId)) {
       return request("/pickups", { method: "POST", body: JSON.stringify(body) });
     }
     return localPickup({
@@ -230,7 +352,7 @@
 
   async function recordConsent(pickupId, version) {
     var payload = { pickupConsentVersion: version || cfg.consentVersion };
-    if (live) {
+    if (live && !localEvents[pickupId]) {
       return request("/pickups/" + encodeURIComponent(pickupId) + "/consent", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -270,7 +392,7 @@
   async function releasePickup(pickupId, photoRef, linkVisit) {
     var payload = { collectorLivePhotoRef: photoRef };
     if (linkVisit) payload.linkVisit = true;
-    if (live) {
+    if (live && !localEvents[pickupId]) {
       return request("/pickups/" + encodeURIComponent(pickupId) + "/release", {
         method: "POST",
         body: JSON.stringify(payload),
@@ -285,7 +407,7 @@
   }
 
   async function requestOverride(pickupId) {
-    if (live) {
+    if (live && !localEvents[pickupId]) {
       return request("/pickups/" + encodeURIComponent(pickupId) + "/request-override", { method: "POST" });
     }
     var ev = localEvents[pickupId];
@@ -297,7 +419,7 @@
   }
 
   async function overridePickup(pickupId, reason) {
-    if (live) {
+    if (live && !localEvents[pickupId]) {
       await ensureSh();
       return request("/pickups/" + encodeURIComponent(pickupId) + "/override", {
         method: "POST",
@@ -318,6 +440,7 @@
   }
 
   async function getPickup(pickupId) {
+    if (localEvents[pickupId]) return localEvents[pickupId];
     if (live) return request("/pickups/" + encodeURIComponent(pickupId));
     return localEvents[pickupId] || null;
   }
@@ -356,6 +479,7 @@
 
   global.VMS_PICKUP_API = {
     warmup: warmup,
+    login: login,
     searchStudents: searchStudents,
     getStudent: getStudent,
     listAuthorized: listAuthorized,
@@ -377,7 +501,10 @@
     inDate: inDate,
     relationLabel: relationLabel,
     gateInstruction: gateInstruction,
+    fixtureStudents: fixtureStudents,
     isLive: function () { return live; },
+    currentTenant: currentTenant,
+    currentUser: function () { return currentUser; },
     applyLocalStatus: function (pickupId, status, extra) {
       var ev = localEvents[pickupId];
       if (!ev) return null;

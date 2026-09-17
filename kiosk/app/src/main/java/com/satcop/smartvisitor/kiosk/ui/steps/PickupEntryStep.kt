@@ -127,9 +127,10 @@ fun PickupEntryStep(
         }
 
         Text(
-            text = "P6 story · ${PickupStory.STUDENT_AARAV} ${PickupStory.CLASS_AARAV} → " +
-                "${PickupStory.COLLECTOR_MOTHER} (Mother) + ${PickupStory.COLLECTOR_UNCLE} (Uncle). " +
-                "${PickupStory.STUDENT_KABIR} ${PickupStory.CUSTODY_FLAG} block. Mother is not Priya.",
+            text = "Pranay GATE · ${PickupStory.STUDENT_ASHA} ${PickupStory.CLASS_ASHA} → " +
+                "${PickupStory.COLLECTOR_PARENT} (parent) + ${PickupStory.COLLECTOR_GUARDIAN} (guardian). " +
+                "${PickupStory.STUDENT_ROHAN_SHAH} also on list. Login ${PickupStory.GATE_USER_PRANAY} / " +
+                "${PickupStory.GATE_PASS_PRANAY}. Demo Aarav/Kabir stays on SCH-DEMO-01. Not Priya.",
             color = KioskColors.textMuted,
             fontSize = 13.sp,
             fontFamily = KioskFont,

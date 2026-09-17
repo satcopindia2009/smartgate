@@ -25,6 +25,31 @@
 
   var KNOWN_STORIES = ["purpose", "lookup", "list", "happy", "notauth", "custody", "override"];
 
+  function applyChrome() {
+    var t = api.currentTenant();
+    var user = api.currentUser() || {};
+    var schoolEl = $("#school-chrome");
+    if (schoolEl) {
+      schoolEl.textContent = t.name + " · " + t.schoolId + " · " + t.schoolCode + " · Student pickup";
+    }
+    var gatePill = $("#gate-pill");
+    if (gatePill) gatePill.textContent = t.gateName || "Main Gate";
+    var account = $("#account-label");
+    if (account) account.textContent = user.username || t.gateUser;
+    var sh = $("#sh-hint");
+    if (sh) {
+      var fallback = t.shFallbackUser
+        ? " (fallback <code>" + t.shFallbackUser + "</code> / <code>" + t.shFallbackPass + "</code>)"
+        : "";
+      sh.innerHTML = "Gate cannot self-override. Security Head only (reason required) · login <code>" +
+        t.shUser + "</code> / <code>" + t.shPass + "</code>" + fallback + ":";
+    }
+    var userInput = $("#login-user");
+    var passInput = $("#login-pass");
+    if (userInput && !userInput.value) userInput.value = t.gateUser;
+    if (passInput && !passInput.value) passInput.placeholder = t.gatePass;
+  }
+
   function toast(msg, kind) {
     var box = $("#toast-box");
     if (!box) return;
@@ -88,9 +113,13 @@
 
   function studentAvatarClass(s) {
     if (!s) return "avatar-cyan";
-    if (/Kabir/i.test(s.name)) return "avatar-orange";
-    if (/Patel/i.test(s.name)) return "avatar-blue";
+    if (/Kabir|Dev Joshi/i.test(s.name)) return "avatar-orange";
+    if (/Patel|Shah/i.test(s.name)) return "avatar-blue";
     return "avatar-cyan";
+  }
+
+  function isCustodyFlag(flag) {
+    return flag === "court_order" || flag === "restricted";
   }
 
   function decide(student, custody, collector) {
@@ -135,7 +164,7 @@
     var query = (q || "").trim().toLowerCase();
     var hits = (state._lookupCache || []).slice();
     if (!state.live && !hits.length) {
-      hits = window.VMS_PICKUP_FIXTURES.students.slice();
+      hits = api.fixtureStudents();
     }
     if (query) {
       hits = hits.filter(function (s) {
@@ -145,6 +174,7 @@
     }
     var aaravHits = hits.filter(function (s) { return /^aarav/i.test(s.name); });
     if (
+      api.currentTenant().id === "demo" &&
       query.indexOf("aarav") >= 0 &&
       aaravHits.length >= 2 &&
       !/\d/.test(query) &&
@@ -162,7 +192,8 @@
       box.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No student found. Ask Admin to add — no free-text release.</div>';
     } else {
       box.innerHTML = hits.map(function (s) {
-        var custodyMark = (s._custodyFlag === "court_order" || (s.name === "Kabir Singh")) ? " · COURT ORDER" : "";
+        var custodyMark = s._custodyFlag === "court_order" ? " · COURT ORDER"
+          : s._custodyFlag === "restricted" ? " · RESTRICTED" : "";
         return (
           '<button type="button" class="lookup-item" data-id="' + s.id + '" role="option">' +
             '<div class="avatar avatar-lg ' + studentAvatarClass(s) + '">' + api.initials(s.name) + "</div>" +
@@ -188,15 +219,12 @@
     try {
       var rows = await api.searchStudents(q);
       state._lookupCache = rows;
-      if (state.live) {
-        await Promise.all(rows.map(function (s) {
-          if (!/Kabir|Aarav/i.test(s.name)) return null;
-          return api.getCustody(s.id).then(function (c) { s._custodyFlag = c && c.flag; }).catch(function () {});
-        }));
-      }
+      await Promise.all(rows.slice(0, 12).map(function (s) {
+        return api.getCustody(s.id).then(function (c) { s._custodyFlag = c && c.flag; }).catch(function () {});
+      }));
     } catch (e) {
       toast(e.message || "Student search failed", "warning");
-      if (!state._lookupCache) state._lookupCache = window.VMS_PICKUP_FIXTURES.students.slice();
+      if (!state._lookupCache) state._lookupCache = api.fixtureStudents();
     }
     renderLookup(q);
   }
@@ -422,7 +450,7 @@
     var blob = state.photoBlob || api.stubPngBlob();
     var uploaded = await api.uploadLivePhoto(blob);
     var released = await api.releasePickup(pickup.id, uploaded.key, state.linkVisit);
-    if (!api.isLive()) {
+    if (!api.isLive() || (released && String(released.id || "").indexOf("PK-LOCAL-") === 0)) {
       var status = expectedMode === "blocked_auth" ? "BlockedNotAuthorized"
         : expectedMode === "blocked_custody" ? "BlockedCustody"
         : expectedMode === "released" ? "Released" : "Matching";
@@ -489,6 +517,29 @@
     return (list || []).find(function (p) { return p.name === name; });
   }
 
+  function storyCast(students) {
+    var pranay = api.currentTenant().id === "pranay";
+    var happyNames = pranay ? ["Asha Patil"] : ["Aarav Mehta"];
+    var custodyNames = pranay ? ["Dev Joshi", "Kabir Singh"] : ["Kabir Singh"];
+    var collectorNames = pranay
+      ? ["Ramesh Patil", "Smita Patil", "Kavita Shah"]
+      : ["Rohan Mehta", "Neha Mehta"];
+    var happy = null;
+    happyNames.forEach(function (n) {
+      if (!happy) happy = students.find(function (s) { return s.name === n; });
+    });
+    if (!happy) happy = students[0];
+    var custody = null;
+    students.forEach(function (s) {
+      if (custody) return;
+      if (isCustodyFlag(s._custodyFlag) || custodyNames.indexOf(s.name) >= 0) custody = s;
+    });
+    if (!custody && pranay) {
+      custody = (api.fixtureStudents() || []).find(function (s) { return s.name === "Dev Joshi"; }) || null;
+    }
+    return { happy: happy, custody: custody, collectorNames: collectorNames, lookupQ: pranay ? "Asha" : "Aarav" };
+  }
+
   async function runStory(name) {
     setStoryActive(name);
     resetFlow();
@@ -498,8 +549,9 @@
     }
     if (name === "lookup") {
       showPanel(2);
-      $("#student-search").value = "Aarav";
-      await refreshLookup("Aarav");
+      var q = api.currentTenant().id === "pranay" ? "Asha" : "Aarav";
+      $("#student-search").value = q;
+      await refreshLookup(q);
       return;
     }
 
@@ -507,34 +559,38 @@
       setBusy(true);
       await refreshLookup("");
       var students = state._lookupCache || [];
-      var aarav = students.find(function (s) { return s.name === "Aarav Mehta"; }) || students[0];
-      var kabir = students.find(function (s) { return s.name === "Kabir Singh"; });
+      var cast = storyCast(students);
 
       if (name === "list" || name === "happy" || name === "notauth" || name === "override") {
-        if (!aarav) throw new Error("Aarav Mehta not in directory");
-        await selectStudent(aarav.id);
+        if (!cast.happy) throw new Error((api.currentTenant().id === "pranay" ? "Asha Patil" : "Aarav Mehta") + " not in directory");
+        await selectStudent(cast.happy.id);
       }
       if (name === "custody") {
-        if (!kabir) throw new Error("Kabir Singh not in directory");
-        await selectStudent(kabir.id);
+        if (!cast.custody) {
+          throw new Error("No restricted / court_order student on this tenant. Demo Kabir is SCH-DEMO-01 only (login gate / gate123).");
+        }
+        await selectStudent(cast.custody.id);
       }
 
       if (name === "list") {
         showPanel(3);
         renderAuthList();
       } else if (name === "happy") {
-        var rohan = findByName(state.authorized, "Rohan Mehta") || findByName(state.authorized, "Neha Mehta");
-        if (!rohan) throw new Error("Happy-path collector missing");
-        state.collector = rohan;
+        var collector = null;
+        cast.collectorNames.forEach(function (n) {
+          if (!collector) collector = findByName(state.authorized, n);
+        });
+        if (!collector) throw new Error("Happy-path collector missing");
+        state.collector = collector;
         state.matchMethod = "manual_list_select";
         renderAuthList();
         showPanel(4);
         state.photo = true;
         state.consent = true;
         $("#photo-box").classList.add("filled");
-        $("#photo-avatar").textContent = api.initials(rohan.name);
+        $("#photo-avatar").textContent = api.initials(collector.name);
         $("#consent-check").checked = true;
-        $("#release-sub").textContent = state.student.name + " → " + rohan.name + " (" + api.relationLabel(rohan) + ")";
+        $("#release-sub").textContent = state.student.name + " → " + collector.name + " (" + api.relationLabel(collector) + ")";
         updateReleaseReady();
         showResult("released");
       } else if (name === "notauth") {
@@ -546,7 +602,7 @@
         var blocked = (state.authorized || []).find(function (p) {
           return p.blockedByCustody || p.blocked || p.demoBlock;
         });
-        state.collector = blocked || { id: null, name: "Claimed father", relation: "other", notOnList: !blocked, mobile: "" };
+        state.collector = blocked || { id: null, name: "Claimed relative", relation: "other", notOnList: !blocked, mobile: "" };
         state.matchMethod = blocked ? "manual_list_select" : "none";
         renderAuthList();
         showResult("blocked_custody");
@@ -748,6 +804,62 @@
     btn.addEventListener("click", function () { runStory(btn.dataset.story); });
   });
 
+  function toggleLoginPanel(force) {
+    var panel = $("#login-panel");
+    if (!panel) return;
+    var on = typeof force === "boolean" ? force : !panel.classList.contains("visible");
+    panel.classList.toggle("visible", on);
+    if (on) {
+      applyChrome();
+      $("#login-user").focus();
+    }
+  }
+
+  async function signInAs(username, password) {
+    try {
+      setBusy(true);
+      var boot = await api.login(username, password);
+      state.live = boot.live;
+      applyChrome();
+      var pill = $("#source-pill");
+      if (boot.live) {
+        pill.textContent = "LIVE mock · " + cfg.apiBase.replace("https://", "");
+        pill.classList.remove("fallback");
+        toast("LIVE · " + boot.tenant.name, "success");
+      } else {
+        pill.textContent = "FIXTURES · tunnel unreachable";
+        pill.classList.add("fallback");
+        toast("FIXTURES · " + boot.tenant.name, "warning");
+      }
+      toggleLoginPanel(false);
+      state._lookupCache = [];
+      await refreshLookup("");
+      resetFlow();
+      setStoryActive("purpose");
+    } catch (e) {
+      toast((e && e.message) || "Sign-in failed", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  $("#btn-switch-account").addEventListener("click", function () {
+    toggleLoginPanel();
+  });
+  $("#btn-login").addEventListener("click", function () {
+    var user = ($("#login-user").value || "").trim() || api.currentTenant().gateUser;
+    var pass = $("#login-pass").value;
+    signInAs(user, pass);
+  });
+  $("#btn-login-demo").addEventListener("click", function () {
+    $("#login-user").value = "gate";
+    $("#login-pass").value = "gate123";
+    signInAs("gate", "gate123");
+  });
+  $("#login-pass").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") $("#btn-login").click();
+  });
+
   function bootFromHash() {
     var hash = (location.hash || "#purpose").replace(/^#/, "");
     runStory(KNOWN_STORIES.indexOf(hash) >= 0 ? hash : "purpose");
@@ -759,15 +871,17 @@
 
   api.warmup().then(function (boot) {
     state.live = boot.live;
+    applyChrome();
     var pill = $("#source-pill");
+    var tenantName = (boot.tenant && boot.tenant.name) || api.currentTenant().name;
     if (boot.live) {
       pill.textContent = "LIVE mock · " + cfg.apiBase.replace("https://", "");
       pill.classList.remove("fallback");
-      toast("LIVE mock · students + pickups", "success");
+      toast("LIVE · " + tenantName, "success");
     } else {
       pill.textContent = "FIXTURES · tunnel unreachable";
       pill.classList.add("fallback");
-      toast("FIXTURES · P6 Aarav/Kabir story", "warning");
+      toast("FIXTURES · " + tenantName + " · Asha / Rohan Shah", "warning");
     }
     return refreshLookup("");
   }).then(function () {
