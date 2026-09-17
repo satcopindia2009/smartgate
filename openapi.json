@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Satcop Smart Visitor API",
-    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours (A1\u2013A6) + escort/zones Access Rules (B4) + Emergency Blast (E3 / B1\u2013B6). Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. SMS mock / WA skipped_hold. Demo watermark; no production / live-school deploy.",
-    "version": "0.6.0"
+    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours (A1\u2013A6) + escort/zones Access Rules (B4) + Emergency Blast (E3 / B1\u2013B6) + school tenant create + student/authorized-pickup CSV/Excel import. Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. SMS mock / WA skipped_hold. Demo school SCH-DEMO-01 is reserved and is not overwritten. Locked first real tenant: schoolId SCH-PRANAY-01 / school_code PRANAY (Pranay School Pune). Never SCH-PRANAY-PUNE-01. Demo watermark; no production / live-school deploy.",
+    "version": "0.7.0"
   },
   "paths": {
     "/v1/auth/login": {
@@ -1876,6 +1876,243 @@
         }
       }
     },
+    "/v1/students/import/template": {
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Download locked roster CSV template",
+        "description": "Admin/SH fictional two-row template (not SCH-DEMO-01 PII). EXACT locked headers: school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. No thinner camelCase template.",
+        "operationId": "download_import_template_v1_students_import_template_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/students/import:validate": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Validate roster CSV/Excel (dry-run)",
+        "description": "AC-IMP-9 dry-run. Admin / Security Head. Multipart `file` using the locked template. No writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. school_code must be PRANAY for tenant SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01. EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
+        "operationId": "import_students_validate_v1_students_import_validate_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_students_validate_v1_students_import_validate_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/students/import:commit": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Commit roster CSV/Excel",
+        "description": "Admin / Security Head. Multipart `file` using the locked template. Writes valid rows. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. school_code must be PRANAY for tenant SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01. EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
+        "operationId": "import_students_commit_v1_students_import_commit_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_students_commit_v1_students_import_commit_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/students/import": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Import roster CSV/Excel (commit alias)",
+        "description": "Admin / Security Head. Alias of `/students/import:commit` (pass `mode=validate` for dry-run). Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. school_code must be PRANAY for tenant SCH-PRANAY-01. EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
+        "operationId": "import_students_csv_v1_students_import_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "commit",
+              "title": "Mode"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_students_csv_v1_students_import_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/students/authorized-pickup/import": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Import authorized pickup CSV/Excel",
+        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student. Upsert by (JWT schoolId + student_external_id + mobile). `mode=validate` dry-run; `mode=commit` writes. Returns `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`.",
+        "operationId": "import_authorized_pickup_csv_v1_students_authorized_pickup_import_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "commit",
+              "title": "Mode"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_authorized_pickup_csv_v1_students_authorized_pickup_import_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/students/{student_id}": {
       "get": {
         "tags": [
@@ -3589,6 +3826,154 @@
         }
       }
     },
+    "/v1/schools": {
+      "post": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Create school tenant",
+        "description": "Create a **new** school tenant (not SCH-DEMO-01). Admin / Security Head JWT **or** documented header `X-Bootstrap-Token: satcop-school-bootstrap`. Auto-seeds 4 gates (G-MAIN / G-PED / G-STAFF / G-BUS), Mon\u2013Fri 08:00\u201318:00 campus hours (weekend closed, empty holidays), EscortZoneRule defaults (Vendor escort ON reception+admin), and Admin + Security Head users. Generated credentials are returned **once**. `SCH-DEMO-01` is reserved and cannot be created or overwritten. **Locked first real tenant:** schoolId `SCH-PRANAY-01` \u00b7 school_code `PRANAY` \u00b7 name `Pranay School Pune` (ops seed `pranay.admin` / `pranay.sh` / `pranay.gate`, gates PS-G-MAIN/PED/STAFF/BUS). `schoolCode=PRANAY` or that name maps to SCH-PRANAY-01; never `SCH-PRANAY-PUNE-01`.",
+        "operationId": "post_school_v1_schools_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Bootstrap-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Bootstrap-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/schools/me": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Current school from JWT",
+        "description": "Returns the school bound to the access token. Any authenticated role. First real tenant JWT (`pranay.admin` / `pranay.sh` / `pranay.gate`) is schoolId `SCH-PRANAY-01` / school_code `PRANAY` (Pranay School Pune). `SCH-DEMO-01` is the separate demo seed.",
+        "operationId": "get_school_me_v1_schools_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/schools/me/roster/import": {
+      "post": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Import students + authorized pickup CSV/Excel",
+        "description": "Admin / Security Head multipart roster import for the JWT school. Preferred field: `file` (.csv / .xlsx) using the **EXACT** locked snake_case template (one row = one authorized person; no thinner camelCase headers). Optional split fields `students` + `pickup` use the same locked headers. EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student. `mode=validate` is dry-run (no writes); `mode=commit` applies upserts. Audit returns who/when/filename/counts. Court-document columns are rejected. Does not wipe SCH-DEMO-01. First real tenant is SCH-PRANAY-01 / school_code PRANAY.",
+        "operationId": "import_roster_v1_schools_me_roster_import_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "validate = dry-run; commit = write",
+              "default": "commit",
+              "title": "Mode"
+            },
+            "description": "validate = dry-run; commit = write"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_roster_v1_schools_me_roster_import_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/schools/me/blast-config": {
       "get": {
         "tags": [
@@ -4470,6 +4855,104 @@
         },
         "type": "object",
         "title": "BlastTemplatePatch"
+      },
+      "Body_import_authorized_pickup_csv_v1_students_authorized_pickup_import_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_authorized_pickup_csv_v1_students_authorized_pickup_import_post"
+      },
+      "Body_import_roster_v1_schools_me_roster_import_post": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "students": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Students"
+          },
+          "pickup": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickup"
+          }
+        },
+        "type": "object",
+        "title": "Body_import_roster_v1_schools_me_roster_import_post"
+      },
+      "Body_import_students_commit_v1_students_import_commit_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_students_commit_v1_students_import_commit_post"
+      },
+      "Body_import_students_csv_v1_students_import_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_students_csv_v1_students_import_post"
+      },
+      "Body_import_students_validate_v1_students_import_validate_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_students_validate_v1_students_import_validate_post"
       },
       "Body_upload_media_v1_media_upload_post": {
         "properties": {
@@ -5624,6 +6107,272 @@
           "security_head"
         ],
         "title": "Role"
+      },
+      "RosterImportAdminResponse": {
+        "properties": {
+          "imported": {
+            "type": "integer",
+            "title": "Imported"
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/RosterImportError"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "schoolId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schoolid",
+            "description": "JWT school. Locked first tenant is SCH-PRANAY-01."
+          },
+          "school_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Code",
+            "description": "Must be PRANAY when schoolId is SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01."
+          },
+          "created": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "dryRun": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dryrun"
+          },
+          "audit": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          },
+          "students": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RosterImportCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pickup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RosterImportCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "imported",
+          "updated",
+          "failed"
+        ],
+        "title": "RosterImportAdminResponse",
+        "description": "Admin UI / PM import contract."
+      },
+      "RosterImportCounts": {
+        "properties": {
+          "created": {
+            "type": "integer",
+            "title": "Created",
+            "default": 0
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated",
+            "default": 0
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/RosterImportError"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "title": "RosterImportCounts"
+      },
+      "RosterImportError": {
+        "properties": {
+          "row": {
+            "type": "integer",
+            "title": "Row"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "default": "VALIDATION"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "row",
+          "message"
+        ],
+        "title": "RosterImportError"
+      },
+      "SchoolCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name",
+            "description": "School display name. 'Pranay School Pune' maps to schoolId SCH-PRANAY-01."
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "Asia/Kolkata"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug",
+            "description": "Optional slug. 'pranay' / 'pranay-01' map to SCH-PRANAY-01. Never pranay-pune-01."
+          },
+          "schoolCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schoolcode",
+            "description": "CSV school_code. Locked first tenant is PRANAY \u2192 schoolId SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01."
+          },
+          "adminPassword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adminpassword"
+          },
+          "securityHeadPassword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Securityheadpassword"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SchoolCreate"
       },
       "Severity": {
         "type": "string",

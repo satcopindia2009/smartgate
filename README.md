@@ -1,15 +1,15 @@
-# Satcop Smart Visitor — MVP API Stub + P2 Pickup + After-hours + Escort / Zones + Emergency Blast
+# Satcop Smart Visitor — MVP API Stub + P2 Pickup + After-hours + Escort / Zones + Emergency Blast + School roster import
 
-In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**), **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**), **escort / zones** (Hub **B4**), and **Emergency visitor blast** (Hub **B1–B6 / E3**).  
-For Mobile / Admin **showable demos**. **Not for live school deploy** (V4 HOLD). No live SMS / WhatsApp providers.
+In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**), **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**), **escort / zones** (Hub **B4**), **Emergency visitor blast** (Hub **B1–B6 / E3**), and **real-school tenant create + student / authorized-pickup CSV/Excel import**.  
+For Mobile / Admin **showable demos**. **Not for live school deploy** (V4 HOLD). No live SMS / WhatsApp providers. **SCH-DEMO-01** demo seed is reserved and is never created or overwritten by the school API.
 
 Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype. After-hours Approve (SH-only) is unchanged. Blast is **confirm-only** (not L8 dual-control) and does **not** auto-checkout.
 
 ## Stack
 
 - Python 3.12+
-- FastAPI + Pydantic v2 + PyJWT + uvicorn
-- In-memory store (re-seeded on process start)
+- FastAPI + Pydantic v2 + PyJWT + uvicorn + openpyxl (xlsx import)
+- In-memory store (re-seeded on process start; multi-school, demo kept separate)
 - CORS `*`
 - JWT Bearer auth (`userId`, `schoolId`, `role`, `staffId?`, `gateIds?`)
 - Error envelope: `{ "error": { "code", "message", "details?" } }` (including request validation)
@@ -47,6 +47,14 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 | `admin`    | `admin123`| admin          | Office Admin                   |
 | `security` | `sh123`   | security_head  | **Meera Kulkarni** (SH); blacklist + force + blast |
 
+First real tenant (separate): **Pranay School Pune** · `schoolId=SCH-PRANAY-01` · `school_code=PRANAY`
+
+| Username        | Password    | Role           | Notes |
+|-----------------|-------------|----------------|-------|
+| `pranay.admin`  | `pranay123` | admin          | Real-school Admin |
+| `pranay.sh`     | `pranay123` | security_head  | Real-school SH |
+| `pranay.gate`   | `pranay123` | gate           | `PS-G-MAIN` / PED / STAFF / BUS |
+
 ### Seed highlights
 
 - Gates: Main Gate (`G-MAIN`), Pedestrian Gate, Staff Gate, Bus Bay
@@ -61,6 +69,95 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 - **Escort / zones (B4):** Vendor default `escortRequired=true` zones `reception`+`admin`; Parent/Guest/Alumni reception only (no escort); Official reception+admin (no escort). **Ravi** is assignable to **Vikram More** (`E01`). P-7K88 / Meera and Priya MVP unchanged.
 - **Pickup (P6, separate from Priya):** student **Aarav Mehta · 5-B** (`STU-AARAV`) with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** (`STU-KABIR`) `court_order` blocking **Rajesh Singh**, allow-list **Sunita Singh**
 - **Emergency blast (E3, Meera Kulkarni SH — `notifications/blast-seed-demo.json`):** `emergencyBlastEnabled=true` on **SCH-DEMO-01** only. Templates `tpl_evac_assembly` + `tpl_shelter_in_place`. Seed blast **`B-20260916-03`** is the pack snapshot (6 story visitors, 5 SMS sent / 1 failed / WA `skipped_hold` on Ravi). Live preview = **`GET /v1/visits/inside`** (Priya MVP still inside + pack six). Pack `P-7K88` is **not** reused — Deepak holiday pass stays `P-7K88`; blast Ravi is `vis_p7k88` / `P-7B88`. Pending escort Ravi `V-AH-VENDOR` unchanged. Staff lane default OFF. WhatsApp HOLD.
+
+## School tenant create + roster import (Hub — Viren real school load)
+
+Real school load is **CSV/Excel import + school API push**. Demo school stays separate. Durable Postgres / live-school production cutover stay out of scope.
+
+| Action | Role | Notes |
+|--------|------|-------|
+| `POST /v1/schools` | Admin / Security Head **or** `X-Bootstrap-Token` | Body `{ name, timezone?, slug?, adminPassword?, securityHeadPassword? }` → `{ schoolId, name, gates, hours, credentials }`. Credentials returned **once**. |
+| `GET /v1/schools/me` | any authed | Current school from JWT |
+| `POST /v1/schools/me/roster/import` | Admin/SH | Multipart `file` locked template; `mode=validate\|commit` |
+| `POST /v1/students/import:validate` | Admin/SH | Dry-run (AC-IMP-9), no writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }` |
+| `POST /v1/students/import:commit` | Admin/SH | Writes valid rows. Same response. `school_code` must be `PRANAY` for `SCH-PRANAY-01` |
+| `POST /v1/students/import` | Admin/SH | Commit alias (`mode=validate` still works) |
+| `POST /v1/students/authorized-pickup/import` | Admin/SH | Same locked headers |
+
+**Reserved:** `schoolId=SCH-DEMO-01` cannot be created or overwritten. New tenants get the same gate keys (`G-MAIN`, `G-PED`, `G-STAFF`, `G-BUS`) scoped by `schoolId` on each gate row.
+
+**On create, auto-seed for that `schoolId` only:**
+
+- 4 gates: Main, Pedestrian, Staff, Bus Bay
+- CampusHours Mon–Fri `08:00–18:00`, Sat+Sun closed, **empty holidays** (demo keeps Sat half-day + Diwali)
+- EscortZoneRule defaults (Vendor escort ON, reception+admin)
+- Admin + Security Head users (generated usernames `admin-{schoolid}` / `security-{schoolid}` unless passwords are set in the body)
+- Blast toggle default **OFF**
+
+**First real tenant (locked):** `schoolId=SCH-PRANAY-01` · `school_code=PRANAY` · **Pranay School Pune**. Ops seed logins: `pranay.admin` / `pranay.sh` / `pranay.gate` (password `pranay123`). Gates `PS-G-MAIN` / `PS-G-PED` / `PS-G-STAFF` / `PS-G-BUS`. Never use `SCH-PRANAY-PUNE-01`.
+
+**CSV / Excel column contract (LOCKED — ship EXACTLY these snake_case headers; one row = one authorized person; student fields repeat). Internal API models stay camelCase. No thinner camelCase template (`schoolId`, `studentId`, `name`, `personName`, `pickupConsentVersion`).**
+
+`school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold`
+
+| CSV header | Maps to |
+|------------|---------|
+| `school_code` | `schoolId` / `schoolCode` (JWT wins; mint/lookup; `PRANAY` → `SCH-PRANAY-01`) |
+| `student_external_id` | student `studentId` |
+| `student_name` | student `name` |
+| `class` | student `class` |
+| `section` | student `section` |
+| `person_name` | `AuthorizedPickupPerson.name` |
+| `relation` | `AuthorizedPickupPerson.relation` |
+| `mobile` | `AuthorizedPickupPerson.mobile` |
+| `id_last4` | `AuthorizedPickupPerson.idLast4` |
+| `id_type` | `AuthorizedPickupPerson.idType` |
+| `effective_from` | `AuthorizedPickupPerson.effectiveFrom` |
+| `effective_to` | `AuthorizedPickupPerson.effectiveTo` |
+| `custody_flag` | `StudentCustodyFlag.flag` |
+| `gate_instruction` | `StudentCustodyFlag.gateInstruction` |
+| `allowed_person_mobiles` | `StudentCustodyFlag.allowedPersonIds` (resolve mobiles after upsert) |
+| `blocked_person_mobiles` | `StudentCustodyFlag.blockedPersonIds` (resolve mobiles after upsert) |
+| `consent_version` | `pickupConsentVersion` |
+| `consent_at` | `pickupConsentAt` |
+| `person_active` | `AuthorizedPickupPerson.active` |
+| `legal_hold` | student `legalHold` |
+
+- `relation` enum: `parent` \| `guardian` \| `sibling` \| `relative` \| `other`
+- Upsert student by `(schoolId + student_external_id)` and person by `(schoolId + student_external_id + mobile)`
+- `mode=validate` dry-run (no writes); `mode=commit` applies. Audit: who / when / filename / counts
+- Court-document columns (`court_doc`, `court_pdf`, …) are **rejected**
+- `court_order` with blank `gate_instruction` fails (F6). Expired `effective_to` is stored but **not on list** (F3)
+- Response: `{ imported, updated, failed, errors:[{row,field,code,message}], schoolId, school_code, audit, mode }` (header is row 1)
+- Gate / Host → `403`
+
+### Curl — bootstrap school + import
+
+```bash
+BASE=http://127.0.0.1:8080/v1
+
+# First-bootstrap (no JWT) — or login as demo admin / security
+curl -s -X POST "$BASE/schools" \
+  -H 'Content-Type: application/json' \
+  -H 'X-Bootstrap-Token: satcop-school-bootstrap' \
+  -d '{"name":"Viren International School","timezone":"Asia/Kolkata","slug":"viren-is","adminPassword":"viren-admin"}' \
+  | python3 -m json.tool
+
+ADMIN=$(curl -s -X POST "$BASE/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin-sch-viren-is","password":"viren-admin"}' \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+
+curl -s "$BASE/schools/me" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
+
+# Dry-run then commit the locked template
+curl -s -X POST "$BASE/schools/me/roster/import?mode=validate" \
+  -H "Authorization: Bearer $ADMIN" \
+  -F "file=@roster.csv;type=text/csv" | python3 -m json.tool
+curl -s -X POST "$BASE/schools/me/roster/import?mode=commit" \
+  -H "Authorization: Bearer $ADMIN" \
+  -F "file=@roster.csv;type=text/csv" | python3 -m json.tool
+```
 
 ## Visit lifecycle (contract §2)
 
@@ -92,6 +189,7 @@ Illegal transitions return `409` `{ "error": { "code": "INVALID_STATE" } }`.
 | Assign / confirm escort        | ✓    | suggest only | | ✓ |
 | Waive escort                   |      |      |       | ✓ reason      |
 | Hours / holidays / zones / escort rules | | | ✓ | ✓ |
+| `POST /schools` (or `X-Bootstrap-Token`) / roster import | | | ✓ | ✓ |
 | Blast preview / confirm / retry / templates / toggle | | | ✓ | ✓ |
 | Force checkout                 |      |      | ✓     | ✓             |
 | Staff POST/PATCH               |      |      | ✓     | ✓             |
@@ -99,7 +197,8 @@ Illegal transitions return `409` `{ "error": { "code": "INVALID_STATE" } }`.
 | Live board / history           | ✓    | own* | ✓     | ✓             |
 
 \* Host scoped to `hostId == self.staffId`.  
-Gate users are limited to `user.gateIds` (login + JWT). `GET /gates` is filtered to assigned gates.
+Gate users are limited to `user.gateIds` (login + JWT). `GET /gates` is filtered to assigned gates.  
+`POST /v1/schools` also accepts documented first-bootstrap header `X-Bootstrap-Token: satcop-school-bootstrap` (override with env `SATCOP_BOOTSTRAP_TOKEN`).
 
 ## Pickup & Custody (Priority P2 · Hub P1–P6+H1)
 
@@ -115,6 +214,7 @@ Matching → Released
 | Action | Role | Notes |
 |--------|------|-------|
 | `GET/POST /students` · `PATCH /students/{id}` | Gate read; Admin/SH write | Manual CRUD (no MSR) |
+| `POST /schools/me/roster/import` · `POST /students/import:validate` · `POST /students/import:commit` | Admin/SH | Locked CSV/Excel; JWT schoolId is SoT |
 | `GET/POST/PATCH …/authorized-pickup` | Gate read; Admin/SH write | Consent version required on create; soft-deactivate only |
 | `GET/PUT …/custody-flag` | Gate sees **flag + `gateInstruction` ≤280 only**; Admin `none`/`restricted`; SH writes `court_order` | No court PDF / narrative |
 | `POST /pickups` | Gate | Starts `Matching`; claimed collector = person id **or** mobile/id |
@@ -401,6 +501,8 @@ bash scripts/smoke.sh
 - `tests/test_escort_acceptance.py` — AC-B4a / AC-B4b / AC-B4c / AC-B4d / AC-B4e / AC-B4f
 - `tests/test_blast.py` — B1–B6: preview=inside, confirm required, Gate/Host 403, WA `skipped_hold`, visit status unchanged, retry failed, disabled 404
 - `tests/test_blast_acceptance.py` — AC-E3a / AC-E3b / AC-E3c / AC-E3d / AC-E3e / AC-E3f / AC-E3g
+- `tests/test_school_roster.py` — SCH-PRANAY-01 / PRANAY ops seed; cannot overwrite SCH-DEMO-01 or SCH-PRANAY-PUNE-01; locked CSV commit + validate dry-run; court-doc reject; F6/F3; audit; Gate/Host 403
+- `tests/test_import_acceptance.py` — AC-IMP-1..10 + F3/F6 + custody conflict + template download + gate match on imported mobile
 
 ## Remaining thin stubs / out of scope
 
@@ -414,4 +516,5 @@ OK to stay thin (not blocking Mobile/Admin demos):
 - Optional `cancelled` before check-in is in the §2 diagram but **no REST cancel** in §4 (not implemented)
 - Priority P2 geo-fence / new zone keys / dual-approve / face match / MSR / live SMS·WhatsApp providers — **not implemented**
 - Production / live-school deploy — **HOLD**
+- Durable Postgres cutover / Play Store / mutating `SCH-DEMO-01` seed data — **out of scope**
 - Viren **L8 / WA HOLD** remains on — blast is demo/stub only

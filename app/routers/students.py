@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import PlainTextResponse
 
 from app.auth import require_roles
 from app.config import WATERMARK
@@ -13,6 +14,7 @@ from app.models import (
     AuthorizedPickupPatch,
     CustodyFlagPut,
     Role,
+    RosterImportAdminResponse,
     StudentCreate,
     StudentPatch,
 )
@@ -20,6 +22,15 @@ from app.pickup_match import (
     default_custody_flag,
     denormalize_blocked_by_custody,
     get_or_default_flag,
+)
+from app.roster_import import (
+    CSV_CONTRACT,
+    LOCKED_HEADERS,
+    TEMPLATE_CSV,
+    import_locked_rows,
+    import_pickup,
+    merge_import_results,
+    read_upload,
 )
 from app.util import last4, normalize_mobile, now_iso
 from app import store
@@ -133,6 +144,143 @@ def create_student(
     store.put_student(row)
     store.put_custody_flag(default_custody_flag(sid, user["schoolId"]))
     return _meta(row)
+
+
+async def _run_locked_import(file: UploadFile, user: dict, mode: str) -> dict:
+    mode_n = (mode or "commit").strip().lower()
+    if mode_n not in {"validate", "commit"}:
+        raise AppError("VALIDATION", "mode must be validate or commit", 400)
+    data, filename, ctype = await read_upload(file)
+    result = import_locked_rows(
+        data,
+        school_id=user["schoolId"],
+        user=user,
+        filename=filename,
+        content_type=ctype,
+        file_label="file",
+        mode=mode_n,
+    )
+    return merge_import_results(
+        unified=result,
+        mode=mode_n,
+        user=user,
+        filenames=[filename or "file"],
+        school_id=user["schoolId"],
+    )
+
+
+@router.get(
+    "/students/import/template",
+    summary="Download locked roster CSV template",
+    description=(
+        "Admin/SH fictional two-row template (not SCH-DEMO-01 PII). "
+        "EXACT locked headers: "
+        + ", ".join(LOCKED_HEADERS)
+        + ". No thinner camelCase template."
+    ),
+)
+def download_import_template(user: dict = Depends(require_roles(*_WRITE_ROLES))):
+    return PlainTextResponse(
+        TEMPLATE_CSV,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="satcop-roster-import-template.csv"'},
+    )
+
+
+@router.post(
+    "/students/import:validate",
+    response_model=RosterImportAdminResponse,
+    summary="Validate roster CSV/Excel (dry-run)",
+    description=(
+        "AC-IMP-9 dry-run. Admin / Security Head. Multipart `file` using the locked template. "
+        "No writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. "
+        "school_code must be PRANAY for tenant SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01. "
+        f"{CSV_CONTRACT}"
+    ),
+)
+async def import_students_validate(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(*_WRITE_ROLES)),
+):
+    return await _run_locked_import(file, user, "validate")
+
+
+@router.post(
+    "/students/import:commit",
+    response_model=RosterImportAdminResponse,
+    summary="Commit roster CSV/Excel",
+    description=(
+        "Admin / Security Head. Multipart `file` using the locked template. Writes valid rows. "
+        "Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. "
+        "school_code must be PRANAY for tenant SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01. "
+        f"{CSV_CONTRACT}"
+    ),
+)
+async def import_students_commit(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(*_WRITE_ROLES)),
+):
+    return await _run_locked_import(file, user, "commit")
+
+
+@router.post(
+    "/students/import",
+    response_model=RosterImportAdminResponse,
+    summary="Import roster CSV/Excel (commit alias)",
+    description=(
+        "Admin / Security Head. Alias of `/students/import:commit` (pass `mode=validate` for dry-run). "
+        "Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. "
+        "school_code must be PRANAY for tenant SCH-PRANAY-01. "
+        f"{CSV_CONTRACT}"
+    ),
+)
+async def import_students_csv(
+    file: UploadFile = File(...),
+    mode: str = Query(default="commit"),
+    user: dict = Depends(require_roles(*_WRITE_ROLES)),
+):
+    return await _run_locked_import(file, user, mode)
+
+
+@router.post(
+    "/students/authorized-pickup/import",
+    response_model=RosterImportAdminResponse,
+    summary="Import authorized pickup CSV/Excel",
+    description=(
+        "Admin / Security Head. Multipart field `file` (.csv or .xlsx). "
+        f"{CSV_CONTRACT} "
+        "Upsert by (JWT schoolId + student_external_id + mobile). "
+        "`mode=validate` dry-run; `mode=commit` writes. "
+        "Returns `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`."
+    ),
+)
+async def import_authorized_pickup_csv(
+    file: UploadFile = File(...),
+    mode: str = Query(default="commit"),
+    user: dict = Depends(require_roles(*_WRITE_ROLES)),
+):
+    mode_n = (mode or "commit").strip().lower()
+    if mode_n not in {"validate", "commit"}:
+        raise AppError("VALIDATION", "mode must be validate or commit", 400)
+    data, filename, ctype = await read_upload(file)
+    result = import_pickup(
+        data,
+        school_id=user["schoolId"],
+        user_id=user["id"],
+        user=user,
+        filename=filename,
+        content_type=ctype,
+        file_label="pickup",
+        mode=mode_n,
+    )
+    return merge_import_results(
+        None,
+        result,
+        mode=mode_n,
+        user=user,
+        filenames=[filename or "file"],
+        school_id=user["schoolId"],
+    )
 
 
 @router.get("/students/{student_id}")

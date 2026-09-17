@@ -45,7 +45,7 @@ def preview_blast(
     templateId: Optional[str] = Query(default=None),
     user: dict = Depends(require_roles(*_BLAST_ROLES)),
 ):
-    school = store.school()
+    school = store.get_school(user["schoolId"])
     cfg = require_blast_enabled(school)
     inside = list_inside_visits(user["schoolId"])
     template = None
@@ -78,7 +78,7 @@ def create_blast(
     body: BlastConfirmBody,
     user: dict = Depends(require_roles(*_BLAST_ROLES)),
 ):
-    school = store.school()
+    school = store.get_school(user["schoolId"])
     require_blast_enabled(school)
     template = _active_template(body.templateId, user["schoolId"])
     instruction = body.instruction or template["instruction"]
@@ -141,7 +141,7 @@ def confirm_pending_blast(
     body: BlastConfirmOnlyBody,
     user: dict = Depends(require_roles(*_BLAST_ROLES)),
 ):
-    school = store.school()
+    school = store.get_school(user["schoolId"])
     require_blast_enabled(school)
     blast = store.get_blast(blast_id)
     if not blast or blast.get("schoolId") != user["schoolId"]:
@@ -164,7 +164,7 @@ def retry_failed_recipients(
     blast_id: str,
     user: dict = Depends(require_roles(*_BLAST_ROLES)),
 ):
-    require_blast_enabled(store.school())
+    require_blast_enabled(store.get_school(user["schoolId"]))
     blast = store.get_blast(blast_id)
     if not blast or blast.get("schoolId") != user["schoolId"]:
         raise AppError("NOT_FOUND", f"Blast {blast_id} not found", 404)

@@ -126,7 +126,7 @@ def _require_media_key(key: Optional[str], school_id: str, field: str) -> None:
 
 
 def _require_active_gate(gate_id: str, school_id: str) -> dict:
-    gate = store.get_gate(gate_id)
+    gate = store.get_gate(gate_id, school_id)
     if not gate or gate.get("schoolId") != school_id:
         raise AppError("VALIDATION", f"Unknown gateId {gate_id}", 400)
     if not gate.get("active", True):
@@ -169,7 +169,7 @@ def visits_inside(
     afterHours: Optional[bool] = None,
     policyTrigger: Optional[str] = None,
 ):
-    school = store.school()
+    school = store.get_school(user["schoolId"]) or store.school()
     overdue_h = school.get("overdueHoursDefault", 4) if school else 4
     now = datetime.now(TZ)
     rows = []

@@ -33,6 +33,7 @@ def seed() -> None:
             "blastChannelsStaff": ["in_app", "push"],
             "blastConfigUpdatedByUserId": "U-ADMIN",
             "blastConfigUpdatedAt": "2026-09-16T09:00:00+05:30",
+            "schoolCode": "DEMO",
         }
     )
 
@@ -643,6 +644,9 @@ def seed() -> None:
     _seed_after_hours(ts)
     _seed_pickup(ts)
     _seed_emergency_blast(ts)
+    from app.school_bootstrap import seed_pranay_ops
+
+    seed_pranay_ops()
 
 
 def _seed_after_hours(ts: str) -> None:

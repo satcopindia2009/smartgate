@@ -945,3 +945,133 @@ class BlastConfigPatch(BaseModel):
     blastStaffLaneEnabled: Optional[bool] = None
     blastChannelsVisitor: Optional[list[str]] = None
     blastChannelsStaff: Optional[list[str]] = None
+
+
+# --- School tenant create + roster import ---
+
+
+class SchoolCreate(BaseModel):
+    name: str = Field(
+        min_length=1,
+        description="School display name. 'Pranay School Pune' maps to schoolId SCH-PRANAY-01.",
+    )
+    timezone: str = "Asia/Kolkata"
+    slug: Optional[str] = Field(
+        default=None,
+        description="Optional slug. 'pranay' / 'pranay-01' map to SCH-PRANAY-01. Never pranay-pune-01.",
+    )
+    schoolCode: Optional[str] = Field(
+        default=None,
+        description="CSV school_code. Locked first tenant is PRANAY → schoolId SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01.",
+    )
+    adminPassword: Optional[str] = None
+    securityHeadPassword: Optional[str] = None
+
+    @field_validator("name", "timezone")
+    @classmethod
+    def strip_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("must not be empty")
+        return v
+
+    @field_validator("slug", "schoolCode", "adminPassword", "securityHeadPassword")
+    @classmethod
+    def strip_optional(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+
+class SchoolCredentialOut(BaseModel):
+    username: str
+    password: str
+    userId: str
+    role: str
+
+
+class SchoolCreateResponse(BaseModel):
+    schoolId: str
+    id: str
+    name: str
+    timezone: str
+    slug: Optional[str] = None
+    schoolCode: Optional[str] = Field(
+        default=None,
+        description="Locked first tenant school_code is PRANAY (schoolId SCH-PRANAY-01).",
+    )
+    overdueHoursDefault: int = 4
+    emergencyBlastEnabled: bool = False
+    blastStaffLaneEnabled: bool = False
+    gates: list[GateOut] = Field(default_factory=list)
+    hours: list[CampusHoursRow] = Field(default_factory=list)
+    holidayCount: int = 0
+    credentials: Optional[dict[str, SchoolCredentialOut]] = None
+    meta: Optional[dict] = None
+
+
+class SchoolMeOut(BaseModel):
+    schoolId: str
+    id: str
+    name: str
+    timezone: str
+    slug: Optional[str] = None
+    schoolCode: Optional[str] = Field(
+        default=None,
+        description="Locked first tenant school_code is PRANAY (schoolId SCH-PRANAY-01).",
+    )
+    overdueHoursDefault: int = 4
+    emergencyBlastEnabled: bool = False
+    blastStaffLaneEnabled: bool = False
+    gates: list[GateOut] = Field(default_factory=list)
+    hours: list[CampusHoursRow] = Field(default_factory=list)
+    holidayCount: int = 0
+    meta: Optional[dict] = None
+
+
+class RosterImportError(BaseModel):
+    row: int
+    field: Optional[str] = None
+    code: str = "VALIDATION"
+    message: str
+    file: Optional[str] = None
+
+
+class RosterImportCounts(BaseModel):
+    created: int = 0
+    updated: int = 0
+    errors: list[RosterImportError] = Field(default_factory=list)
+
+
+class RosterImportResult(BaseModel):
+    created: int = 0
+    updated: int = 0
+    errors: list[RosterImportError] = Field(default_factory=list)
+    students: Optional[RosterImportCounts] = None
+    pickup: Optional[RosterImportCounts] = None
+    meta: Optional[dict] = None
+
+
+class RosterImportAdminResponse(BaseModel):
+    """Admin UI / PM import contract."""
+
+    imported: int
+    updated: int
+    failed: int
+    errors: list[RosterImportError] = Field(default_factory=list)
+    schoolId: Optional[str] = Field(
+        default=None,
+        description="JWT school. Locked first tenant is SCH-PRANAY-01.",
+    )
+    school_code: Optional[str] = Field(
+        default=None,
+        description="Must be PRANAY when schoolId is SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01.",
+    )
+    created: Optional[int] = None
+    mode: Optional[str] = None
+    dryRun: Optional[bool] = None
+    audit: Optional[dict[str, Any]] = None
+    meta: Optional[dict[str, Any]] = None
+    students: Optional[RosterImportCounts] = None
+    pickup: Optional[RosterImportCounts] = None

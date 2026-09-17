@@ -92,7 +92,7 @@ def _require_mutable(pickup: dict, action: str) -> None:
 
 
 def _require_active_gate(gate_id: str, school_id: str) -> dict:
-    gate = store.get_gate(gate_id)
+    gate = store.get_gate(gate_id, school_id)
     if not gate or gate.get("schoolId") != school_id:
         raise AppError("VALIDATION", f"Unknown gateId {gate_id}", 400)
     if not gate.get("active", True):

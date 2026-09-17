@@ -43,7 +43,7 @@ def get_pass(pass_id: str, user=Depends(require_roles(Role.gate, Role.host, Role
     if user["role"] == "host" and user.get("staffId") != v.get("hostId"):
         raise AppError("FORBIDDEN", "Host may only view own visit passes", 403)
     host = store.get_staff(v["hostId"])
-    gate = store.get_gate(v.get("gateInId") or v["gateId"])
+    gate = store.get_gate(v.get("gateInId") or v["gateId"], v.get("schoolId"))
     photo_url = f"/v1/media/{v['livePhotoKey']}" if v.get("livePhotoKey") else None
     return {
         "passId": p["passId"],
