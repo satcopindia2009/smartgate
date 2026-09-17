@@ -12,3 +12,4 @@ captures/
 *.aab
 *.dex
 *.class
+local.properties

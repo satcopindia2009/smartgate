@@ -89,7 +89,7 @@ fun LoginScreen(
             fontFamily = KioskFont,
         )
         Text(
-            text = "Use a school gate or host account. After sign-in the home matches your role.",
+            text = "Default demo login is pranay.gate. Host: pranay.host. After sign-in the home matches your role.",
             color = KioskColors.textMuted,
             fontSize = 14.sp,
             fontFamily = KioskFont,
@@ -98,7 +98,7 @@ fun LoginScreen(
             label = "Username",
             value = username,
             onValueChange = onUsername,
-            placeholder = "gate username",
+            placeholder = "pranay.gate",
             keyboardType = KeyboardType.Ascii,
             capitalization = KeyboardCapitalization.None,
             modifier = Modifier.fillMaxWidth(),

@@ -77,6 +77,8 @@ fun PhotoIdStep(
     onClearSignature: () -> Unit,
     onBlockSample: () -> Unit,
     onAlertSample: () -> Unit,
+    onAgreeConsent: () -> Unit,
+    onDeclineConsent: () -> Unit,
     onBack: () -> Unit,
     onSubmit: () -> Unit,
 ) {
@@ -94,6 +96,30 @@ fun PhotoIdStep(
             PackageManager.PERMISSION_GRANTED
         if (granted) camera.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)
     }
+    if (!draft.consentAgreed) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
+        ) {
+            Text(
+                text = "Visitor notice (required)",
+                color = KioskColors.text,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = KioskFont,
+            )
+            Text(
+                text = "Agree before live photo or ID capture. Pack §4 · no pre-tick.",
+                color = KioskColors.textMuted,
+                fontSize = 14.sp,
+                fontFamily = KioskFont,
+            )
+            GateConsentPanel(onAgree = onAgreeConsent, onDecline = onDeclineConsent)
+            KioskGhostButton(text = "Back", onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp))
+        }
+        return
+    }
+
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) {
             onIdImage(null)

@@ -26,6 +26,9 @@ data class RegistrationDraft(
     val idImageKey: String? = null,
     val signatureCaptured: Boolean = false,
     val signatureKey: String? = null,
+    val consentAgreed: Boolean = false,
+    val consentVersion: String? = null,
+    val consentAt: String? = null,
 ) {
     companion object {
         fun fromStory(story: DemoStory): RegistrationDraft = RegistrationDraft(

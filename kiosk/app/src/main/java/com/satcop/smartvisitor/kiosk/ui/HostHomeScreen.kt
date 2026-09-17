@@ -218,7 +218,17 @@ private fun PendingVisitCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            LivePhoto(photo = photo, name = visit.visitorName.orEmpty())
+            Column {
+                LivePhoto(photo = photo, name = visit.visitorName.orEmpty())
+                if (photo == null) {
+                    Text(
+                        text = "Photo after consent",
+                        color = KioskColors.textMuted,
+                        fontSize = 10.sp,
+                        fontFamily = KioskFont,
+                    )
+                }
+            }
             Column(Modifier.weight(1f)) {
                 Text(
                     text = visit.visitorName ?: "Visitor",

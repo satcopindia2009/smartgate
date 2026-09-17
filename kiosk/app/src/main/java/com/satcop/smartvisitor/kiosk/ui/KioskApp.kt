@@ -275,6 +275,8 @@ private fun KioskStep(
             onClearSignature = viewModel::clearSignature,
             onBlockSample = viewModel::applyBlockSample,
             onAlertSample = viewModel::applyAlertSample,
+            onAgreeConsent = viewModel::agreeGateConsent,
+            onDeclineConsent = viewModel::declineGateConsent,
             onBack = viewModel::back,
             onSubmit = viewModel::submitRegistration,
         )

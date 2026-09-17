@@ -21,6 +21,7 @@ import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.PickupCreate
 import com.satcop.smartvisitor.kiosk.data.model.PickupOut
 import com.satcop.smartvisitor.kiosk.data.model.PickupReasons
+import com.satcop.smartvisitor.kiosk.data.model.GateConsent
 import com.satcop.smartvisitor.kiosk.data.model.SchoolIds
 import com.satcop.smartvisitor.kiosk.data.model.Staff
 import com.satcop.smartvisitor.kiosk.data.model.StudentOut
@@ -45,8 +46,8 @@ import kotlinx.coroutines.launch
 
 data class KioskUiState(
     val signedIn: Boolean = false,
-    val loginUsername: String = "",
-    val loginPassword: String = "",
+    val loginUsername: String = "pranay.gate",
+    val loginPassword: String = "PranayGate@2026",
     val loginError: String? = null,
     val loginBusy: Boolean = false,
     val step: Int = 1,
@@ -529,7 +530,8 @@ class KioskViewModel(
                 pending.any { it.afterHours }
             val photos = pending.associate { visit ->
                 val key = visit.livePhotoKey
-                val bytes = if (!key.isNullOrBlank()) repository.loadMediaBytes(key) else null
+                val allowed = !visit.consentAt.isNullOrBlank()
+                val bytes = if (allowed && !key.isNullOrBlank()) repository.loadMediaBytes(key) else null
                 val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
                 visit.id to bmp
             }.filterValues { it != null }.mapValues { it.value as Bitmap }
@@ -635,6 +637,12 @@ class KioskViewModel(
     fun updateIdNumber(value: String) = patchDraft { copy(idNumber = value) }
 
     fun setLivePhoto(bitmap: Bitmap?) {
+        if (!_state.value.draft.consentAgreed) {
+            _state.update {
+                it.copy(toast = "Agree to visitor notice before photo", toastKind = ToastKind.WARNING)
+            }
+            return
+        }
         val bmp = bitmap ?: PlaceholderBitmap.livePhoto(_state.value.draft.visitorName)
         _state.update {
             it.copy(
@@ -648,6 +656,12 @@ class KioskViewModel(
     }
 
     fun setIdImage(bitmap: Bitmap?) {
+        if (!_state.value.draft.consentAgreed) {
+            _state.update {
+                it.copy(toast = "Agree to visitor notice before ID capture", toastKind = ToastKind.WARNING)
+            }
+            return
+        }
         val bmp = bitmap ?: PlaceholderBitmap.idCard(_state.value.draft)
         _state.update {
             it.copy(
@@ -742,6 +756,36 @@ class KioskViewModel(
         }
     }
 
+
+    fun agreeGateConsent() {
+        val at = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Kolkata"))
+            .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        _state.update {
+            it.copy(
+                draft = it.draft.copy(
+                    consentAgreed = true,
+                    consentVersion = GateConsent.VERSION,
+                    consentAt = at,
+                ),
+                toast = "Consent recorded · ${GateConsent.VERSION}",
+                toastKind = ToastKind.SUCCESS,
+            )
+        }
+    }
+
+    fun declineGateConsent() {
+        _state.update {
+            it.copy(
+                step = 2,
+                draft = it.draft.copy(consentAgreed = false, consentVersion = null, consentAt = null),
+                livePhoto = null,
+                idImage = null,
+                toast = "Consent declined · capture locked",
+                toastKind = ToastKind.WARNING,
+            )
+        }
+    }
+
     fun submitRegistration() {
         val current = _state.value
         val errors = RegistrationValidator.validateStep3(current.draft)
@@ -762,6 +806,16 @@ class KioskViewModel(
         _state.update { it.copy(submitting = true, toast = null, blocked = false) }
         val snap = _state.value
         val draft = snap.draft
+        if (!draft.consentAgreed || draft.consentVersion.isNullOrBlank() || draft.consentAt.isNullOrBlank()) {
+            _state.update {
+                it.copy(
+                    submitting = false,
+                    toast = "Visitor notice consent required",
+                    toastKind = ToastKind.WARNING,
+                )
+            }
+            return
+        }
         try {
             val liveBmp = snap.livePhoto ?: PlaceholderBitmap.livePhoto(draft.visitorName)
             val photo = repository.uploadMedia(
@@ -821,6 +875,8 @@ class KioskViewModel(
                 signatureKey = sigKey,
                 gateId = draft.gateId,
                 blacklistOverride = false,
+                consentVersion = draft.consentVersion,
+                consentAt = draft.consentAt,
             )
             val visit = repository.createVisit(body)
             val source = repository.dataSource
