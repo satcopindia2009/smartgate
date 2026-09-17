@@ -318,6 +318,11 @@
     if (login) login.classList.remove("hidden");
     if ($("#login-error")) $("#login-error").textContent = err || "";
     $("#host-label").textContent = "Sign in to continue";
+    var lp = $("#login-pill");
+    if (lp) {
+      lp.textContent = "Typed sign-in · no demo auto-login";
+      lp.classList.remove("fallback");
+    }
     live = false;
     visit = null;
   }
@@ -351,7 +356,11 @@
         if ($("#login-pass")) $("#login-pass").value = "";
         await enterApp(boot.user);
       } catch (e) {
-        showLogin((e && e.message) || "Sign-in failed");
+        var msg = (e && e.message) || "Sign-in failed";
+        if (/failed to fetch|networkerror|tunnel timeout/i.test(msg)) {
+          msg = "Could not reach API. Check the tunnel, then try again.";
+        }
+        showLogin(msg);
       } finally {
         if (btn) btn.disabled = false;
       }
