@@ -32,7 +32,12 @@ export function Layout() {
           <div>
             Smart Visitor
             <span className="school-name">{schoolName}</span>
-            {schoolId ? <small className="school-code">{schoolId}</small> : null}
+            {schoolId ? (
+              <small className="school-code">
+                {schoolId}
+                {user?.schoolCode && user.schoolCode !== schoolId ? ` · ${user.schoolCode}` : ""}
+              </small>
+            ) : null}
           </div>
         </div>
         <nav className="nav" aria-label="Admin">

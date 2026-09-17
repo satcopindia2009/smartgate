@@ -6,6 +6,17 @@ export const PRANAY_SCHOOL_CODE = "PRANAY";
 export const PRANAY_SCHOOL_NAME = "Pranay School Pune";
 export const DEMO_SCHOOL_NAME = "Demo International School";
 
+function isDemoSchoolId(schoolId?: string | null): boolean {
+  return (schoolId || "").trim() === DEMO_SCHOOL_ID;
+}
+
+function pickStr(...vals: unknown[]): string | null {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
 const SCHOOL_DIRECTORY: Record<string, { name: string; code: string }> = {
   [DEMO_SCHOOL_ID]: { name: DEMO_SCHOOL_NAME, code: DEMO_SCHOOL_ID },
   [PRANAY_SCHOOL_ID]: { name: PRANAY_SCHOOL_NAME, code: PRANAY_SCHOOL_CODE },
@@ -20,7 +31,10 @@ export function schoolDisplayName(
 ): string {
   const rec = schoolRecord(user?.schoolId);
   if (rec) return rec.name;
-  const named = (user?.schoolName || "").trim();
+  const named = pickStr(user?.schoolName);
+  if (named && named === DEMO_SCHOOL_NAME && !isDemoSchoolId(user?.schoolId)) {
+    return (user?.schoolId || "").trim() || "School";
+  }
   if (named) return named;
   return (user?.schoolId || "").trim() || "School";
 }
@@ -63,11 +77,27 @@ export function acceptedSchoolCodes(
   return [...out];
 }
 
+export function authUserFromPayload(
+  raw: AuthUser & { school_name?: string | null; school_code?: string | null; name?: string | null },
+): AuthUser {
+  return enrichAuthUser({
+    ...raw,
+    schoolName: pickStr(raw.schoolName, raw.school_name) || raw.schoolName,
+    schoolCode: pickStr(raw.schoolCode, raw.school_code) || raw.schoolCode,
+  });
+}
+
 export function enrichAuthUser(user: AuthUser): AuthUser {
   const rec = schoolRecord(user.schoolId);
+  let schoolName = pickStr(user.schoolName) || rec?.name || null;
+  let schoolCode = pickStr(user.schoolCode) || rec?.code || null;
+  if (!isDemoSchoolId(user.schoolId)) {
+    if (schoolName === DEMO_SCHOOL_NAME) schoolName = rec?.name || user.schoolId || null;
+    if (schoolCode === DEMO_SCHOOL_ID) schoolCode = rec?.code || null;
+  }
   return {
     ...user,
-    schoolName: user.schoolName || rec?.name || null,
-    schoolCode: user.schoolCode || rec?.code || null,
+    schoolName,
+    schoolCode,
   };
 }
