@@ -23,6 +23,11 @@ _state: dict[str, Any] = {
     "pickups": {},
     "campus_hours": {},  # (schoolId, weekday) -> row
     "holidays": {},
+    "zone_labels": {},  # (schoolId, key) -> row
+    "escort_rules": {},  # (schoolId, visitorType) -> row
+    "blast_templates": {},
+    "blasts": {},
+    "blast_recipients": {},
     "counters": {
         "visit_seq": 40,
         "staff_seq": 10,
@@ -32,6 +37,9 @@ _state: dict[str, Any] = {
         "person_seq": 10,
         "pickup_seq": 10,
         "holiday_seq": 10,
+        "template_seq": 10,
+        "blast_seq": 10,
+        "recipient_seq": 10,
     },
 }
 
@@ -57,6 +65,11 @@ def reset() -> None:
         "pickups": {},
         "campus_hours": {},
         "holidays": {},
+        "zone_labels": {},
+        "escort_rules": {},
+        "blast_templates": {},
+        "blasts": {},
+        "blast_recipients": {},
         "counters": {
             "visit_seq": 40,
             "staff_seq": 10,
@@ -66,6 +79,9 @@ def reset() -> None:
             "person_seq": 10,
             "pickup_seq": 10,
             "holiday_seq": 10,
+            "template_seq": 10,
+            "blast_seq": 10,
+            "recipient_seq": 10,
         },
     }
 
@@ -98,6 +114,10 @@ def get_user(user_id: str) -> Optional[dict]:
 def get_user_by_username(username: str) -> Optional[dict]:
     uid = _state["users_by_username"].get(username.lower())
     return _state["users"].get(uid) if uid else None
+
+
+def list_users(school_id: str) -> list[dict]:
+    return [u for u in _state["users"].values() if u.get("schoolId") == school_id]
 
 
 # --- gates / staff ---
@@ -145,6 +165,17 @@ def put_visit(v: dict) -> None:
     v.setdefault("policyTrigger", None)
     v.setdefault("afterHoursEvaluatedAt", v.get("createdAt"))
     v.setdefault("afterHoursApproveReason", None)
+    if "escortRequired" not in v:
+        from app.escort import stamp_escort_zones
+
+        stamp_escort_zones(v)
+    v.setdefault("escortRequired", False)
+    v.setdefault("allowedZones", [])
+    v.setdefault("escortStaffId", None)
+    v.setdefault("escortSuggestedByHost", None)
+    v.setdefault("escortWaived", False)
+    v.setdefault("escortWaiveReason", None)
+    v.setdefault("escortClearedAt", None)
     _state["visits"][v["id"]] = v
 
 
@@ -340,3 +371,91 @@ def holiday_on_date(school_id: str, day: str) -> Optional[dict]:
         if h["schoolId"] == school_id and h["date"] == day:
             return h
     return None
+
+
+# --- zones / escort rules (P2 B4) ---
+
+
+def put_zone(row: dict) -> None:
+    _state["zone_labels"][(row["schoolId"], row["key"])] = row
+
+
+def get_zone(school_id: str, key: str) -> Optional[dict]:
+    return _state["zone_labels"].get((school_id, key))
+
+
+def list_zones(school_id: str) -> list[dict]:
+    from app.escort import ZONE_KEYS
+
+    index = {
+        key: row
+        for (sid, key), row in _state["zone_labels"].items()
+        if sid == school_id
+    }
+    return [index[key] for key in ZONE_KEYS if key in index]
+
+
+def put_escort_rule(row: dict) -> None:
+    _state["escort_rules"][(row["schoolId"], row["visitorType"])] = row
+
+
+def get_escort_rule(school_id: str, visitor_type: str) -> Optional[dict]:
+    return _state["escort_rules"].get((school_id, visitor_type))
+
+
+def list_escort_rules(school_id: str) -> list[dict]:
+    from app.escort import VISITOR_TYPES
+
+    index = {
+        vt: row
+        for (sid, vt), row in _state["escort_rules"].items()
+        if sid == school_id
+    }
+    return [index[vt] for vt in VISITOR_TYPES if vt in index]
+
+
+# --- emergency blast (P2 E3 · B1–B6) ---
+
+
+def put_blast_template(row: dict) -> None:
+    _state["blast_templates"][row["id"]] = row
+
+
+def get_blast_template(template_id: str) -> Optional[dict]:
+    return _state["blast_templates"].get(template_id)
+
+
+def list_blast_templates(school_id: str) -> list[dict]:
+    rows = [t for t in _state["blast_templates"].values() if t["schoolId"] == school_id]
+    rows.sort(key=lambda t: t.get("name") or t["id"])
+    return rows
+
+
+def put_blast(row: dict) -> None:
+    _state["blasts"][row["blastId"]] = row
+
+
+def get_blast(blast_id: str) -> Optional[dict]:
+    return _state["blasts"].get(blast_id)
+
+
+def list_blasts(school_id: str) -> list[dict]:
+    rows = [b for b in _state["blasts"].values() if b["schoolId"] == school_id]
+    rows.sort(key=lambda b: b.get("triggeredAt") or "", reverse=True)
+    return rows
+
+
+def put_blast_recipient(row: dict) -> None:
+    _state["blast_recipients"][row["id"]] = row
+
+
+def list_blast_recipients(blast_id: str) -> list[dict]:
+    rows = [r for r in _state["blast_recipients"].values() if r["blastId"] == blast_id]
+    rows.sort(key=lambda r: (r.get("visitId") or "", r.get("channel") or "", r["id"]))
+    return rows
+
+
+def next_blast_id() -> str:
+    from app.util import gen_blast_id
+
+    return gen_blast_id(next_seq("blast_seq"))

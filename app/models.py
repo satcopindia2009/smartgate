@@ -23,6 +23,16 @@ class VisitorType(str, Enum):
     Alumni = "Alumni"
 
 
+class ZoneKey(str, Enum):
+    reception = "reception"
+    admin = "admin"
+    classroom = "classroom"
+    sports = "sports"
+    lab = "lab"
+    restricted = "restricted"
+    parking = "parking"
+
+
 class IdType(str, Enum):
     Aadhaar = "Aadhaar"
     DL = "DL"
@@ -208,6 +218,13 @@ class VisitCreate(BaseModel):
     gateId: str = Field(min_length=1)
     blacklistOverride: bool = False
 
+    @field_validator("visitorType", mode="before")
+    @classmethod
+    def contractor_maps_to_vendor(cls, v):
+        if isinstance(v, str) and v.strip().lower() == "contractor":
+            return VisitorType.Vendor
+        return v
+
     @field_validator("visitorName", "purpose", "hostId", "livePhotoKey", "gateId")
     @classmethod
     def strip_required(cls, v: str) -> str:
@@ -294,6 +311,14 @@ class VisitOut(BaseModel):
     policyTrigger: Optional[str] = None
     afterHoursEvaluatedAt: Optional[str] = None
     afterHoursApproveReason: Optional[str] = None
+    escortRequired: bool = False
+    allowedZones: list[str] = Field(default_factory=list)
+    escortStaffId: Optional[str] = None
+    escortSuggestedByHost: Optional[str] = None
+    escortWaived: bool = False
+    escortWaiveReason: Optional[str] = None
+    escortClearedAt: Optional[str] = None
+    escortName: Optional[str] = None
     createdAt: str
     updatedAt: str
     meta: Optional[dict] = None
@@ -334,6 +359,11 @@ class PassOut(BaseModel):
     issuedAt: Optional[str] = None
     expiresAt: Optional[str] = None
     revoked: bool = False
+    escortRequired: bool = False
+    escortName: Optional[str] = None
+    allowedZoneLabels: list[str] = Field(default_factory=list)
+    afterHours: bool = False
+    policyTrigger: Optional[str] = None
     meta: Optional[dict] = None
 
 
@@ -632,6 +662,76 @@ class PickupOut(BaseModel):
     meta: Optional[dict] = None
 
 
+# --- Access Rules: escort / zones (P2 B4) ---
+
+
+class ZoneLabelOut(BaseModel):
+    key: str
+    label: str
+    schoolId: str
+    updatedByUserId: Optional[str] = None
+    updatedAt: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+class ZoneLabelPatch(BaseModel):
+    label: str = Field(min_length=1)
+
+    @field_validator("label")
+    @classmethod
+    def label_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("label is required")
+        return v
+
+
+class EscortZoneRuleIn(BaseModel):
+    visitorType: VisitorType
+    escortRequired: bool
+    allowedZones: list[ZoneKey] = Field(default_factory=list)
+
+    @field_validator("visitorType", mode="before")
+    @classmethod
+    def contractor_maps_to_vendor(cls, v):
+        if isinstance(v, str) and v.strip().lower() == "contractor":
+            return VisitorType.Vendor
+        return v
+
+
+class EscortZoneRuleOut(BaseModel):
+    schoolId: str
+    visitorType: str
+    escortRequired: bool
+    allowedZones: list[str]
+    updatedByUserId: Optional[str] = None
+    updatedAt: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+class AssignEscortBody(BaseModel):
+    escortStaffId: Optional[str] = None
+    escortSuggestedByHost: Optional[str] = None
+
+    @field_validator("escortStaffId", "escortSuggestedByHost")
+    @classmethod
+    def strip_ids(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+    @model_validator(mode="after")
+    def require_staff_or_suggest(self) -> "AssignEscortBody":
+        if not self.escortStaffId and not self.escortSuggestedByHost:
+            raise ValueError("escortStaffId is required")
+        return self
+
+
+class WaiveEscortBody(ReasonBody):
+    pass
+
+
 # --- Access Rules: hours + holidays (P2 after-hours A1–A2) ---
 
 
@@ -685,3 +785,163 @@ class HolidayOut(BaseModel):
 class MetaWrap(BaseModel):
     data: Any
     meta: dict = Field(default_factory=lambda: {"watermark": "DEMO"})
+
+
+# --- Emergency blast (P2 E3 · Hub B1–B6) ---
+
+
+class BlastChannel(str, Enum):
+    sms = "sms"
+    push = "push"
+    in_app = "in_app"
+    whatsapp = "whatsapp"
+
+
+class BlastStatus(str, Enum):
+    pending_confirm = "pending_confirm"
+    queued = "queued"
+    sending = "sending"
+    completed = "completed"
+    partial = "partial"
+    failed = "failed"
+    cancelled = "cancelled"
+
+
+class BlastRecipientStatus(str, Enum):
+    queued = "queued"
+    sent = "sent"
+    failed = "failed"
+    skipped_no_mobile = "skipped_no_mobile"
+    skipped_hold = "skipped_hold"
+
+
+class BlastTemplateCreate(BaseModel):
+    name: str = Field(min_length=1)
+    instruction: str = Field(min_length=1, max_length=160)
+    channel: BlastChannel = BlastChannel.sms
+    active: bool = True
+
+    @field_validator("name", "instruction")
+    @classmethod
+    def strip_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("must not be empty")
+        return v
+
+
+class BlastTemplatePatch(BaseModel):
+    name: Optional[str] = None
+    instruction: Optional[str] = Field(default=None, max_length=160)
+    channel: Optional[BlastChannel] = None
+    active: Optional[bool] = None
+
+    @field_validator("name", "instruction")
+    @classmethod
+    def strip_optional(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+
+class BlastTemplateOut(BaseModel):
+    id: str
+    schoolId: str
+    name: str
+    instruction: str
+    channel: str
+    active: bool
+    updatedByUserId: Optional[str] = None
+    updatedAt: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+class BlastConfirmBody(BaseModel):
+    """Locked one-shot confirm `{ templateId, confirm: true }` plus draft modes."""
+
+    templateId: str = Field(min_length=1)
+    confirm: Optional[bool] = None
+    mode: Optional[Literal["preview", "pending_confirm"]] = None
+    instruction: Optional[str] = Field(default=None, max_length=160)
+
+    @field_validator("templateId")
+    @classmethod
+    def template_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("templateId is required")
+        return v
+
+    @field_validator("instruction")
+    @classmethod
+    def strip_instruction(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+
+class BlastConfirmOnlyBody(BaseModel):
+    confirm: bool
+
+    @field_validator("confirm")
+    @classmethod
+    def must_confirm(cls, v: bool) -> bool:
+        if v is not True:
+            raise ValueError("confirm must be true")
+        return v
+
+
+class BlastRecipientOut(BaseModel):
+    blastId: str
+    visitId: Optional[str] = None
+    mobileMasked: str
+    channel: str
+    status: str
+    providerMessageId: Optional[str] = None
+    attemptedAt: Optional[str] = None
+    errorCode: Optional[str] = None
+
+
+class BlastOut(BaseModel):
+    blastId: str
+    schoolId: str
+    triggeredByUserId: str
+    triggeredAt: str
+    templateId: str
+    instruction: str
+    insideCount: int
+    recipientCount: int
+    status: str
+    confirmAt: Optional[str] = None
+    recipients: list[BlastRecipientOut] = Field(default_factory=list)
+    counts: dict[str, int] = Field(default_factory=dict)
+    meta: Optional[dict] = None
+
+
+class BlastPreviewOut(BaseModel):
+    insideCount: int
+    channelsSummary: dict[str, Any]
+    templateId: Optional[str] = None
+    instructionPreview: Optional[str] = None
+    emergencyBlastEnabled: bool = True
+    meta: Optional[dict] = None
+
+
+class BlastConfigOut(BaseModel):
+    schoolId: str
+    emergencyBlastEnabled: bool
+    blastStaffLaneEnabled: bool
+    blastChannelsVisitor: list[str]
+    blastChannelsStaff: list[str]
+    updatedByUserId: Optional[str] = None
+    updatedAt: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+class BlastConfigPatch(BaseModel):
+    emergencyBlastEnabled: Optional[bool] = None
+    blastStaffLaneEnabled: Optional[bool] = None
+    blastChannelsVisitor: Optional[list[str]] = None
+    blastChannelsStaff: Optional[list[str]] = None

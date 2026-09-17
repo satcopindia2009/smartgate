@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 
 from app.auth import assert_gate_allowed, require_roles
 from app.config import WATERMARK
+from app.escort import allowed_zone_labels, escort_name
 from app.errors import AppError
 from app.models import PassOut, PassScanBody, Role
 from app.util import parse_iso
@@ -59,6 +60,13 @@ def get_pass(pass_id: str, user=Depends(require_roles(Role.gate, Role.host, Role
         "issuedAt": p.get("issuedAt"),
         "expiresAt": p.get("expiresAt"),
         "revoked": p.get("revoked", False),
+        "escortRequired": bool(v.get("escortRequired")),
+        "escortName": escort_name(v),
+        "allowedZoneLabels": allowed_zone_labels(
+            v["schoolId"], list(v.get("allowedZones") or [])
+        ),
+        "afterHours": bool(v.get("afterHours")),
+        "policyTrigger": v.get("policyTrigger"),
         "meta": {"watermark": WATERMARK},
     }
 

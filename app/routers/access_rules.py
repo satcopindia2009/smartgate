@@ -1,4 +1,4 @@
-"""Campus hours + holiday calendar (Priority P2 after-hours A1–A2). No zones/escort."""
+"""Campus hours + holiday calendar (A1–A2) and escort rules (B4)."""
 from __future__ import annotations
 
 from typing import Optional
@@ -8,8 +8,14 @@ from fastapi import APIRouter, Depends, Query
 from app.after_hours import CAMPUS_TZ, format_hhmm, parse_date, validate_hours_week
 from app.auth import CurrentUser, require_roles
 from app.config import WATERMARK
+from app.escort import (
+    VISITOR_TYPES,
+    apply_restricted_force,
+    normalize_zones,
+    seed_school_defaults,
+)
 from app.errors import AppError
-from app.models import CampusHoursRow, HolidayCreate, Role
+from app.models import CampusHoursRow, EscortZoneRuleIn, HolidayCreate, Role
 from app.util import now_iso
 from app import store
 
@@ -129,3 +135,54 @@ def delete_holiday(
         raise AppError("NOT_FOUND", f"Holiday {holiday_id} not found", 404)
     store.delete_holiday(holiday_id)
     return {"deleted": True, "id": holiday_id, "meta": {"watermark": WATERMARK}}
+
+
+def _escort_public(row: dict) -> dict:
+    return {
+        "schoolId": row["schoolId"],
+        "visitorType": row["visitorType"],
+        "escortRequired": bool(row.get("escortRequired")),
+        "allowedZones": list(row.get("allowedZones") or []),
+        "updatedByUserId": row.get("updatedByUserId"),
+        "updatedAt": row.get("updatedAt"),
+    }
+
+
+@router.get("/escort")
+def get_escort_rules(user: CurrentUser):
+    seed_school_defaults(user["schoolId"])
+    rows = [_escort_public(r) for r in store.list_escort_rules(user["schoolId"])]
+    return {"data": rows, "meta": {"watermark": WATERMARK}}
+
+
+@router.put("/escort")
+def put_escort_rules(
+    body: list[EscortZoneRuleIn],
+    user: dict = Depends(require_roles(*_WRITE)),
+):
+    if not body:
+        raise AppError("VALIDATION", "At least one escort rule is required", 400)
+    seed_school_defaults(user["schoolId"])
+    ts = now_iso()
+    seen: list[str] = []
+    for item in body:
+        vt = item.visitorType.value
+        if vt in seen:
+            raise AppError("VALIDATION", f"duplicate visitorType {vt}", 400)
+        if vt not in VISITOR_TYPES:
+            raise AppError("VALIDATION", f"Unknown visitorType {vt}", 400)
+        seen.append(vt)
+        zones = normalize_zones([z.value for z in item.allowedZones])
+        required = apply_restricted_force(item.escortRequired, zones)
+        store.put_escort_rule(
+            {
+                "schoolId": user["schoolId"],
+                "visitorType": vt,
+                "escortRequired": required,
+                "allowedZones": zones,
+                "updatedByUserId": user["id"],
+                "updatedAt": ts,
+            }
+        )
+    rows = [_escort_public(r) for r in store.list_escort_rules(user["schoolId"])]
+    return {"data": rows, "meta": {"watermark": WATERMARK}}

@@ -9,14 +9,18 @@ from fastapi import APIRouter, Depends, Query
 from app.after_hours import stamp_after_hours
 from app.auth import CurrentUser, assert_gate_allowed, require_roles
 from app.config import SCHOOL_TZ, WATERMARK
+from app.escort import assert_escort_ready, escort_name, stamp_escort_zones
+from app.inside import list_inside_visits
 from app.errors import AppError
 from app.models import (
     ApproveBody,
+    AssignEscortBody,
     CheckInBody,
     ForceCheckoutBody,
     RejectBody,
     Role,
     VisitCreate,
+    WaiveEscortBody,
 )
 from app.util import (
     gen_pass_id,
@@ -33,8 +37,14 @@ router = APIRouter(prefix="/visits", tags=["visits"])
 TZ = ZoneInfo(SCHOOL_TZ)
 
 
-def _meta_visit(v: dict) -> dict:
+def _visit_public(v: dict) -> dict:
     out = dict(v)
+    out["escortName"] = escort_name(out)
+    return out
+
+
+def _meta_visit(v: dict) -> dict:
+    out = _visit_public(v)
     out["meta"] = {"watermark": WATERMARK}
     return out
 
@@ -163,9 +173,7 @@ def visits_inside(
     overdue_h = school.get("overdueHoursDefault", 4) if school else 4
     now = datetime.now(TZ)
     rows = []
-    for v in store.list_visits(user["schoolId"]):
-        if v["status"] != "inside":
-            continue
+    for v in list_inside_visits(user["schoolId"]):
         if user["role"] == "host" and not _host_owns(user, v):
             continue
         if gateId and v.get("gateInId") != gateId and v.get("gateId") != gateId:
@@ -196,7 +204,7 @@ def visits_inside(
             overdue = now - tin >= timedelta(hours=overdue_h)
         if overdueOnly and not overdue:
             continue
-        item = dict(v)
+        item = _visit_public(v)
         item["overdue"] = overdue
         rows.append(item)
     rows.sort(key=lambda x: x.get("timeIn") or "", reverse=True)
@@ -272,7 +280,7 @@ def list_visits(
             ).lower()
             if ql not in blob:
                 continue
-        rows.append(v)
+        rows.append(_visit_public(v))
     rows.sort(key=lambda x: x.get("createdAt") or "", reverse=True)
     return {"data": rows, "meta": {"watermark": WATERMARK}}
 
@@ -369,6 +377,7 @@ def create_visit(
         "updatedAt": ts,
     }
     stamp_after_hours(visit)
+    stamp_escort_zones(visit)
     store.put_visit(visit)
     _emit("visit.pending", visit, {"blacklistHit": bool(hit)})
     if hit:
@@ -454,6 +463,7 @@ def reject_visit(
     v["decidedByUserId"] = user["id"]
     v["checkoutType"] = "never"
     v["updatedAt"] = ts
+    v["escortSuggestedByHost"] = None
     if v.get("passId"):
         p = store.get_pass(v["passId"])
         if p:
@@ -480,6 +490,7 @@ def _do_check_in(visit_id: str, user: dict, gate_id: Optional[str] = None) -> di
     if v["status"] != "approved":
         raise AppError("INVALID_STATE", f"Cannot check-in from status {v['status']}", 409)
     _block_without_override(v, "check-in")
+    assert_escort_ready(v, "check-in")
     gid = gate_id or v["gateId"]
     _require_active_gate(gid, user["schoolId"])
     assert_gate_allowed(user, gid)
@@ -515,6 +526,7 @@ def _do_check_out(visit_id: str, user: dict, gate_id: Optional[str] = None) -> d
     v["timeOut"] = ts
     v["gateOutId"] = gid
     v["checkoutType"] = "normal"
+    v["escortClearedAt"] = ts
     v["updatedAt"] = ts
     store.put_visit(v)
     _emit("visit.checked_out", v)
@@ -539,6 +551,7 @@ def force_checkout(
     v["checkoutType"] = "force"
     v["forceCheckoutReason"] = body.reason
     v["forceCheckoutByUserId"] = user["id"]
+    v["escortClearedAt"] = ts
     v["updatedAt"] = ts
     store.put_visit(v)
     _emit("visit.force_checkout", v, {"reason": body.reason})
@@ -559,6 +572,79 @@ def meeting_done(
         raise AppError("INVALID_STATE", f"Cannot meeting-done from status {v['status']}", 409)
     ts = now_iso()
     v["meetingDoneAt"] = ts
+    v["updatedAt"] = ts
+    store.put_visit(v)
+    return _meta_visit(v)
+
+
+_ESCORT_ASSIGN_STATUSES = ("pending", "approved", "inside")
+
+
+def _require_active_escort_staff(staff_id: str, school_id: str) -> dict:
+    staff = store.get_staff(staff_id)
+    if not staff or staff.get("schoolId") != school_id:
+        raise AppError("VALIDATION", f"Unknown escortStaffId {staff_id}", 400)
+    if not staff.get("active", True):
+        raise AppError("VALIDATION", f"Escort staff {staff_id} is inactive", 400)
+    return staff
+
+
+@router.post("/{visit_id}/assign-escort")
+def assign_escort(
+    visit_id: str,
+    body: AssignEscortBody,
+    user: dict = Depends(require_roles(Role.gate, Role.host, Role.security_head)),
+):
+    v = store.get_visit(visit_id)
+    if not v or not _can_view_visit(user, v):
+        raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
+    if v["status"] not in _ESCORT_ASSIGN_STATUSES:
+        raise AppError(
+            "INVALID_STATE",
+            f"Cannot assign escort from status {v['status']}",
+            409,
+        )
+    ts = now_iso()
+    if user["role"] == "host":
+        suggested = body.escortSuggestedByHost or body.escortStaffId
+        if not suggested:
+            raise AppError("VALIDATION", "escortStaffId is required", 400)
+        _require_active_escort_staff(suggested, user["schoolId"])
+        v["escortSuggestedByHost"] = suggested
+        v["updatedAt"] = ts
+        store.put_visit(v)
+        return _meta_visit(v)
+
+    if not body.escortStaffId:
+        raise AppError("VALIDATION", "escortStaffId is required", 400)
+    _require_active_escort_staff(body.escortStaffId, user["schoolId"])
+    v["escortStaffId"] = body.escortStaffId
+    if body.escortSuggestedByHost:
+        _require_active_escort_staff(body.escortSuggestedByHost, user["schoolId"])
+        v["escortSuggestedByHost"] = body.escortSuggestedByHost
+    v["updatedAt"] = ts
+    store.put_visit(v)
+    return _meta_visit(v)
+
+
+@router.post("/{visit_id}/waive-escort")
+def waive_escort(
+    visit_id: str,
+    body: WaiveEscortBody,
+    user: dict = Depends(require_roles(Role.security_head)),
+):
+    v = store.get_visit(visit_id)
+    if not v or v["schoolId"] != user["schoolId"]:
+        raise AppError("NOT_FOUND", f"Visit {visit_id} not found", 404)
+    if v["status"] not in _ESCORT_ASSIGN_STATUSES:
+        raise AppError(
+            "INVALID_STATE",
+            f"Cannot waive escort from status {v['status']}",
+            409,
+        )
+    ts = now_iso()
+    v["escortWaived"] = True
+    v["escortWaiveReason"] = body.reason
     v["updatedAt"] = ts
     store.put_visit(v)
     return _meta_visit(v)

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Satcop Smart Visitor API",
-    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours Access Rules (A1\u2013A6). Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. Escort/zones/blast not in this slice. Demo watermark; no production / live-school deploy.",
-    "version": "0.4.0"
+    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours (A1\u2013A6) + escort/zones Access Rules (B4) + Emergency Blast (E3 / B1\u2013B6). Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. SMS mock / WA skipped_hold. Demo watermark; no production / live-school deploy.",
+    "version": "0.6.0"
   },
   "paths": {
     "/v1/auth/login": {
@@ -1066,6 +1066,116 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/assign-escort": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Assign Escort",
+        "operationId": "assign_escort_v1_visits__visit_id__assign_escort_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignEscortBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/waive-escort": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Waive Escort",
+        "operationId": "waive_escort_v1_visits__visit_id__waive_escort_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaiveEscortBody"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2806,6 +2916,787 @@
         }
       }
     },
+    "/v1/access-rules/escort": {
+      "get": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Get Escort Rules",
+        "operationId": "get_escort_rules_v1_access_rules_escort_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Put Escort Rules",
+        "operationId": "put_escort_rules_v1_access_rules_escort_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/EscortZoneRuleIn"
+                },
+                "type": "array",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/zones": {
+      "get": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "List Zones",
+        "operationId": "list_zones_v1_zones_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/zones/{key}": {
+      "patch": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Patch Zone",
+        "operationId": "patch_zone_v1_zones__key__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneLabelPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts/preview": {
+      "get": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Preview Blast",
+        "operationId": "preview_blast_v1_emergency_blasts_preview_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Templateid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts": {
+      "post": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Create Blast",
+        "operationId": "create_blast_v1_emergency_blasts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/emergency/blasts/{blast_id}": {
+      "get": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Get Blast",
+        "operationId": "get_blast_v1_emergency_blasts__blast_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "blast_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Blast Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts/{blast_id}/confirm": {
+      "post": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Confirm Pending Blast",
+        "operationId": "confirm_pending_blast_v1_emergency_blasts__blast_id__confirm_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "blast_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Blast Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastConfirmOnlyBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts/{blast_id}/retry-failed": {
+      "post": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Retry Failed Recipients",
+        "operationId": "retry_failed_recipients_v1_emergency_blasts__blast_id__retry_failed_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "blast_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Blast Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blast-templates": {
+      "get": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "List Templates",
+        "operationId": "list_templates_v1_emergency_blast_templates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Create Template",
+        "operationId": "create_template_v1_emergency_blast_templates_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastTemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blast-templates/{template_id}": {
+      "get": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Get Template",
+        "operationId": "get_template_v1_emergency_blast_templates__template_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Put Template",
+        "operationId": "put_template_v1_emergency_blast_templates__template_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastTemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Patch Template",
+        "operationId": "patch_template_v1_emergency_blast_templates__template_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastTemplatePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Delete Template",
+        "operationId": "delete_template_v1_emergency_blast_templates__template_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/schools/me/blast-config": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Get Blast Config",
+        "operationId": "get_blast_config_v1_schools_me_blast_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Put Blast Config",
+        "operationId": "put_blast_config_v1_schools_me_blast_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastConfigPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Patch Blast Config",
+        "operationId": "patch_blast_config_v1_schools_me_blast_config_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastConfigPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -2858,6 +3749,34 @@
         "type": "object",
         "title": "ApproveBody",
         "description": "Optional for in-hours Host Approve; required non-blank reason when afterHours (A6)."
+      },
+      "AssignEscortBody": {
+        "properties": {
+          "escortStaffId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escortstaffid"
+          },
+          "escortSuggestedByHost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escortsuggestedbyhost"
+          }
+        },
+        "type": "object",
+        "title": "AssignEscortBody"
       },
       "AuthorizedPickupCreate": {
         "properties": {
@@ -3340,6 +4259,218 @@
         "type": "object",
         "title": "BlacklistPatch"
       },
+      "BlastChannel": {
+        "type": "string",
+        "enum": [
+          "sms",
+          "push",
+          "in_app",
+          "whatsapp"
+        ],
+        "title": "BlastChannel"
+      },
+      "BlastConfigPatch": {
+        "properties": {
+          "emergencyBlastEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergencyblastenabled"
+          },
+          "blastStaffLaneEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blaststafflaneenabled"
+          },
+          "blastChannelsVisitor": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blastchannelsvisitor"
+          },
+          "blastChannelsStaff": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blastchannelsstaff"
+          }
+        },
+        "type": "object",
+        "title": "BlastConfigPatch"
+      },
+      "BlastConfirmBody": {
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Templateid"
+          },
+          "confirm": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "preview",
+                  "pending_confirm"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "templateId"
+        ],
+        "title": "BlastConfirmBody",
+        "description": "Locked one-shot confirm `{ templateId, confirm: true }` plus draft modes."
+      },
+      "BlastConfirmOnlyBody": {
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "title": "Confirm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "confirm"
+        ],
+        "title": "BlastConfirmOnlyBody"
+      },
+      "BlastTemplateCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "instruction": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Instruction"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel",
+            "default": "sms"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "instruction"
+        ],
+        "title": "BlastTemplateCreate"
+      },
+      "BlastTemplatePatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlastChannel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "title": "BlastTemplatePatch"
+      },
       "Body_upload_media_v1_media_upload_post": {
         "properties": {
           "file": {
@@ -3533,6 +4664,30 @@
           "flag"
         ],
         "title": "CustodyFlagPut"
+      },
+      "EscortZoneRuleIn": {
+        "properties": {
+          "visitorType": {
+            "$ref": "#/components/schemas/VisitorType"
+          },
+          "escortRequired": {
+            "type": "boolean",
+            "title": "Escortrequired"
+          },
+          "allowedZones": {
+            "items": {
+              "$ref": "#/components/schemas/ZoneKey"
+            },
+            "type": "array",
+            "title": "Allowedzones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "visitorType",
+          "escortRequired"
+        ],
+        "title": "EscortZoneRuleIn"
       },
       "ExportRequest": {
         "properties": {
@@ -3919,6 +5074,45 @@
             "type": "boolean",
             "title": "Revoked",
             "default": false
+          },
+          "escortRequired": {
+            "type": "boolean",
+            "title": "Escortrequired",
+            "default": false
+          },
+          "escortName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escortname"
+          },
+          "allowedZoneLabels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowedzonelabels"
+          },
+          "afterHours": {
+            "type": "boolean",
+            "title": "Afterhours",
+            "default": false
+          },
+          "policyTrigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policytrigger"
           },
           "meta": {
             "anyOf": [
@@ -4935,6 +6129,20 @@
         ],
         "title": "VisitorType"
       },
+      "WaiveEscortBody": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "WaiveEscortBody"
+      },
       "Weekday": {
         "type": "string",
         "enum": [
@@ -4947,6 +6155,437 @@
           "sun"
         ],
         "title": "Weekday"
+      },
+      "ZoneKey": {
+        "type": "string",
+        "enum": [
+          "reception",
+          "admin",
+          "classroom",
+          "sports",
+          "lab",
+          "restricted",
+          "parking"
+        ],
+        "title": "ZoneKey"
+      },
+      "ZoneLabelPatch": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "ZoneLabelPatch"
+      },
+      "BlastRecipientStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "sent",
+          "failed",
+          "skipped_no_mobile",
+          "skipped_hold"
+        ]
+      },
+      "EmergencyBlastStatus": {
+        "type": "string",
+        "enum": [
+          "pending_confirm",
+          "queued",
+          "sending",
+          "completed",
+          "partial",
+          "failed",
+          "cancelled"
+        ]
+      },
+      "SchoolBlastConfig": {
+        "type": "object",
+        "required": [
+          "emergencyBlastEnabled",
+          "blastStaffLaneEnabled",
+          "blastChannelsVisitor",
+          "blastChannelsStaff"
+        ],
+        "properties": {
+          "emergencyBlastEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Default OFF (AC-E3e)"
+          },
+          "blastStaffLaneEnabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "blastChannelsVisitor": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            },
+            "default": [
+              "sms"
+            ]
+          },
+          "blastChannelsStaff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            },
+            "default": [
+              "in_app",
+              "push"
+            ]
+          }
+        }
+      },
+      "SchoolBlastConfigUpdate": {
+        "type": "object",
+        "properties": {
+          "emergencyBlastEnabled": {
+            "type": "boolean"
+          },
+          "blastStaffLaneEnabled": {
+            "type": "boolean"
+          },
+          "blastChannelsVisitor": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            }
+          },
+          "blastChannelsStaff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            }
+          }
+        }
+      },
+      "BlastTemplate": {
+        "type": "object",
+        "required": [
+          "id",
+          "schoolId",
+          "name",
+          "instruction",
+          "channel",
+          "active"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "Evacuation \u2014 assembly ground"
+            ]
+          },
+          "instruction": {
+            "type": "string",
+            "description": "SMS-safe short instruction; snapshot at confirm"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "updatedByUserId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EmergencyBlastCreateRequest": {
+        "type": "object",
+        "required": [
+          "templateId"
+        ],
+        "properties": {
+          "templateId": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "preview",
+              "pending_confirm"
+            ],
+            "default": "preview",
+            "description": "preview = no persist; pending_confirm = create row awaiting confirm"
+          }
+        }
+      },
+      "EmergencyBlastConfirmRequest": {
+        "type": "object",
+        "required": [
+          "confirm"
+        ],
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "description": "Must be true (B2 explicit confirm)"
+          }
+        }
+      },
+      "EmergencyBlastPreview": {
+        "type": "object",
+        "required": [
+          "insideCount",
+          "templateId",
+          "instruction",
+          "channelsSummary"
+        ],
+        "properties": {
+          "insideCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "channelsSummary": {
+            "type": "object",
+            "properties": {
+              "visitor": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BlastChannel"
+                }
+              },
+              "staffLaneEnabled": {
+                "type": "boolean"
+              },
+              "whatsappHold": {
+                "type": "boolean",
+                "default": true
+              }
+            }
+          }
+        }
+      },
+      "EmergencyBlast": {
+        "type": "object",
+        "required": [
+          "blast_id",
+          "schoolId",
+          "triggeredByUserId",
+          "triggeredAt",
+          "templateId",
+          "instruction",
+          "insideCount",
+          "recipientCount",
+          "status"
+        ],
+        "properties": {
+          "blast_id": {
+            "type": "string",
+            "description": "Primary audit key (B5)",
+            "examples": [
+              "B-20260916-03"
+            ]
+          },
+          "schoolId": {
+            "type": "string"
+          },
+          "triggeredByUserId": {
+            "type": "string"
+          },
+          "triggeredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string",
+            "description": "Snapshot at confirm"
+          },
+          "insideCount": {
+            "type": "integer"
+          },
+          "recipientCount": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EmergencyBlastStatus"
+          },
+          "confirmAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "BlastRecipient": {
+        "type": "object",
+        "required": [
+          "blast_id",
+          "mobileMasked",
+          "channel",
+          "status"
+        ],
+        "properties": {
+          "blast_id": {
+            "type": "string"
+          },
+          "visitId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mobileMasked": {
+            "type": "string",
+            "examples": [
+              "+91-9xxx-xx4442"
+            ]
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BlastRecipientStatus"
+          },
+          "providerMessageId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attemptedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "EmergencyBlastDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EmergencyBlast"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "recipients": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BlastRecipient"
+                }
+              },
+              "counts": {
+                "type": "object",
+                "properties": {
+                  "sent": {
+                    "type": "integer"
+                  },
+                  "failed": {
+                    "type": "integer"
+                  },
+                  "queued": {
+                    "type": "integer"
+                  },
+                  "skipped_hold": {
+                    "type": "integer"
+                  },
+                  "skipped_no_mobile": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EmergencyBlastOutboxPayload": {
+        "type": "object",
+        "description": "Outbox event name emergency.blast \u2014 DEMO/SEED draft enrichment (MVP SoT today is name-only until implemented)",
+        "required": [
+          "blastId",
+          "insideCount",
+          "instruction",
+          "templateId",
+          "schoolId",
+          "triggeredByUserId",
+          "channels",
+          "recipientRefs"
+        ],
+        "properties": {
+          "blastId": {
+            "type": "string"
+          },
+          "insideCount": {
+            "type": "integer"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "string"
+          },
+          "triggeredByUserId": {
+            "type": "string"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            }
+          },
+          "recipientRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "visitId",
+                "mobileMasked",
+                "channel"
+              ],
+              "properties": {
+                "visitId": {
+                  "type": "string"
+                },
+                "mobileMasked": {
+                  "type": "string"
+                },
+                "channel": {
+                  "$ref": "#/components/schemas/BlastChannel"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "securitySchemes": {
