@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.satcop.smartvisitor.kiosk.data.api.LoginErrors
 import com.satcop.smartvisitor.kiosk.data.fixture.DemoFixtures
 import com.satcop.smartvisitor.kiosk.data.fixture.HybridKioskRepository
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
@@ -33,13 +34,21 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class KioskUiState(
+    val signedIn: Boolean = false,
+    val loginUsername: String = "",
+    val loginPassword: String = "",
+    val loginError: String? = null,
+    val loginBusy: Boolean = false,
     val step: Int = 1,
     val schoolName: String = DemoFixtures.school.name,
+    val schoolId: String = "",
     val timezone: String = DemoFixtures.SCHOOL_TZ,
     val clockLabel: String = "",
     val watermark: String = DemoFixtures.WATERMARK,
     val dataSource: DataSource = DataSource.FIXTURES,
     val meDisplayName: String = "",
+    val meRole: String = "",
+    val meStaffId: String = "",
     val gates: List<Gate> = emptyList(),
     val hosts: List<Staff> = emptyList(),
     val recent: List<InsideVisit> = emptyList(),
@@ -75,11 +84,53 @@ class KioskViewModel(
     )
 
     init {
-        viewModelScope.launch { load() }
         viewModelScope.launch { tickClock() }
     }
 
-    private suspend fun load() {
+    fun updateLoginUsername(value: String) {
+        _state.update { it.copy(loginUsername = value, loginError = null) }
+    }
+
+    fun updateLoginPassword(value: String) {
+        _state.update { it.copy(loginPassword = value, loginError = null) }
+    }
+
+    fun login() {
+        val username = _state.value.loginUsername.trim()
+        val password = _state.value.loginPassword
+        if (username.isEmpty() || password.isEmpty()) {
+            _state.update {
+                it.copy(loginError = "Enter username and password")
+            }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(loginBusy = true, loginError = null, toast = null) }
+            try {
+                repository.login(username, password)
+                loadAfterLogin()
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        signedIn = false,
+                        loginBusy = false,
+                        loginError = LoginErrors.message(e),
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            runCatching { repository.logout() }
+            val clock = _state.value.clockLabel
+            _state.value = KioskUiState(clockLabel = clock)
+        }
+    }
+
+    private suspend fun loadAfterLogin() {
         repository.warmup()
         val me = repository.me()
         val school = repository.school()
@@ -88,34 +139,45 @@ class KioskViewModel(
         val inside = repository.listInside()
         val story = repository.demoStory()
         val allowedGateIds = me.gateIds?.toSet()
-        val visibleGates = gates.data.filter { allowedGateIds == null || it.id in allowedGateIds }
+        val matchedGates = gates.data.filter { allowedGateIds == null || it.id in allowedGateIds }
+        val visibleGates = matchedGates.ifEmpty { gates.data }
+        val hosts = staff.data.filter { row -> row.roleTitle != "Guard" }
         val defaultGateId = story.gateId.takeIf { id -> visibleGates.any { it.id == id } }
             ?: visibleGates.firstOrNull()?.id
             ?: DemoFixtures.GATE_MAIN_ID
+        val defaultHostId = story.hostId.takeIf { id -> hosts.any { it.id == id } }
+            ?: hosts.firstOrNull()?.id
         val watermark = me.meta?.watermark
             ?: staff.meta?.watermark
             ?: DemoFixtures.WATERMARK
         val source = repository.dataSource
         _state.update {
             it.copy(
+                signedIn = true,
+                loginBusy = false,
+                loginError = null,
+                loginPassword = "",
                 schoolName = school.name,
+                schoolId = me.schoolId,
                 timezone = school.timezone,
                 watermark = watermark,
                 dataSource = source,
                 meDisplayName = me.displayName,
+                meRole = me.role,
+                meStaffId = me.staffId.orEmpty(),
                 gates = visibleGates,
-                hosts = staff.data.filter { row -> row.roleTitle != "Guard" },
+                hosts = hosts,
                 recent = inside.data.take(4),
                 story = story,
                 draft = it.draft.copy(
-                    hostId = story.hostId,
+                    hostId = defaultHostId,
                     gateId = defaultGateId,
                 ),
                 loaded = true,
                 toast = if (source == DataSource.LIVE) {
-                    "Live mock connected"
+                    "Signed in · ${me.displayName}"
                 } else {
-                    "FIXTURES · tunnel unreachable"
+                    "FIXTURES · signed in · live directory unreachable"
                 },
                 toastKind = if (source == DataSource.LIVE) ToastKind.SUCCESS else ToastKind.WARNING,
             )
@@ -547,11 +609,17 @@ class KioskViewModel(
     }
 
     fun registerAnother() {
-        val story = _state.value.story
+        val snap = _state.value
+        val hostId = snap.story.hostId.takeIf { id -> snap.hosts.any { it.id == id } }
+            ?: snap.hosts.firstOrNull()?.id
+        val gateId = snap.story.gateId.takeIf { id -> snap.gates.any { it.id == id } }
+            ?: snap.draft.gateId.takeIf { id -> snap.gates.any { it.id == id } }
+            ?: snap.gates.firstOrNull()?.id
+            ?: DemoFixtures.GATE_MAIN_ID
         _state.update {
             it.copy(
                 step = 1,
-                draft = RegistrationDraft(hostId = story.hostId, gateId = story.gateId),
+                draft = RegistrationDraft(hostId = hostId, gateId = gateId),
                 livePhoto = null,
                 idImage = null,
                 signature = null,

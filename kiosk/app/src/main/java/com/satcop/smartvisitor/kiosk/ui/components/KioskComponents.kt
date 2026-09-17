@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -182,6 +183,7 @@ fun KioskField(
     error: String? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.Words,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
     singleLine: Boolean = true,
     minLines: Int = 1,
 ) {
@@ -211,6 +213,7 @@ fun KioskField(
             },
             singleLine = singleLine,
             minLines = minLines,
+            visualTransformation = visualTransformation,
             isError = error != null,
             keyboardOptions = KeyboardOptions(
                 keyboardType = keyboardType,
@@ -258,7 +261,7 @@ fun GatePill(name: String, onClick: () -> Unit) {
 @Composable
 fun SourcePill(live: Boolean) {
     StatusPill(
-        label = if (live) "LIVE mock" else "FIXTURES",
+        label = if (live) "LIVE" else "FIXTURES",
         background = if (live) KioskColors.cyanDim else KioskColors.orangeDim,
         foreground = if (live) KioskColors.cyanBright else KioskColors.peakAmber,
     )

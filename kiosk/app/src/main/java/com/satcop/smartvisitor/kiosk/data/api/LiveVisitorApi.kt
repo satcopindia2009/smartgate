@@ -26,6 +26,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 class LiveVisitorApi(
     private val baseUrl: String = ApiConfig.BASE_URL,
+    private val session: AuthSession = AuthSession(),
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -40,9 +41,11 @@ class LiveVisitorApi(
         .callTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .build()
 
-    @Volatile
-    var accessToken: String? = null
-        private set
+    val accessToken: String?
+        get() = session.accessToken
+
+    val signedInUser: MeResponse?
+        get() = session.user
 
     fun login(username: String, password: String): LoginResponse {
         val body = json.encodeToString(LoginRequest(username, password))
@@ -52,16 +55,15 @@ class LiveVisitorApi(
             .build()
         val text = execute(req)
         val parsed = json.decodeFromString<LoginResponse>(text)
-        accessToken = parsed.accessToken
+        session.accept(parsed.accessToken, parsed.user)
         return parsed
     }
 
-    fun loginGate(): Boolean = runCatching {
-        login(ApiConfig.GATE_USERNAME, ApiConfig.GATE_PASSWORD)
-        true
-    }.getOrDefault(false)
+    fun logout() {
+        session.clear()
+    }
 
-    fun me(): MeResponse = get("/auth/me")
+    fun me(): MeResponse = get<MeResponse>("/auth/me").also { session.updateUser(it) }
 
     fun listStaff(active: Boolean = true): StaffListResponse =
         get("/staff?active=$active")
@@ -124,7 +126,7 @@ class LiveVisitorApi(
     }
 
     private fun authorized(builder: Request.Builder): Request {
-        val token = accessToken ?: throw ApiException("UNAUTHENTICATED", "Not logged in", 401)
+        val token = session.accessToken ?: throw ApiException("UNAUTHENTICATED", "Not logged in", 401)
         return builder.header("Authorization", "Bearer $token").build()
     }
 

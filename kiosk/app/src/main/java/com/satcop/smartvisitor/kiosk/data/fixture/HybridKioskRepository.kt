@@ -29,13 +29,59 @@ class HybridKioskRepository(
     override var dataSource: DataSource = DataSource.FIXTURES
         private set
 
-    override suspend fun warmup() = withContext(Dispatchers.IO) {
-        dataSource = if (live.loginGate()) DataSource.LIVE else DataSource.FIXTURES
+    @Volatile
+    private var signedIn: MeResponse? = null
+
+    override suspend fun login(username: String, password: String): MeResponse =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = live.login(username.trim(), password)
+                val user = resp.user ?: live.me()
+                signedIn = user
+                dataSource = DataSource.LIVE
+                user
+            } catch (e: ApiException) {
+                live.logout()
+                signedIn = null
+                dataSource = DataSource.FIXTURES
+                throw e
+            } catch (e: Exception) {
+                live.logout()
+                signedIn = null
+                dataSource = DataSource.FIXTURES
+                throw ApiException("UNAVAILABLE", e.message ?: "Live login failed", 0)
+            }
+        }
+
+    override suspend fun logout() = withContext(Dispatchers.IO) {
+        live.logout()
+        signedIn = null
+        dataSource = DataSource.FIXTURES
     }
 
-    override suspend fun me(): MeResponse = liveOrFixture { live.me() } ?: fixtures.me()
+    override suspend fun warmup() = withContext(Dispatchers.IO) {
+        if (live.accessToken.isNullOrBlank()) {
+            dataSource = DataSource.FIXTURES
+            return@withContext
+        }
+        dataSource = try {
+            signedIn = live.me()
+            DataSource.LIVE
+        } catch (e: Exception) {
+            if (shouldFallback(e)) DataSource.FIXTURES else DataSource.LIVE
+        }
+    }
 
-    override suspend fun school(): School = fixtures.school()
+    override suspend fun me(): MeResponse =
+        liveOrFixture { live.me() } ?: signedIn ?: fixtures.me()
+
+    override suspend fun school(): School {
+        val me = signedIn
+        if (me != null && me.schoolId != DemoFixtures.SCHOOL_ID) {
+            return DemoFixtures.school.copy(id = me.schoolId, name = me.schoolId)
+        }
+        return fixtures.school()
+    }
 
     override suspend fun listStaff(active: Boolean): StaffListResponse =
         liveOrFixture { live.listStaff(active) } ?: fixtures.listStaff(active)

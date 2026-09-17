@@ -15,6 +15,7 @@ class PhoneLayoutTest {
             ApiConfig.BASE_URL,
         )
         assertFalse(ApiConfig.BASE_URL.contains("weed-pumps"))
+        assertFalse(ApiConfig.BASE_URL.contains("gate123"))
     }
 
     @Test
