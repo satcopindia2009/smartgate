@@ -17,7 +17,19 @@ _state: dict[str, Any] = {
     "media": {},
     "outbox": [],
     "exports": [],
-    "counters": {"visit_seq": 40, "staff_seq": 10, "bl_seq": 10, "outbox_seq": 1},
+    "students": {},
+    "authorized_pickup": {},
+    "custody_flags": {},  # studentId -> flag
+    "pickups": {},
+    "counters": {
+        "visit_seq": 40,
+        "staff_seq": 10,
+        "bl_seq": 10,
+        "outbox_seq": 1,
+        "student_seq": 10,
+        "person_seq": 10,
+        "pickup_seq": 10,
+    },
 }
 
 
@@ -36,7 +48,19 @@ def reset() -> None:
         "media": {},
         "outbox": [],
         "exports": [],
-        "counters": {"visit_seq": 40, "staff_seq": 10, "bl_seq": 10, "outbox_seq": 1},
+        "students": {},
+        "authorized_pickup": {},
+        "custody_flags": {},
+        "pickups": {},
+        "counters": {
+            "visit_seq": 40,
+            "staff_seq": 10,
+            "bl_seq": 10,
+            "outbox_seq": 1,
+            "student_seq": 10,
+            "person_seq": 10,
+            "pickup_seq": 10,
+        },
     }
 
 
@@ -193,3 +217,53 @@ def add_export(rec: dict) -> dict:
 
 def list_exports() -> list[dict]:
     return list(_state["exports"])
+
+
+# --- students / authorized pickup / custody / pickups ---
+
+
+def put_student(s: dict) -> None:
+    _state["students"][s["id"]] = s
+
+
+def get_student(student_id: str) -> Optional[dict]:
+    return _state["students"].get(student_id)
+
+
+def list_students(school_id: str) -> list[dict]:
+    return [s for s in _state["students"].values() if s["schoolId"] == school_id]
+
+
+def put_authorized_person(p: dict) -> None:
+    _state["authorized_pickup"][p["id"]] = p
+
+
+def get_authorized_person(person_id: str) -> Optional[dict]:
+    return _state["authorized_pickup"].get(person_id)
+
+
+def list_authorized_people(school_id: str, student_id: Optional[str] = None) -> list[dict]:
+    out = [p for p in _state["authorized_pickup"].values() if p["schoolId"] == school_id]
+    if student_id:
+        out = [p for p in out if p["studentId"] == student_id]
+    return out
+
+
+def put_custody_flag(flag: dict) -> None:
+    _state["custody_flags"][flag["studentId"]] = flag
+
+
+def get_custody_flag(student_id: str) -> Optional[dict]:
+    return _state["custody_flags"].get(student_id)
+
+
+def put_pickup(p: dict) -> None:
+    _state["pickups"][p["id"]] = p
+
+
+def get_pickup(pickup_id: str) -> Optional[dict]:
+    return _state["pickups"].get(pickup_id)
+
+
+def list_pickups(school_id: str) -> list[dict]:
+    return [p for p in _state["pickups"].values() if p["schoolId"] == school_id]
