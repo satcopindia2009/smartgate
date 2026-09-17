@@ -785,3 +785,163 @@ class HolidayOut(BaseModel):
 class MetaWrap(BaseModel):
     data: Any
     meta: dict = Field(default_factory=lambda: {"watermark": "DEMO"})
+
+
+# --- Emergency blast (P2 E3 · Hub B1–B6) ---
+
+
+class BlastChannel(str, Enum):
+    sms = "sms"
+    push = "push"
+    in_app = "in_app"
+    whatsapp = "whatsapp"
+
+
+class BlastStatus(str, Enum):
+    pending_confirm = "pending_confirm"
+    queued = "queued"
+    sending = "sending"
+    completed = "completed"
+    partial = "partial"
+    failed = "failed"
+    cancelled = "cancelled"
+
+
+class BlastRecipientStatus(str, Enum):
+    queued = "queued"
+    sent = "sent"
+    failed = "failed"
+    skipped_no_mobile = "skipped_no_mobile"
+    skipped_hold = "skipped_hold"
+
+
+class BlastTemplateCreate(BaseModel):
+    name: str = Field(min_length=1)
+    instruction: str = Field(min_length=1, max_length=160)
+    channel: BlastChannel = BlastChannel.sms
+    active: bool = True
+
+    @field_validator("name", "instruction")
+    @classmethod
+    def strip_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("must not be empty")
+        return v
+
+
+class BlastTemplatePatch(BaseModel):
+    name: Optional[str] = None
+    instruction: Optional[str] = Field(default=None, max_length=160)
+    channel: Optional[BlastChannel] = None
+    active: Optional[bool] = None
+
+    @field_validator("name", "instruction")
+    @classmethod
+    def strip_optional(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+
+class BlastTemplateOut(BaseModel):
+    id: str
+    schoolId: str
+    name: str
+    instruction: str
+    channel: str
+    active: bool
+    updatedByUserId: Optional[str] = None
+    updatedAt: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+class BlastConfirmBody(BaseModel):
+    """Locked one-shot confirm `{ templateId, confirm: true }` plus draft modes."""
+
+    templateId: str = Field(min_length=1)
+    confirm: Optional[bool] = None
+    mode: Optional[Literal["preview", "pending_confirm"]] = None
+    instruction: Optional[str] = Field(default=None, max_length=160)
+
+    @field_validator("templateId")
+    @classmethod
+    def template_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("templateId is required")
+        return v
+
+    @field_validator("instruction")
+    @classmethod
+    def strip_instruction(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
+
+
+class BlastConfirmOnlyBody(BaseModel):
+    confirm: bool
+
+    @field_validator("confirm")
+    @classmethod
+    def must_confirm(cls, v: bool) -> bool:
+        if v is not True:
+            raise ValueError("confirm must be true")
+        return v
+
+
+class BlastRecipientOut(BaseModel):
+    blastId: str
+    visitId: Optional[str] = None
+    mobileMasked: str
+    channel: str
+    status: str
+    providerMessageId: Optional[str] = None
+    attemptedAt: Optional[str] = None
+    errorCode: Optional[str] = None
+
+
+class BlastOut(BaseModel):
+    blastId: str
+    schoolId: str
+    triggeredByUserId: str
+    triggeredAt: str
+    templateId: str
+    instruction: str
+    insideCount: int
+    recipientCount: int
+    status: str
+    confirmAt: Optional[str] = None
+    recipients: list[BlastRecipientOut] = Field(default_factory=list)
+    counts: dict[str, int] = Field(default_factory=dict)
+    meta: Optional[dict] = None
+
+
+class BlastPreviewOut(BaseModel):
+    insideCount: int
+    channelsSummary: dict[str, Any]
+    templateId: Optional[str] = None
+    instructionPreview: Optional[str] = None
+    emergencyBlastEnabled: bool = True
+    meta: Optional[dict] = None
+
+
+class BlastConfigOut(BaseModel):
+    schoolId: str
+    emergencyBlastEnabled: bool
+    blastStaffLaneEnabled: bool
+    blastChannelsVisitor: list[str]
+    blastChannelsStaff: list[str]
+    updatedByUserId: Optional[str] = None
+    updatedAt: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+class BlastConfigPatch(BaseModel):
+    emergencyBlastEnabled: Optional[bool] = None
+    blastStaffLaneEnabled: Optional[bool] = None
+    blastChannelsVisitor: Optional[list[str]] = None
+    blastChannelsStaff: Optional[list[str]] = None

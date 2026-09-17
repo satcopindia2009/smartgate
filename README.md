@@ -1,9 +1,9 @@
-# Satcop Smart Visitor — MVP API Stub + P2 Pickup + After-hours + Escort / Zones
+# Satcop Smart Visitor — MVP API Stub + P2 Pickup + After-hours + Escort / Zones + Emergency Blast
 
-In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**), **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**), and **escort / zones** (Hub **B4**).  
-For Mobile / Admin **showable demos**. **Not for live school deploy** (V4 HOLD).
+In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**), **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**), **escort / zones** (Hub **B4**), and **Emergency visitor blast** (Hub **B1–B6 / E3**).  
+For Mobile / Admin **showable demos**. **Not for live school deploy** (V4 HOLD). No live SMS / WhatsApp providers.
 
-Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype. After-hours Approve (SH-only) is unchanged. Blast / geo-fence are **not** in this slice.
+Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype. After-hours Approve (SH-only) is unchanged. Blast is **confirm-only** (not L8 dual-control) and does **not** auto-checkout.
 
 ## Stack
 
@@ -45,7 +45,7 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 | `host`     | `host123` | host           | Anita Joshi (H03)              |
 | `rahul`    | `host123` | host           | Rahul Deshpande (H02)          |
 | `admin`    | `admin123`| admin          | Office Admin                   |
-| `security` | `sh123`   | security_head  | Blacklist write + force + Block override create |
+| `security` | `sh123`   | security_head  | **Meera Kulkarni** (SH); blacklist + force + blast |
 
 ### Seed highlights
 
@@ -60,6 +60,7 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 - **After-hours demos (separate from Priya):** evening Vendor **Ravi Deshmukh** `V-AH-VENDOR` pending SH (host Anita / H03); holiday Parent **Deepak Nair** → **Meera Kulkarni** (H01) → pass **`P-7K88`** (`V-AH-HOLIDAY`)
 - **Escort / zones (B4):** Vendor default `escortRequired=true` zones `reception`+`admin`; Parent/Guest/Alumni reception only (no escort); Official reception+admin (no escort). **Ravi** is assignable to **Vikram More** (`E01`). P-7K88 / Meera and Priya MVP unchanged.
 - **Pickup (P6, separate from Priya):** student **Aarav Mehta · 5-B** (`STU-AARAV`) with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** (`STU-KABIR`) `court_order` blocking **Rajesh Singh**, allow-list **Sunita Singh**
+- **Emergency blast (E3, Meera Kulkarni SH — `notifications/blast-seed-demo.json`):** `emergencyBlastEnabled=true` on **SCH-DEMO-01** only. Templates `tpl_evac_assembly` + `tpl_shelter_in_place`. Seed blast **`B-20260916-03`** is the pack snapshot (6 story visitors, 5 SMS sent / 1 failed / WA `skipped_hold` on Ravi). Live preview = **`GET /v1/visits/inside`** (Priya MVP still inside + pack six). Pack `P-7K88` is **not** reused — Deepak holiday pass stays `P-7K88`; blast Ravi is `vis_p7k88` / `P-7B88`. Pending escort Ravi `V-AH-VENDOR` unchanged. Staff lane default OFF. WhatsApp HOLD.
 
 ## Visit lifecycle (contract §2)
 
@@ -91,6 +92,7 @@ Illegal transitions return `409` `{ "error": { "code": "INVALID_STATE" } }`.
 | Assign / confirm escort        | ✓    | suggest only | | ✓ |
 | Waive escort                   |      |      |       | ✓ reason      |
 | Hours / holidays / zones / escort rules | | | ✓ | ✓ |
+| Blast preview / confirm / retry / templates / toggle | | | ✓ | ✓ |
 | Force checkout                 |      |      | ✓     | ✓             |
 | Staff POST/PATCH               |      |      | ✓     | ✓             |
 | Blacklist write                |      |      | view  | ✓             |
@@ -130,7 +132,7 @@ Matching → Released
 
 **Exports:** scopes `pickup_events`, `pickup_lists` (lists require logged `purpose` — AC-D9).
 
-Out of this slice: blast, geo-fence, face match, MSR, live school (V4), Patrol.
+Out of this slice: geo-fence, face match, MSR, live school (V4), Patrol, live SMS/WA.
 
 ## After-hours / holiday (Priority P2 · Hub A1–A6 / C4)
 
@@ -201,6 +203,48 @@ Fixed zone keys (school-renamable **labels** only). EscortZoneRule by `visitorTy
 | `POST /visits/{id}/waive-escort` | SH | `{ "reason" }` required |
 
 Check-in / scan `check_in` blocked with `ESCORT_REQUIRED` when escort is required and not assigned/waived (AC-B4e). Checkout sets `escortClearedAt`; last escort name/id stays on history (AC-B4f). `GET /passes/{passId}` adds `escortRequired`, `escortName`, `allowedZoneLabels` (+ `afterHours` chrome).
+
+## Emergency blast (Priority P2 · Hub B1–B6 / E3)
+
+Visitor SMS blast to **currently inside** only. Demo/seed on **SCH-DEMO-01**. SMS is a **mock enqueue** (`emergency.blast` outbox). WhatsApp attempts log `skipped_hold`. **No** live provider, **no** dual-control, **no** auto-checkout.
+
+| Lock | Enforced |
+|------|----------|
+| **B1** | Audience = `GET /v1/visits/inside` (`status=inside`, `timeIn` set, `timeOut` null). Snapshot at confirm. After-hours visitors **in**; escort staff **out**. |
+| **B2** | Admin \| Security Head; `confirm: true` required. Gate/Host → 403. Not L8 dual-control. |
+| **B3** | SMS primary (mock `sent`); WhatsApp → `skipped_hold`. Staff lane default OFF. |
+| **B4** | Template-only + optional school-editable short `instruction` (≤160). No ad-hoc body. |
+| **B5** | Audit: `blastId`, who/when, `templateId`, instruction snapshot, `insideCount`, per-recipient status. |
+| **B6** | Does **not** change visit status or auto-checkout. |
+
+| Action | Role | Notes |
+|--------|------|-------|
+| `GET /emergency/blasts/preview` | Admin/SH | `{ insideCount, channelsSummary, templateId?, instructionPreview? }`. Hidden **404** if `emergencyBlastEnabled=false` |
+| `POST /emergency/blasts` | Admin/SH | `{ templateId, confirm: true, instruction? }`. Reject if `confirm`≠true |
+| `GET /emergency/blasts/{blastId}` | Admin/SH | Blast + recipients + counts |
+| `POST /emergency/blasts/{blastId}/retry-failed` | Admin/SH | Retry `failed` only |
+| `GET/POST/PATCH /emergency/blast-templates` | Admin/SH | School-editable templates |
+| `GET/PATCH /schools/me/blast-config` | Admin/SH | Toggle + channels. New schools default **OFF**; demo seed **ON** |
+
+**Outbox** `emergency.blast`: `blastId`, `insideCount`, `instruction`, `templateId`, `recipientRefs` (`visitId`, `mobileMasked`, `channel`). No visitor name list (AC-E3g).
+
+### Curl — SH preview + confirm (board unchanged)
+
+```bash
+BASE=http://127.0.0.1:8080/v1
+SH=$(curl -s -X POST "$BASE/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"security","password":"sh123"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+
+curl -s "$BASE/emergency/blasts/preview?templateId=tpl_evac_assembly" -H "Authorization: Bearer $SH" | python3 -m json.tool
+curl -s "$BASE/visits/inside" -H "Authorization: Bearer $SH" | python3 -c 'import sys,json; print(len(json.load(sys.stdin)["data"]))'
+curl -s -X POST "$BASE/emergency/blasts" \
+  -H "Authorization: Bearer $SH" -H 'Content-Type: application/json' \
+  -d '{"templateId":"tpl_evac_assembly","confirm":true}' | python3 -m json.tool
+curl -s "$BASE/emergency/blasts/B-20260916-03" -H "Authorization: Bearer $SH" | python3 -m json.tool
+# Board still inside — blast does not checkout:
+curl -s "$BASE/visits/inside" -H "Authorization: Bearer $SH" | python3 -c 'import sys,json; print([v["id"] for v in json.load(sys.stdin)["data"]])'
+```
 
 ### Curl — zones + Ravi assign Vikram More
 
@@ -355,6 +399,8 @@ bash scripts/smoke.sh
 - `tests/test_after_hours_acceptance.py` — AC-C4a / AC-C4b / AC-C4c / AC-C4d / AC-C4e + close-exclusive / holiday-wins edges
 - `tests/test_escort.py` — B4: zone keys, Vendor default ON, Vikram staff, Ravi assignable, P-7K88/Meera/Priya intact, Contractor→Vendor, assign/waive
 - `tests/test_escort_acceptance.py` — AC-B4a / AC-B4b / AC-B4c / AC-B4d / AC-B4e / AC-B4f
+- `tests/test_blast.py` — B1–B6: preview=inside, confirm required, Gate/Host 403, WA `skipped_hold`, visit status unchanged, retry failed, disabled 404
+- `tests/test_blast_acceptance.py` — AC-E3a / AC-E3b / AC-E3c / AC-E3d / AC-E3e / AC-E3f / AC-E3g
 
 ## Remaining thin stubs / out of scope
 
@@ -366,5 +412,6 @@ OK to stay thin (not blocking Mobile/Admin demos):
 - Media GET returns bytes (or `DEMO_MEDIA_STUB`); not S3 signed URLs
 - No Postgres / real object storage
 - Optional `cancelled` before check-in is in the §2 diagram but **no REST cancel** in §4 (not implemented)
-- Priority P2 blast / geo-fence / new zone keys / dual-approve / face match / MSR — **not implemented**
+- Priority P2 geo-fence / new zone keys / dual-approve / face match / MSR / live SMS·WhatsApp providers — **not implemented**
 - Production / live-school deploy — **HOLD**
+- Viren **L8 / WA HOLD** remains on — blast is demo/stub only
