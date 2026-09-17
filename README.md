@@ -104,8 +104,8 @@ inside → force_completed   (Admin/SH; body.reason required)
 | Action | From | Notes |
 |--------|------|--------|
 | `POST /visits` | → `pending` | Gate (or SH override create). Blacklist Block without override → `BLACKLIST_BLOCK`. Stamps sticky `afterHours` / `policyTrigger` / `afterHoursEvaluatedAt` (Asia/Kolkata; **not** recomputed later) **and** `escortRequired` / `allowedZones` from EscortZoneRule (Contractor → Vendor) |
-| `POST /visits/{id}/approve` | `pending` → `approved` | In-hours: Host **own visits only**. After-hours: **Security Head only** with `{ "reason" }`; Host/Admin → `AFTER_HOURS_SH_REQUIRED` (no-op). Issues `passId` + `qrToken` |
-| `POST /visits/{id}/reject` | `pending` → `rejected` | `{ "reason": "..." }` required. After-hours: SH only (A6) |
+| `POST /visits/{id}/approve` | `pending` → `approved` | In-hours: Host **own visits only**. After-hours: **Admin or Security Head** with `{ "reason" }`; Host → `AFTER_HOURS_SH_REQUIRED` (no-op). Issues `passId` + `qrToken` |
+| `POST /visits/{id}/reject` | `pending` → `rejected` | `{ "reason": "..." }` required. After-hours: Admin or SH (A6); Host → `AFTER_HOURS_SH_REQUIRED` |
 | `POST /visits/{id}/check-in` or `POST /passes/scan` `check_in` | `approved` → `inside` | Sets `timeIn`, `gateInId`. If `escortRequired && !escortStaffId && !escortWaived` → `ESCORT_REQUIRED` |
 | `POST /visits/{id}/check-out` or scan `check_out` | `inside` → `completed` | `checkoutType=normal`; sets `escortClearedAt` (last escort retained) |
 | `POST /visits/{id}/force-checkout` | `inside` → `force_completed` | `{ "reason": "..." }` required; sets `escortClearedAt` |
@@ -119,7 +119,7 @@ Illegal transitions return `409` `{ "error": { "code": "INVALID_STATE" } }`.
 |--------------------------------|:----:|:----:|:-----:|:-------------:|
 | Create / check-in / out / scan | ✓    |      |       | ✓ create w/ Block override |
 | Approve / reject own + meeting-done | | ✓* | ✓ | ✓ |
-| Approve / reject when `afterHours=true` | | FYI only | | ✓ reason |
+| Approve / reject when `afterHours=true` | | FYI only | ✓ reason | ✓ reason |
 | Assign / confirm escort        | ✓    | suggest only | | ✓ |
 | Waive escort                   |      |      |       | ✓ reason      |
 | Hours / holidays / zones / escort rules | | | ✓ | ✓ |
@@ -358,7 +358,7 @@ curl -s -X POST "$BASE/pickups/$PK/release" \
 | `PASS_REVOKED` / `PASS_EXPIRED` | 410 | scan |
 | `INVALID_STATE` | 409 | illegal lifecycle transition |
 | `BLACKLIST_BLOCK` | 403 | Block hit without SH override |
-| `AFTER_HOURS_SH_REQUIRED` | 403 | Host/Admin Approve or Reject when `afterHours=true` (no state change) |
+| `AFTER_HOURS_SH_REQUIRED` | 403 | Host Approve or Reject when `afterHours=true` (no state change) |
 | `ESCORT_REQUIRED` | 403 | Check-in / scan check_in when escort required and not assigned/waived |
 
 Pydantic/request validation uses the same `{ "error": { "code": "VALIDATION", ... } }` envelope (not FastAPI `{ detail: [...] }`).

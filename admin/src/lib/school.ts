@@ -6,8 +6,15 @@ export const PRANAY_SCHOOL_CODE = "PRANAY";
 export const PRANAY_SCHOOL_NAME = "Pranay School Pune";
 export const DEMO_SCHOOL_NAME = "Demo International School";
 
-function isDemoSchoolId(schoolId?: string | null): boolean {
+export function isDemoSchoolId(schoolId?: string | null): boolean {
   return (schoolId || "").trim() === DEMO_SCHOOL_ID;
+}
+
+/** True for real tenants — no DEMO watermark, no getFixtureSession fallback. */
+export function withoutDemoChrome(
+  user?: Pick<AuthUser, "schoolId"> | null,
+): boolean {
+  return !isDemoSchoolId(user?.schoolId);
 }
 
 function pickStr(...vals: unknown[]): string | null {

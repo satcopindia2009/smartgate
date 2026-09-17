@@ -179,10 +179,10 @@ export function canEditCampusHours(role?: string | null) {
 }
 
 export function canApproveAfterHours(role?: string | null) {
-  return role === "security_head";
+  return role === "admin" || role === "security_head";
 }
 
-/** In-hours host-pending only. After-hours stays canApproveAfterHours (SH). */
+/** In-hours host-pending only. After-hours stays canApproveAfterHours (Admin or SH). */
 export function canApproveHostPending(role?: string | null) {
   return role === "admin" || role === "security_head";
 }

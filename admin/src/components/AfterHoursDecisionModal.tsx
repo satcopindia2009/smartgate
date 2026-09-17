@@ -52,7 +52,7 @@ export function AfterHoursDecisionModal({ visit, busy, onCancel, onDecide }: Pro
       <div className="modal ah-decision-modal">
         <h3 id="ah-title">After-hours decision</h3>
         <p className="modal-sub">
-          {visit.name} · {visit.type} · {trigger} — Security Head only · reason required (A6)
+          {visit.name} · {visit.type} · {trigger} — Admin or Security Head · reason required (A6)
         </p>
         <div className="reason-chips">
           {REASONS.map((label) => (

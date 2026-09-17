@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { schoolDisplayName } from "../lib/school";
+import { schoolDisplayName, withoutDemoChrome } from "../lib/school";
 import { AuditPanel, AuditProvider } from "./AuditContext";
 import { IconBlacklist, IconGates, IconHistory, IconHours, IconLive, IconPeople, IconPickupHistory, IconReports, IconShield } from "./Icons";
 
@@ -23,7 +23,7 @@ export function Layout() {
 
   return (
     <div className="admin-page">
-      <div className="demo-watermark">DEMO</div>
+      {!withoutDemoChrome(user) ? <div className="demo-watermark">DEMO</div> : null}
       <aside className="sidebar">
         <div className="logo">
           <div className="logo-mark" aria-hidden="true">
