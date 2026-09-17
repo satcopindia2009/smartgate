@@ -1,6 +1,6 @@
 # Satcop Smart Visitor — Gate kiosk (Wave 4)
 
-Android gate / reception kiosk. Phone-friendly `fullUser` orientation (portrait on phones, landscape still works on tablets) + registration steps 1–4 against the live mock when reachable, fixtures otherwise.
+Android gate / reception kiosk. Phone-friendly `fullUser` orientation (portrait on phones, landscape still works on tablets). **Login first** (typed username + password), then registration steps 1–4 against the live mock when reachable, fixtures otherwise.
 
 On compact width (`< 600.dp`, phone portrait) the shell uses 16.dp padding, a wrap-content card under the header (no empty 40% band), stacked title + full-width Prefill, 2-up type cards, and the school/queue/recent strip below the cards. Tablet/landscape keeps the two-column 280.dp context strip. Header **Demo** overflow opens after-hours / host / visitor QR / escort seed URLs in the external browser.
 
@@ -15,16 +15,21 @@ On compact width (`< 600.dp`, phone portrait) the shell uses 16.dp padding, a wr
 | 3 | Live photo (camera, placeholder if no camera), ID type + number **or** ID image (V1), optional signature. `POST /v1/media/upload`, `POST /v1/blacklist/match`, `POST /v1/visits` |
 | 4 | Outcome: pending → wait / Refresh; fixtures **Demo host approve** issues `passId` + `qrToken`; approved → SATCOP PASS box + **Check in**; inside → **Check out**. `POST /v1/passes/scan` `{passId\|token, action: check_in\|check_out, gateId?}`. **Load P-4F21 story**. |
 
-Blacklist **Block** stops the pass; **Alert** shows an escalate banner. Header: DEMO watermark, **LIVE mock** (cyan) / **FIXTURES** (amber) pill, gate role.
+Blacklist **Block** stops the pass; **Alert** shows an escalate banner. Header: signed-in JWT `displayName` + `schoolId`, DEMO watermark, **LIVE** (cyan) / **FIXTURES** (amber) pill, **Log out**.
 
 Demo story: **Priya Sharma** → **Anita Joshi** (`H03`) → **Main Gate** (`G-MAIN`) / **P-4F21**. Prefill sample on step 1. Step 3 has **Block sample** (Vikram More `9876500001`) and **Alert sample** (Neha Salunkhe `9876500002`).
 
 ## Live mock + fallback
 
 Default base: `https://pensions-usb-loops-direction.trycloudflare.com/v1`  
-Gate login: `gate` / `gate123` (see `ApiConfig.kt`). Never use the retired `weed-pumps-laura-upc` host.
+Typed login → `POST /v1/auth/login` → Bearer JWT on later calls. **No** hardcoded `gate`/`gate123` auto-login.
 
-Amber **FIXTURES** pill = tunnel down or later 5xx/timeout. The kiosk keeps working from `DemoFixtures` + `LocalVisitStore`. Do not block a demo on a dead tunnel. Gate never auto-approves a live visit.
+Gate seed: `pranay.gate` / `PranayGate@2026` → `SCH-PRANAY-01` / role `gate` / `PS-G01` / "Pranay Gate".  
+A successful **host** JWT is accepted on the same APK (host-web remains the host UI).
+
+Never use the retired `weed-pumps-laura-upc` host.
+
+Amber **FIXTURES** pill = later 5xx/timeout after a successful login. Login itself is required first. Gate never auto-approves a live visit.
 
 ## Open in Android Studio
 

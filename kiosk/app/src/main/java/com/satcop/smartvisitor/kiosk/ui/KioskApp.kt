@@ -88,47 +88,62 @@ fun KioskApp(
                     .padding(horizontal = hPad, vertical = vPad)
                     .padding(bottom = if (compact) 36.dp else 0.dp),
             ) {
-                KioskHeader(
-                    schoolName = state.schoolName,
-                    gateName = state.selectedGate?.name ?: "Main Gate",
-                    gates = state.gates,
-                    clockLabel = state.clockLabel,
-                    dataSource = state.dataSource,
-                    roleLabel = state.meDisplayName,
-                    compact = compact,
-                    onSelectGate = viewModel::selectGate,
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(if (compact) Modifier else Modifier.weight(1f))
-                        .shadow(24.dp, CardShape, ambientColor = androidx.compose.ui.graphics.Color(0x59000000))
-                        .clip(CardShape)
-                        .background(KioskColors.card)
-                        .border(1.dp, KioskColors.border, CardShape)
-                        .padding(horizontal = cardHPad, vertical = cardVPad),
-                ) {
-                    Column(
-                        modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
+                if (!state.signedIn) {
+                    LoginScreen(
+                        username = state.loginUsername,
+                        password = state.loginPassword,
+                        error = state.loginError,
+                        busy = state.loginBusy,
+                        compact = compact,
+                        onUsername = viewModel::updateLoginUsername,
+                        onPassword = viewModel::updateLoginPassword,
+                        onSubmit = viewModel::login,
+                    )
+                } else {
+                    KioskHeader(
+                        schoolName = state.schoolName,
+                        schoolId = state.schoolId,
+                        gateName = state.selectedGate?.name ?: "Main Gate",
+                        gates = state.gates,
+                        clockLabel = state.clockLabel,
+                        dataSource = state.dataSource,
+                        displayName = state.meDisplayName,
+                        compact = compact,
+                        onSelectGate = viewModel::selectGate,
+                        onLogout = viewModel::logout,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (compact) Modifier else Modifier.weight(1f))
+                            .shadow(24.dp, CardShape, ambientColor = androidx.compose.ui.graphics.Color(0x59000000))
+                            .clip(CardShape)
+                            .background(KioskColors.card)
+                            .border(1.dp, KioskColors.border, CardShape)
+                            .padding(horizontal = cardHPad, vertical = cardVPad),
                     ) {
-                        StepDots(current = state.step)
-                        AnimatedContent(
-                            targetState = state.step,
-                            transitionSpec = { fadeIn() togetherWith fadeOut() },
-                            label = "kiosk-step",
-                            modifier = if (compact) {
-                                Modifier.fillMaxWidth()
-                            } else {
-                                Modifier
-                                    .weight(1f)
-                                    .verticalScroll(rememberScrollState())
-                            },
-                        ) { step ->
-                            KioskStep(
-                                step = step,
-                                state = state,
-                                viewModel = viewModel,
-                            )
+                        Column(
+                            modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
+                        ) {
+                            StepDots(current = state.step)
+                            AnimatedContent(
+                                targetState = state.step,
+                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                label = "kiosk-step",
+                                modifier = if (compact) {
+                                    Modifier.fillMaxWidth()
+                                } else {
+                                    Modifier
+                                        .weight(1f)
+                                        .verticalScroll(rememberScrollState())
+                                },
+                            ) { step ->
+                                KioskStep(
+                                    step = step,
+                                    state = state,
+                                    viewModel = viewModel,
+                                )
+                            }
                         }
                     }
                 }
@@ -226,20 +241,19 @@ private fun KioskStep(
 @Composable
 private fun KioskHeader(
     schoolName: String,
+    schoolId: String,
     gateName: String,
     gates: List<com.satcop.smartvisitor.kiosk.data.model.Gate>,
     clockLabel: String,
     dataSource: DataSource,
-    roleLabel: String,
+    displayName: String,
     compact: Boolean,
     onSelectGate: (String) -> Unit,
+    onLogout: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val subtitle = if (roleLabel.isBlank()) {
-        "$schoolName · Gate check-in"
-    } else {
-        "$schoolName · $roleLabel"
-    }
+    val identity = listOf(displayName, schoolId).filter { it.isNotBlank() }.joinToString(" · ")
+    val subtitle = identity.ifBlank { "$schoolName · Gate check-in" }
     if (compact) {
         Column(
             modifier = Modifier
@@ -291,7 +305,12 @@ private fun KioskHeader(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                DemoHubButton()
+                KioskGhostButton(
+                    text = "Log out",
+                    onClick = onLogout,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                )
+                DemoHubButton(onLogout = onLogout)
             }
         }
     } else {
@@ -343,7 +362,12 @@ private fun KioskHeader(
                     fontSize = 13.sp,
                     fontFamily = KioskFont,
                 )
-                DemoHubButton()
+                KioskGhostButton(
+                    text = "Log out",
+                    onClick = onLogout,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                )
+                DemoHubButton(onLogout = onLogout)
             }
         }
     }
@@ -378,7 +402,7 @@ private fun GateMenu(
 }
 
 @Composable
-private fun DemoHubButton() {
+private fun DemoHubButton(onLogout: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     val context = LocalContext.current
     Box {
@@ -405,6 +429,15 @@ private fun DemoHubButton() {
                     },
                 )
             }
+            DropdownMenuItem(
+                text = {
+                    Text("Log out", color = KioskColors.text, fontFamily = KioskFont)
+                },
+                onClick = {
+                    open = false
+                    onLogout()
+                },
+            )
         }
     }
 }
