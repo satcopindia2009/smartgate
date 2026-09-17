@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Satcop Smart Visitor API",
-    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours (A1\u2013A6) + escort/zones Access Rules (B4) + Emergency Blast (E3 / B1\u2013B6) + school tenant create + student/authorized-pickup CSV/Excel import. Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. SMS mock / WA skipped_hold. Demo school SCH-DEMO-01 is reserved and is not overwritten. Demo watermark; no production / live-school deploy.",
+    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours (A1\u2013A6) + escort/zones Access Rules (B4) + Emergency Blast (E3 / B1\u2013B6) + school tenant create + student/authorized-pickup CSV/Excel import. Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. SMS mock / WA skipped_hold. Demo school SCH-DEMO-01 is reserved and is not overwritten. Locked first real tenant: schoolId SCH-PRANAY-01 / school_code PRANAY (Pranay School Pune). Never SCH-PRANAY-PUNE-01. Demo watermark; no production / live-school deploy.",
     "version": "0.7.0"
   },
   "paths": {
@@ -3824,7 +3824,7 @@
           "schools"
         ],
         "summary": "Create school tenant",
-        "description": "Create a **new** school tenant (not SCH-DEMO-01). Admin / Security Head JWT **or** documented header `X-Bootstrap-Token: satcop-school-bootstrap`. Auto-seeds 4 gates (G-MAIN / G-PED / G-STAFF / G-BUS), Mon\u2013Fri 08:00\u201318:00 campus hours (weekend closed, empty holidays), EscortZoneRule defaults (Vendor escort ON reception+admin), and Admin + Security Head users. Generated credentials are returned **once**. `SCH-DEMO-01` is reserved and cannot be created or overwritten.",
+        "description": "Create a **new** school tenant (not SCH-DEMO-01). Admin / Security Head JWT **or** documented header `X-Bootstrap-Token: satcop-school-bootstrap`. Auto-seeds 4 gates (G-MAIN / G-PED / G-STAFF / G-BUS), Mon\u2013Fri 08:00\u201318:00 campus hours (weekend closed, empty holidays), EscortZoneRule defaults (Vendor escort ON reception+admin), and Admin + Security Head users. Generated credentials are returned **once**. `SCH-DEMO-01` is reserved and cannot be created or overwritten. **Locked first real tenant:** schoolId `SCH-PRANAY-01` \u00b7 school_code `PRANAY` \u00b7 name `Pranay School Pune` (ops seed `pranay.admin` / `pranay.sh` / `pranay.gate`, gates PS-G-MAIN/PED/STAFF/BUS). `schoolCode=PRANAY` or that name maps to SCH-PRANAY-01; never `SCH-PRANAY-PUNE-01`.",
         "operationId": "post_school_v1_schools_post",
         "security": [
           {
@@ -3887,7 +3887,7 @@
           "schools"
         ],
         "summary": "Current school from JWT",
-        "description": "Returns the school bound to the access token. Any authenticated role.",
+        "description": "Returns the school bound to the access token. Any authenticated role. First real tenant JWT (`pranay.admin` / `pranay.sh` / `pranay.gate`) is schoolId `SCH-PRANAY-01` / school_code `PRANAY` (Pranay School Pune). `SCH-DEMO-01` is the separate demo seed.",
         "operationId": "get_school_me_v1_schools_me_get",
         "responses": {
           "200": {
@@ -6103,7 +6103,8 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "title": "Name"
+            "title": "Name",
+            "description": "School display name. 'Pranay School Pune' maps to schoolId SCH-PRANAY-01."
           },
           "timezone": {
             "type": "string",
@@ -6119,7 +6120,8 @@
                 "type": "null"
               }
             ],
-            "title": "Slug"
+            "title": "Slug",
+            "description": "Optional slug. 'pranay' / 'pranay-01' map to SCH-PRANAY-01. Never pranay-pune-01."
           },
           "schoolCode": {
             "anyOf": [
@@ -6130,7 +6132,8 @@
                 "type": "null"
               }
             ],
-            "title": "Schoolcode"
+            "title": "Schoolcode",
+            "description": "CSV school_code. Locked first tenant is PRANAY \u2192 schoolId SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01."
           },
           "adminPassword": {
             "anyOf": [

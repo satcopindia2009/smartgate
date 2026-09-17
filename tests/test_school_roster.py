@@ -183,6 +183,11 @@ def test_cannot_create_or_overwrite_demo_or_pranay_pune(client):
     )
     assert bad.status_code == 400
     assert "SCH-PRANAY-PUNE-01" in bad.json()["error"]["message"]
+    as_code = _create_school(
+        client, token, name="Alias School", schoolCode="SCH-PRANAY-PUNE-01"
+    )
+    assert as_code.status_code == 400
+    assert "SCH-PRANAY-01" in as_code.json()["error"]["message"]
     exists = _create_school(
         client, token, name=PRANAY_SCHOOL_NAME, schoolCode=PRANAY_SCHOOL_CODE
     )
@@ -190,6 +195,13 @@ def test_cannot_create_or_overwrite_demo_or_pranay_pune(client):
     demo = store.get_school(SCHOOL_ID)
     assert demo["name"] == "Demo International School"
     assert store.get_school(PRANAY_SCHOOL_ID)["name"] == PRANAY_SCHOOL_NAME
+    assert store.get_school("SCH-PRANAY-PUNE-01") is None
+    assert {g["id"] for g in store.list_gates(PRANAY_SCHOOL_ID)} == {
+        "PS-G-MAIN",
+        "PS-G-PED",
+        "PS-G-STAFF",
+        "PS-G-BUS",
+    }
 
 
 def test_bootstrap_token_creates_school_without_jwt(client):
@@ -585,6 +597,21 @@ def test_ac_imp_colon_validate_commit_and_pranay_school_code(client):
     assert bad.status_code == 200, bad.text
     assert bad.json()["failed"] >= 1
     assert any("PRANAY" in e["message"] for e in bad.json()["errors"])
+    pune = client.post(
+        "/v1/students/import:commit",
+        headers=auth(token),
+        files={
+            "file": (
+                "pune.csv",
+                _csv_bytes(
+                    [_person_row(school_code="SCH-PRANAY-PUNE-01", student_external_id="7C-03")]
+                ),
+                "text/csv",
+            )
+        },
+    )
+    assert pune.status_code == 200, pune.text
+    assert any("SCH-PRANAY-PUNE-01" in e["message"] for e in pune.json()["errors"])
     assert store.get_student("STU-AARAV")["schoolId"] == SCHOOL_ID
 
 

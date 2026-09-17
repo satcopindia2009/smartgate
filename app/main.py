@@ -49,6 +49,8 @@ app = FastAPI(
         "+ school tenant create + student/authorized-pickup CSV/Excel import. "
         "Contract §§0–5 visit lifecycle unchanged. SMS mock / WA skipped_hold. "
         "Demo school SCH-DEMO-01 is reserved and is not overwritten. "
+        "Locked first real tenant: schoolId SCH-PRANAY-01 / school_code PRANAY "
+        "(Pranay School Pune). Never SCH-PRANAY-PUNE-01. "
         "Demo watermark; no production / live-school deploy."
     ),
     lifespan=lifespan,

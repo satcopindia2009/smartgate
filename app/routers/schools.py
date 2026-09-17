@@ -10,6 +10,9 @@ from app.blast import school_blast_config
 from app.config import (
     BLAST_DEFAULT_STAFF_CHANNELS,
     BLAST_DEFAULT_VISITOR_CHANNELS,
+    PRANAY_SCHOOL_CODE,
+    PRANAY_SCHOOL_ID,
+    PRANAY_SCHOOL_NAME,
     RESERVED_SCHOOL_ID,
     WATERMARK,
 )
@@ -40,7 +43,11 @@ _CREATE_DESC = (
     "Auto-seeds 4 gates (G-MAIN / G-PED / G-STAFF / G-BUS), Mon–Fri 08:00–18:00 campus hours "
     "(weekend closed, empty holidays), EscortZoneRule defaults (Vendor escort ON reception+admin), "
     "and Admin + Security Head users. Generated credentials are returned **once**. "
-    f"`{RESERVED_SCHOOL_ID}` is reserved and cannot be created or overwritten."
+    f"`{RESERVED_SCHOOL_ID}` is reserved and cannot be created or overwritten. "
+    f"**Locked first real tenant:** schoolId `{PRANAY_SCHOOL_ID}` · school_code `{PRANAY_SCHOOL_CODE}` "
+    f"· name `{PRANAY_SCHOOL_NAME}` (ops seed `pranay.admin` / `pranay.sh` / `pranay.gate`, "
+    "gates PS-G-MAIN/PED/STAFF/BUS). "
+    "`schoolCode=PRANAY` or that name maps to SCH-PRANAY-01; never `SCH-PRANAY-PUNE-01`."
 )
 _IMPORT_DESC = (
     "Admin / Security Head multipart roster import for the JWT school. "
@@ -111,8 +118,12 @@ def post_school(
         "credentialsOnce": True,
         "note": (
             f"{RESERVED_SCHOOL_ID} demo seed is reserved and was not modified. "
+            f"Locked first real tenant is {PRANAY_SCHOOL_ID} / {PRANAY_SCHOOL_CODE}. "
+            "Never SCH-PRANAY-PUNE-01. "
             "Store generated credentials now — they are not returned again."
         ),
+        "pranaySchoolId": PRANAY_SCHOOL_ID,
+        "pranaySchoolCode": PRANAY_SCHOOL_CODE,
     }
     return created
 
@@ -120,7 +131,12 @@ def post_school(
 @router.get(
     "/me",
     summary="Current school from JWT",
-    description="Returns the school bound to the access token. Any authenticated role.",
+    description=(
+        "Returns the school bound to the access token. Any authenticated role. "
+        f"First real tenant JWT (`pranay.admin` / `pranay.sh` / `pranay.gate`) is "
+        f"schoolId `{PRANAY_SCHOOL_ID}` / school_code `{PRANAY_SCHOOL_CODE}` "
+        f"({PRANAY_SCHOOL_NAME}). `{RESERVED_SCHOOL_ID}` is the separate demo seed."
+    ),
 )
 def get_school_me(user: CurrentUser):
     school = _require_user_school(user)

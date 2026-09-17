@@ -303,7 +303,7 @@ def _check_school_code(row_code: str, jwt_school: str) -> Optional[str]:
     raw = (row_code or "").strip()
     if not raw:
         return None
-    if raw.upper() in {"SCH-PRANAY-PUNE-01", "PRANAY-PUNE"}:
+    if "PRANAY-PUNE" in raw.upper().replace("_", "-"):
         return "SCH-PRANAY-PUNE-01 is not a valid school_code — use PRANAY / SCH-PRANAY-01"
     found = store.get_school_by_code(raw)
     if jwt_school == PRANAY_SCHOOL_ID:

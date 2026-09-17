@@ -951,10 +951,19 @@ class BlastConfigPatch(BaseModel):
 
 
 class SchoolCreate(BaseModel):
-    name: str = Field(min_length=1)
+    name: str = Field(
+        min_length=1,
+        description="School display name. 'Pranay School Pune' maps to schoolId SCH-PRANAY-01.",
+    )
     timezone: str = "Asia/Kolkata"
-    slug: Optional[str] = None
-    schoolCode: Optional[str] = None
+    slug: Optional[str] = Field(
+        default=None,
+        description="Optional slug. 'pranay' / 'pranay-01' map to SCH-PRANAY-01. Never pranay-pune-01.",
+    )
+    schoolCode: Optional[str] = Field(
+        default=None,
+        description="CSV school_code. Locked first tenant is PRANAY → schoolId SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01.",
+    )
     adminPassword: Optional[str] = None
     securityHeadPassword: Optional[str] = None
 
@@ -988,6 +997,10 @@ class SchoolCreateResponse(BaseModel):
     name: str
     timezone: str
     slug: Optional[str] = None
+    schoolCode: Optional[str] = Field(
+        default=None,
+        description="Locked first tenant school_code is PRANAY (schoolId SCH-PRANAY-01).",
+    )
     overdueHoursDefault: int = 4
     emergencyBlastEnabled: bool = False
     blastStaffLaneEnabled: bool = False
@@ -1004,6 +1017,10 @@ class SchoolMeOut(BaseModel):
     name: str
     timezone: str
     slug: Optional[str] = None
+    schoolCode: Optional[str] = Field(
+        default=None,
+        description="Locked first tenant school_code is PRANAY (schoolId SCH-PRANAY-01).",
+    )
     overdueHoursDefault: int = 4
     emergencyBlastEnabled: bool = False
     blastStaffLaneEnabled: bool = False

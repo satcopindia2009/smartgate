@@ -70,6 +70,17 @@ def is_reserved_school_id(school_id: str) -> bool:
     return (school_id or "").strip().upper() in {x.upper() for x in FORBIDDEN_SCHOOL_IDS}
 
 
+def _is_forbidden_pranay_alias(*parts: Optional[str]) -> bool:
+    """Never mint or accept SCH-PRANAY-PUNE-01 (or PRANAY-PUNE) as an id/code."""
+    for raw in parts:
+        if not raw:
+            continue
+        token = str(raw).strip().upper().replace("_", "-")
+        if "PRANAY-PUNE" in token:
+            return True
+    return False
+
+
 def next_school_id() -> str:
     while True:
         sid = f"SCH-{store.next_seq('school_seq'):04d}"
@@ -145,7 +156,7 @@ def resolve_new_school_ids(
         school_id = next_school_id()
     if code and not slug_n:
         school_id = school_id_from_slug(code.lower())
-    if code == "PRANAY-PUNE" or school_id.upper() == "SCH-PRANAY-PUNE-01":
+    if _is_forbidden_pranay_alias(code, slug_n, school_id, school_code):
         raise AppError(
             "VALIDATION",
             "SCH-PRANAY-PUNE-01 is not a valid schoolId or school_code — use SCH-PRANAY-01 / PRANAY",
