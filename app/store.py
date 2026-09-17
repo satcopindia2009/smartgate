@@ -30,6 +30,7 @@ _state: dict[str, Any] = {
     "blast_templates": {},
     "blasts": {},
     "blast_recipients": {},
+    "roster_imports": [],
     "counters": {
         "visit_seq": 40,
         "staff_seq": 10,
@@ -43,6 +44,7 @@ _state: dict[str, Any] = {
         "blast_seq": 10,
         "recipient_seq": 10,
         "school_seq": 1,
+        "import_seq": 1,
     },
 }
 
@@ -73,6 +75,7 @@ def reset() -> None:
         "blast_templates": {},
         "blasts": {},
         "blast_recipients": {},
+        "roster_imports": [],
         "counters": {
             "visit_seq": 40,
             "staff_seq": 10,
@@ -86,6 +89,7 @@ def reset() -> None:
             "blast_seq": 10,
             "recipient_seq": 10,
             "school_seq": 1,
+            "import_seq": 1,
         },
     }
 
@@ -97,6 +101,17 @@ def school() -> Optional[dict]:
 
 def get_school(school_id: str) -> Optional[dict]:
     return _state["schools"].get(school_id)
+
+
+def get_school_by_code(school_code: str) -> Optional[dict]:
+    want = (school_code or "").strip().upper()
+    if not want:
+        return None
+    for s in _state["schools"].values():
+        code = (s.get("schoolCode") or "").strip().upper()
+        if code == want or s.get("id", "").upper() == want:
+            return s
+    return None
 
 
 def list_schools() -> list[dict]:
@@ -510,3 +525,16 @@ def next_blast_id() -> str:
     from app.util import gen_blast_id
 
     return gen_blast_id(next_seq("blast_seq"))
+
+
+def add_roster_import(row: dict) -> dict:
+    rec = deepcopy(row)
+    rec.setdefault("id", f"IMP-{next_seq('import_seq'):04d}")
+    _state["roster_imports"].append(rec)
+    return rec
+
+
+def list_roster_imports(school_id: str) -> list[dict]:
+    rows = [r for r in _state["roster_imports"] if r.get("schoolId") == school_id]
+    rows.sort(key=lambda r: r.get("importedAt") or "", reverse=True)
+    return rows

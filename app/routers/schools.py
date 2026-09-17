@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 
 from app.auth import CurrentUser, require_roles, require_school_create
 from app.blast import school_blast_config
@@ -17,6 +17,7 @@ from app.errors import AppError
 from app.models import BlastChannel, BlastConfigPatch, Role, SchoolCreate
 from app.roster_import import (
     CSV_CONTRACT,
+    import_locked_rows,
     import_pickup,
     import_students,
     merge_import_results,
@@ -43,12 +44,12 @@ _CREATE_DESC = (
 )
 _IMPORT_DESC = (
     "Admin / Security Head multipart roster import for the JWT school. "
-    "Upload `students` and/or `pickup` as .csv or .xlsx. "
+    "Preferred field: `file` (.csv / .xlsx) using the **locked** snake_case template "
+    "(one row = one authorized person). Optional split fields `students` + `pickup` use the same headers. "
     f"{CSV_CONTRACT} "
-    "Upsert students by (schoolId + studentId) and pickup people by "
-    "(schoolId + studentId + mobile). Returns `{ created, updated, errors[] }` with row numbers. "
-    "JWT schoolId is source of truth; a mismatched schoolId column is a per-row error. "
-    f"Does not wipe the {RESERVED_SCHOOL_ID} demo seed."
+    "`mode=validate` is dry-run (no writes); `mode=commit` applies upserts. "
+    "Audit returns who/when/filename/counts. Court-document columns are rejected. "
+    f"Does not wipe {RESERVED_SCHOOL_ID}. First real tenant is SCH-PRANAY-01 / school_code PRANAY."
 )
 
 
@@ -98,6 +99,7 @@ def post_school(
         name=body.name,
         timezone=body.timezone,
         slug=body.slug,
+        school_code=body.schoolCode,
         admin_password=body.adminPassword,
         security_head_password=body.securityHeadPassword,
         created_by_user_id=actor.get("id"),
@@ -132,41 +134,74 @@ def get_school_me(user: CurrentUser):
     description=_IMPORT_DESC,
 )
 async def import_roster(
+    file: Optional[UploadFile] = File(default=None),
     students: Optional[UploadFile] = File(default=None),
     pickup: Optional[UploadFile] = File(default=None),
+    mode: str = Query(default="commit", description="validate = dry-run; commit = write"),
     user: dict = Depends(require_roles(*_WRITE_ROLES)),
 ):
     _require_user_school(user)
-    if students is None and pickup is None:
+    mode_n = (mode or "commit").strip().lower()
+    if mode_n not in {"validate", "commit"}:
+        raise AppError("VALIDATION", "mode must be validate or commit", 400)
+    if file is None and students is None and pickup is None:
         raise AppError(
             "VALIDATION",
-            "multipart fields `students` and/or `pickup` required (.csv or .xlsx)",
+            "multipart field `file` (locked template) or `students`/`pickup` required (.csv or .xlsx)",
             400,
             {"contract": CSV_CONTRACT},
         )
+    unified = None
     student_result = None
     pickup_result = None
+    filenames: list[str] = []
+    if file is not None:
+        data, filename, ctype = await read_upload(file)
+        filenames.append(filename or "file")
+        unified = import_locked_rows(
+            data,
+            school_id=user["schoolId"],
+            user=user,
+            filename=filename,
+            content_type=ctype,
+            file_label="file",
+            mode=mode_n,
+        )
     if students is not None:
         data, filename, ctype = await read_upload(students)
+        filenames.append(filename or "students")
         student_result = import_students(
             data,
             school_id=user["schoolId"],
             user_id=user["id"],
+            user=user,
             filename=filename,
             content_type=ctype,
             file_label="students",
+            mode=mode_n,
         )
     if pickup is not None:
         data, filename, ctype = await read_upload(pickup)
+        filenames.append(filename or "pickup")
         pickup_result = import_pickup(
             data,
             school_id=user["schoolId"],
             user_id=user["id"],
+            user=user,
             filename=filename,
             content_type=ctype,
             file_label="pickup",
+            mode=mode_n,
         )
-    return merge_import_results(student_result, pickup_result)
+    return merge_import_results(
+        student_result,
+        pickup_result,
+        unified=unified,
+        mode=mode_n,
+        user=user,
+        filenames=filenames,
+        school_id=user["schoolId"],
+    )
 
 
 @router.get("/me/blast-config")

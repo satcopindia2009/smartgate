@@ -954,6 +954,7 @@ class SchoolCreate(BaseModel):
     name: str = Field(min_length=1)
     timezone: str = "Asia/Kolkata"
     slug: Optional[str] = None
+    schoolCode: Optional[str] = None
     adminPassword: Optional[str] = None
     securityHeadPassword: Optional[str] = None
 
@@ -965,7 +966,7 @@ class SchoolCreate(BaseModel):
             raise ValueError("must not be empty")
         return v
 
-    @field_validator("slug", "adminPassword", "securityHeadPassword")
+    @field_validator("slug", "schoolCode", "adminPassword", "securityHeadPassword")
     @classmethod
     def strip_optional(cls, v: Optional[str]) -> Optional[str]:
         if v is None:

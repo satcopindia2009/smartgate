@@ -148,23 +148,37 @@ def create_student(
     description=(
         "Admin / Security Head. Multipart field `file` (.csv or .xlsx). "
         f"{CSV_CONTRACT} "
-        "Upsert by (JWT schoolId + studentId). Returns `{ created, updated, errors[] }`."
+        "Upsert by (JWT schoolId + student_external_id). "
+        "`mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`."
     ),
 )
 async def import_students_csv(
     file: UploadFile = File(...),
+    mode: str = Query(default="commit"),
     user: dict = Depends(require_roles(*_WRITE_ROLES)),
 ):
+    mode_n = (mode or "commit").strip().lower()
+    if mode_n not in {"validate", "commit"}:
+        raise AppError("VALIDATION", "mode must be validate or commit", 400)
     data, filename, ctype = await read_upload(file)
     result = import_students(
         data,
         school_id=user["schoolId"],
         user_id=user["id"],
+        user=user,
         filename=filename,
         content_type=ctype,
         file_label="students",
+        mode=mode_n,
     )
-    return merge_import_results(result, None)
+    return merge_import_results(
+        result,
+        None,
+        mode=mode_n,
+        user=user,
+        filenames=[filename or "file"],
+        school_id=user["schoolId"],
+    )
 
 
 @router.post(
@@ -173,24 +187,37 @@ async def import_students_csv(
     description=(
         "Admin / Security Head. Multipart field `file` (.csv or .xlsx). "
         f"{CSV_CONTRACT} "
-        "Upsert by (JWT schoolId + studentId + mobile). Student must already exist. "
-        "Returns `{ created, updated, errors[] }`."
+        "Upsert by (JWT schoolId + student_external_id + mobile). "
+        "`mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`."
     ),
 )
 async def import_authorized_pickup_csv(
     file: UploadFile = File(...),
+    mode: str = Query(default="commit"),
     user: dict = Depends(require_roles(*_WRITE_ROLES)),
 ):
+    mode_n = (mode or "commit").strip().lower()
+    if mode_n not in {"validate", "commit"}:
+        raise AppError("VALIDATION", "mode must be validate or commit", 400)
     data, filename, ctype = await read_upload(file)
     result = import_pickup(
         data,
         school_id=user["schoolId"],
         user_id=user["id"],
+        user=user,
         filename=filename,
         content_type=ctype,
         file_label="pickup",
+        mode=mode_n,
     )
-    return merge_import_results(None, result)
+    return merge_import_results(
+        None,
+        result,
+        mode=mode_n,
+        user=user,
+        filenames=[filename or "file"],
+        school_id=user["schoolId"],
+    )
 
 
 @router.get("/students/{student_id}")

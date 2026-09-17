@@ -47,6 +47,14 @@ School: **Demo International School** · TZ `Asia/Calcutta` · `schoolId=SCH-DEM
 | `admin`    | `admin123`| admin          | Office Admin                   |
 | `security` | `sh123`   | security_head  | **Meera Kulkarni** (SH); blacklist + force + blast |
 
+First real tenant (separate): **Pranay School Pune** · `schoolId=SCH-PRANAY-01` · `school_code=PRANAY`
+
+| Username        | Password    | Role           | Notes |
+|-----------------|-------------|----------------|-------|
+| `pranay.admin`  | `pranay123` | admin          | Real-school Admin |
+| `pranay.sh`     | `pranay123` | security_head  | Real-school SH |
+| `pranay.gate`   | `pranay123` | gate           | `PS-G-MAIN` / PED / STAFF / BUS |
+
 ### Seed highlights
 
 - Gates: Main Gate (`G-MAIN`), Pedestrian Gate, Staff Gate, Bus Bay
@@ -84,16 +92,27 @@ Real school load is **CSV/Excel import + school API push**. Demo school stays se
 - Admin + Security Head users (generated usernames `admin-{schoolid}` / `security-{schoolid}` unless passwords are set in the body)
 - Blast toggle default **OFF**
 
-**CSV / Excel column contract** (header row required; `schoolId` column optional — JWT `schoolId` wins):
+**First real tenant (locked):** `schoolId=SCH-PRANAY-01` · `school_code=PRANAY` · **Pranay School Pune**. Ops seed logins: `pranay.admin` / `pranay.sh` / `pranay.gate` (password `pranay123`). Gates `PS-G-MAIN` / `PS-G-PED` / `PS-G-STAFF` / `PS-G-BUS`. Never use `SCH-PRANAY-PUNE-01`.
 
-Students: `schoolId?,studentId,name,class,section,active,enrollmentEndedAt,legalHold`
+**CSV / Excel column contract (LOCKED — snake_case, one row = one authorized person):**
 
-Pickup / parent: `schoolId?,studentId,personName,relation,mobile,idType,idNumber,idLast4,active,effectiveFrom,effectiveTo,pickupConsentVersion,pickupConsentAt`
+`school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold`
+
+| CSV header | Maps to |
+|------------|---------|
+| `school_code` | schoolId / schoolCode (JWT wins; `PRANAY` → `SCH-PRANAY-01`) |
+| `student_external_id` | `studentId` |
+| `student_name` | student `name` |
+| `person_name` | authorized pickup `name` |
+| `consent_version` / `consent_at` | `pickupConsentVersion` / `pickupConsentAt` |
+| `custody_flag` + `gate_instruction` + allowed/blocked mobiles | `StudentCustodyFlag` (mobiles resolved to person ids after upsert) |
 
 - `relation` enum: `parent` \| `guardian` \| `sibling` \| `relative` \| `other`
-- Upsert students by `(schoolId + studentId)` and pickup people by `(schoolId + studentId + mobile)`
-- Response: `{ created, updated, errors[] }` with 1-based file row numbers (header is row 1)
-- A mismatched `schoolId` column is a **per-row** error (does not abort the file)
+- Upsert student by `(schoolId + student_external_id)` and person by `(schoolId + student_external_id + mobile)`
+- `mode=validate` dry-run (no writes); `mode=commit` applies. Audit: who / when / filename / counts
+- Court-document columns (`court_doc`, `court_pdf`, …) are **rejected**
+- `court_order` with blank `gate_instruction` fails (F6). Expired `effective_to` is stored but **not on list** (F3)
+- Response: `{ created, updated, errors[], audit, mode }` with 1-based file row numbers (header is row 1)
 - Gate / Host → `403`
 
 ### Curl — bootstrap school + import
@@ -115,11 +134,13 @@ ADMIN=$(curl -s -X POST "$BASE/auth/login" \
 
 curl -s "$BASE/schools/me" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
 
-# students.csv + pickup.csv (see column contract above)
-curl -s -X POST "$BASE/schools/me/roster/import" \
+# Dry-run then commit the locked template
+curl -s -X POST "$BASE/schools/me/roster/import?mode=validate" \
   -H "Authorization: Bearer $ADMIN" \
-  -F "students=@students.csv;type=text/csv" \
-  -F "pickup=@pickup.csv;type=text/csv" | python3 -m json.tool
+  -F "file=@roster.csv;type=text/csv" | python3 -m json.tool
+curl -s -X POST "$BASE/schools/me/roster/import?mode=commit" \
+  -H "Authorization: Bearer $ADMIN" \
+  -F "file=@roster.csv;type=text/csv" | python3 -m json.tool
 ```
 
 ## Visit lifecycle (contract §2)
@@ -464,7 +485,7 @@ bash scripts/smoke.sh
 - `tests/test_escort_acceptance.py` — AC-B4a / AC-B4b / AC-B4c / AC-B4d / AC-B4e / AC-B4f
 - `tests/test_blast.py` — B1–B6: preview=inside, confirm required, Gate/Host 403, WA `skipped_hold`, visit status unchanged, retry failed, disabled 404
 - `tests/test_blast_acceptance.py` — AC-E3a / AC-E3b / AC-E3c / AC-E3d / AC-E3e / AC-E3f / AC-E3g
-- `tests/test_school_roster.py` — new school ≠ SCH-DEMO-01; reserved slug rejected; demo seed intact; CSV happy path + upsert; validation errors with row numbers; xlsx + split import; Gate/Host 403
+- `tests/test_school_roster.py` — SCH-PRANAY-01 / PRANAY ops seed; cannot overwrite SCH-DEMO-01 or SCH-PRANAY-PUNE-01; locked CSV commit + validate dry-run; court-doc reject; F6/F3; audit; Gate/Host 403
 
 ## Remaining thin stubs / out of scope
 

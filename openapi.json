@@ -1882,17 +1882,34 @@
           "students"
         ],
         "summary": "Import students CSV/Excel",
-        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). Students columns: schoolId?,studentId,name,class,section,active,enrollmentEndedAt,legalHold. Pickup columns: schoolId?,studentId,personName,relation,mobile,idType,idNumber,idLast4,active,effectiveFrom,effectiveTo,pickupConsentVersion,pickupConsentAt. relation enum: parent|guardian|sibling|relative|other. schoolId column is optional; JWT schoolId is the source of truth. Upsert by (JWT schoolId + studentId). Returns `{ created, updated, errors[] }`.",
+        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Upsert by (JWT schoolId + student_external_id). `mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`.",
         "operationId": "import_students_csv_v1_students_import_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "commit",
+              "title": "Mode"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/Body_import_students_csv_v1_students_import_post"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1913,12 +1930,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/v1/students/authorized-pickup/import": {
@@ -1927,17 +1939,34 @@
           "students"
         ],
         "summary": "Import authorized pickup CSV/Excel",
-        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). Students columns: schoolId?,studentId,name,class,section,active,enrollmentEndedAt,legalHold. Pickup columns: schoolId?,studentId,personName,relation,mobile,idType,idNumber,idLast4,active,effectiveFrom,effectiveTo,pickupConsentVersion,pickupConsentAt. relation enum: parent|guardian|sibling|relative|other. schoolId column is optional; JWT schoolId is the source of truth. Upsert by (JWT schoolId + studentId + mobile). Student must already exist. Returns `{ created, updated, errors[] }`.",
+        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Upsert by (JWT schoolId + student_external_id + mobile). `mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`.",
         "operationId": "import_authorized_pickup_csv_v1_students_authorized_pickup_import_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "commit",
+              "title": "Mode"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/Body_import_authorized_pickup_csv_v1_students_authorized_pickup_import_post"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1958,12 +1987,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/v1/students/{student_id}": {
@@ -3773,8 +3797,27 @@
           "schools"
         ],
         "summary": "Import students + authorized pickup CSV/Excel",
-        "description": "Admin / Security Head multipart roster import for the JWT school. Upload `students` and/or `pickup` as .csv or .xlsx. Students columns: schoolId?,studentId,name,class,section,active,enrollmentEndedAt,legalHold. Pickup columns: schoolId?,studentId,personName,relation,mobile,idType,idNumber,idLast4,active,effectiveFrom,effectiveTo,pickupConsentVersion,pickupConsentAt. relation enum: parent|guardian|sibling|relative|other. schoolId column is optional; JWT schoolId is the source of truth. Upsert students by (schoolId + studentId) and pickup people by (schoolId + studentId + mobile). Returns `{ created, updated, errors[] }` with row numbers. JWT schoolId is source of truth; a mismatched schoolId column is a per-row error. Does not wipe the SCH-DEMO-01 demo seed.",
+        "description": "Admin / Security Head multipart roster import for the JWT school. Preferred field: `file` (.csv / .xlsx) using the **locked** snake_case template (one row = one authorized person). Optional split fields `students` + `pickup` use the same headers. Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. `mode=validate` is dry-run (no writes); `mode=commit` applies upserts. Audit returns who/when/filename/counts. Court-document columns are rejected. Does not wipe SCH-DEMO-01. First real tenant is SCH-PRANAY-01 / school_code PRANAY.",
         "operationId": "import_roster_v1_schools_me_roster_import_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "validate = dry-run; commit = write",
+              "default": "commit",
+              "title": "Mode"
+            },
+            "description": "validate = dry-run; commit = write"
+          }
+        ],
         "requestBody": {
           "content": {
             "multipart/form-data": {
@@ -3803,12 +3846,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/v1/schools/me/blast-config": {
@@ -4709,6 +4747,18 @@
       },
       "Body_import_roster_v1_schools_me_roster_import_post": {
         "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
           "students": {
             "anyOf": [
               {
@@ -5927,6 +5977,17 @@
               }
             ],
             "title": "Slug"
+          },
+          "schoolCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schoolcode"
           },
           "adminPassword": {
             "anyOf": [

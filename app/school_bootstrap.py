@@ -11,6 +11,12 @@ from app.config import (
     CAMPUS_TZ,
     DEFAULT_GATES,
     DEFAULT_NEW_SCHOOL_TZ,
+    FORBIDDEN_SCHOOL_IDS,
+    PRANAY_DEMO_PASSWORDS,
+    PRANAY_GATES,
+    PRANAY_SCHOOL_CODE,
+    PRANAY_SCHOOL_ID,
+    PRANAY_SCHOOL_NAME,
     RESERVED_SCHOOL_ID,
 )
 from app.errors import AppError
@@ -51,8 +57,17 @@ def school_id_from_slug(slug: str) -> str:
     return "SCH-" + slug.upper()
 
 
+def normalize_school_code(raw: Optional[str]) -> Optional[str]:
+    if raw is None:
+        return None
+    s = str(raw).strip().upper().replace(" ", "-")
+    s = re.sub(r"[^A-Z0-9-]+", "", s)
+    s = re.sub(r"-{2,}", "-", s).strip("-")
+    return s or None
+
+
 def is_reserved_school_id(school_id: str) -> bool:
-    return (school_id or "").strip().upper() == _RESERVED
+    return (school_id or "").strip().upper() in {x.upper() for x in FORBIDDEN_SCHOOL_IDS}
 
 
 def next_school_id() -> str:
@@ -88,6 +103,7 @@ def public_school(school: dict, *, include_hours: bool = True) -> dict:
         "name": school["name"],
         "timezone": school.get("timezone") or DEFAULT_NEW_SCHOOL_TZ,
         "slug": school.get("slug"),
+        "schoolCode": school.get("schoolCode"),
         "overdueHoursDefault": school.get("overdueHoursDefault", 4),
         "emergencyBlastEnabled": bool(school.get("emergencyBlastEnabled", False)),
         "blastStaffLaneEnabled": bool(school.get("blastStaffLaneEnabled", False)),
@@ -107,11 +123,44 @@ def public_school(school: dict, *, include_hours: bool = True) -> dict:
     return out
 
 
+def resolve_new_school_ids(
+    *,
+    name: str,
+    slug: Optional[str],
+    school_code: Optional[str],
+) -> tuple[str, Optional[str], Optional[str], tuple[tuple[str, str], ...]]:
+    slug_n = normalize_slug(slug)
+    code = normalize_school_code(school_code)
+    name_l = name.strip().lower()
+    locked_pranay = (
+        code == PRANAY_SCHOOL_CODE
+        or name_l == PRANAY_SCHOOL_NAME.lower()
+        or (slug_n or "") in {"pranay", "pranay-01"}
+    )
+    if locked_pranay:
+        return PRANAY_SCHOOL_ID, PRANAY_SCHOOL_CODE.lower(), PRANAY_SCHOOL_CODE, PRANAY_GATES
+    if slug_n:
+        school_id = school_id_from_slug(slug_n)
+    else:
+        school_id = next_school_id()
+    if code and not slug_n:
+        school_id = school_id_from_slug(code.lower())
+    if code == "PRANAY-PUNE" or school_id.upper() == "SCH-PRANAY-PUNE-01":
+        raise AppError(
+            "VALIDATION",
+            "SCH-PRANAY-PUNE-01 is not a valid schoolId or school_code — use SCH-PRANAY-01 / PRANAY",
+            400,
+            {"schoolId": PRANAY_SCHOOL_ID, "schoolCode": PRANAY_SCHOOL_CODE},
+        )
+    return school_id, slug_n, code, DEFAULT_GATES
+
+
 def create_school(
     *,
     name: str,
     timezone: Optional[str] = None,
     slug: Optional[str] = None,
+    school_code: Optional[str] = None,
     admin_password: Optional[str] = None,
     security_head_password: Optional[str] = None,
     created_by_user_id: Optional[str] = None,
@@ -120,18 +169,22 @@ def create_school(
     if not name:
         raise AppError("VALIDATION", "name is required", 400)
     tz = (timezone or DEFAULT_NEW_SCHOOL_TZ).strip() or DEFAULT_NEW_SCHOOL_TZ
-    slug_n = normalize_slug(slug)
-    if slug_n:
-        school_id = school_id_from_slug(slug_n)
-    else:
-        school_id = next_school_id()
-
-    if is_reserved_school_id(school_id):
+    school_id, slug_n, code, gates = resolve_new_school_ids(
+        name=name, slug=slug, school_code=school_code
+    )
+    if school_id.upper() == RESERVED_SCHOOL_ID.upper():
         raise AppError(
             "VALIDATION",
             f"schoolId {RESERVED_SCHOOL_ID} is reserved for the demo seed and cannot be created or overwritten",
             400,
             {"reservedSchoolId": RESERVED_SCHOOL_ID},
+        )
+    if is_reserved_school_id(school_id) and school_id.upper() != PRANAY_SCHOOL_ID.upper():
+        raise AppError(
+            "VALIDATION",
+            f"schoolId {school_id} is forbidden",
+            400,
+            {"schoolId": school_id},
         )
     if store.get_school(school_id):
         raise AppError(
@@ -140,22 +193,40 @@ def create_school(
             409,
             {"schoolId": school_id},
         )
+    if code and store.get_school_by_code(code) and code != PRANAY_SCHOOL_CODE:
+        raise AppError(
+            "VALIDATION",
+            f"school_code {code} already exists",
+            409,
+            {"schoolCode": code},
+        )
 
     ts = now_iso()
     admin_pw = (admin_password or "").strip() or generate_password()
     sh_pw = (security_head_password or "").strip() or generate_password()
-    admin_user = unique_username("admin", school_id)
-    sh_user = unique_username("security", school_id)
-    admin_uid = f"{school_id}-U-ADMIN"
-    sh_uid = f"{school_id}-U-SH"
-    admin_staff_id = f"{school_id}-ADM"
-    sh_staff_id = f"{school_id}-SH"
+    if school_id == PRANAY_SCHOOL_ID:
+        admin_user = "pranay.admin"
+        sh_user = "pranay.sh"
+        admin_uid = "U-PRANAY-ADMIN"
+        sh_uid = "U-PRANAY-SH"
+        admin_staff_id = "PS-ADM"
+        sh_staff_id = "PS-SH"
+        admin_pw = (admin_password or "").strip() or PRANAY_DEMO_PASSWORDS["admin"]
+        sh_pw = (security_head_password or "").strip() or PRANAY_DEMO_PASSWORDS["security"]
+    else:
+        admin_user = unique_username("admin", school_id)
+        sh_user = unique_username("security", school_id)
+        admin_uid = f"{school_id}-U-ADMIN"
+        sh_uid = f"{school_id}-U-SH"
+        admin_staff_id = f"{school_id}-ADM"
+        sh_staff_id = f"{school_id}-SH"
 
     school = {
         "id": school_id,
         "name": name,
         "timezone": tz,
         "slug": slug_n,
+        "schoolCode": code,
         "overdueHoursDefault": 4,
         "config": {"hostNotifyChannels": ["in_app"]},
         "emergencyBlastEnabled": False,
@@ -169,7 +240,7 @@ def create_school(
     }
     store.put_school(school)
 
-    for gid, gname in DEFAULT_GATES:
+    for gid, gname in gates:
         store.put_gate(
             {"id": gid, "schoolId": school_id, "name": gname, "active": True}
         )
@@ -261,3 +332,44 @@ def create_school(
         },
     }
     return out
+
+
+def seed_pranay_ops() -> None:
+    """Idempotent first-real-tenant seed. Never writes SCH-DEMO-01."""
+    if store.get_school(PRANAY_SCHOOL_ID):
+        return
+    create_school(
+        name=PRANAY_SCHOOL_NAME,
+        timezone=DEFAULT_NEW_SCHOOL_TZ,
+        slug="pranay",
+        school_code=PRANAY_SCHOOL_CODE,
+        admin_password=PRANAY_DEMO_PASSWORDS["admin"],
+        security_head_password=PRANAY_DEMO_PASSWORDS["security"],
+        created_by_user_id="U-BOOTSTRAP",
+    )
+    store.put_staff(
+        {
+            "id": "PS-G01",
+            "schoolId": PRANAY_SCHOOL_ID,
+            "name": "Gate — Pranay",
+            "roleTitle": "Guard",
+            "mobile": "9000000101",
+            "userId": "U-PRANAY-GATE",
+            "active": True,
+        }
+    )
+    store.put_user(
+        {
+            "id": "U-PRANAY-GATE",
+            "username": "pranay.gate",
+            "password": PRANAY_DEMO_PASSWORDS["gate"],
+            "schoolId": PRANAY_SCHOOL_ID,
+            "role": "gate",
+            "staffId": "PS-G01",
+            "gateIds": [g[0] for g in PRANAY_GATES],
+            "displayName": "Gate — Pranay",
+            "phone": "9000000101",
+            "email": "pranay.gate@pranay.school",
+            "active": True,
+        }
+    )
