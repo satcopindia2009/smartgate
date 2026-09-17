@@ -1,6 +1,6 @@
 # Satcop Smart Visitor — Gate kiosk (Wave 4)
 
-Android tablet kiosk for gate / reception check-in. Locked-landscape shell + registration steps 1–4 against the live mock when reachable, fixtures otherwise.
+Android gate / reception kiosk. Phone-friendly `fullUser` orientation (portrait on phones, landscape still works on tablets) + registration steps 1–4 against the live mock when reachable, fixtures otherwise.
 
 **Not for live school deploy.** DEMO watermark stays on until Viren says go.
 
@@ -19,8 +19,8 @@ Demo story: **Priya Sharma** → **Anita Joshi** (`H03`) → **Main Gate** (`G-M
 
 ## Live mock + fallback
 
-Default base: `https://weed-pumps-laura-upc.trycloudflare.com/v1`  
-Gate login: `gate` / `gate123` (see `ApiConfig.kt`).
+Default base: `https://pensions-usb-loops-direction.trycloudflare.com/v1`  
+Gate login: `gate` / `gate123` (see `ApiConfig.kt`). Never use the retired `weed-pumps-laura-upc` host.
 
 Amber **FIXTURES** pill = tunnel down or later 5xx/timeout. The kiosk keeps working from `DemoFixtures` + `LocalVisitStore`. Do not block a demo on a dead tunnel. Gate never auto-approves a live visit.
 
@@ -28,7 +28,7 @@ Amber **FIXTURES** pill = tunnel down or later 5xx/timeout. The kiosk keeps work
 
 1. Install Android Studio + Android SDK 35.
 2. **File → Open** this `kiosk/` folder (not the repo root).
-3. Tablet AVD, landscape, ~10" (1280×800) if available.
+3. Phone AVD in portrait, or tablet AVD landscape ~10" (1280×800).
 4. Run the `app` configuration (CAMERA + INTERNET permissions).
 
 ## Gradle

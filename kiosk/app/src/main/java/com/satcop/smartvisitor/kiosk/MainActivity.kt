@@ -14,7 +14,7 @@ import com.satcop.smartvisitor.kiosk.ui.theme.SatcopKioskTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
