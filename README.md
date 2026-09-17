@@ -3,7 +3,38 @@
 In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**), **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**), **escort / zones** (Hub **B4**), and **Emergency visitor blast** (Hub **B1–B6 / E3**).  
 For Mobile / Admin **showable demos**. **Not for live school deploy** (V4 HOLD). No live SMS / WhatsApp providers.
 
-Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype. After-hours Approve (SH-only) is unchanged. Blast is **confirm-only** (not L8 dual-control) and does **not** auto-checkout.
+Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype. After-hours Approve is Admin|Security Head (Host stays no-op). Blast is **confirm-only** (not L8 dual-control) and does **not** auto-checkout.
+Admin web dashboard: `admin/` (Vite + React 18 + TypeScript + React Router).
+
+## Admin web (Day-1)
+
+See **[admin/README.md](admin/README.md)** for Day-1 notes (login, Live who’s-inside, gate multi-select, force-checkout reason, fixtures fallback).
+
+```bash
+cd admin
+npm install
+npm run dev      # http://127.0.0.1:5173
+npm run build
+```
+
+Demo logins: `admin` / `admin123` · `security` / `sh123`.  
+Default API: `VITE_API_BASE_URL=https://pensions-usb-loops-direction.trycloudflare.com/v1`. If that tunnel drops, the UI falls back to `admin/public/data/admin-mvp-fixtures.json`.
+
+Walkthrough: **Priya Sharma** · pass **P-4F21** · **Main Gate** · host **Anita Joshi**.
+
+**Out of Day-1 / this Admin P2 slice:** kiosk/gate pickup, production / live school.
+
+Admin Priority P2 pickup (separate from visit Live/History): `/pickup` authorized-list CRUD + custody flags, `/pickup-history` proof trail. Same `/v1` tunnel. Seed **Aarav Mehta 5-B / Neha Mehta**.
+
+Admin Priority P2 after-hours (Hub A1–A6 / AC-C4): `/access-rules` campus hours + holiday calendar; Live/History `afterHours` flag + filter. Seed weekday close **18:00 Asia/Kolkata**, **Diwali 2026-10-20 `HOL-DIWALI`**, Evening Vendor **Ravi Deshmukh `V-AH-VENDOR`**, Holiday Parent **Deepak Nair / `P-7K88`**. **Priya Sharma `P-4F21` unchanged.**
+
+Admin Priority P2 escort/zones (B4): zone label rename + escort rules by visitor type on `/access-rules`; Live/History escort + allowed-zones columns. Keys fixed. Gate cannot write.
+
+Admin Priority P2 emergency blast (Hub B1–B6 / E3): Live **Emergency blast** CTA → confirm modal with template preview → results/audit. Never one-click. Audience = currently inside; Admin|SH `{ confirm: true }`; SMS mock / WA `skipped_hold`; template-only + optional short instruction; full audit; **no auto-checkout**. Seed **`B-20260916-03`**. **Priya Sharma `P-4F21` stays inside.**
+
+Mobile kiosk lives under `kiosk/` when present — Admin Day-1 does not own, overwrite, or rewrite that tree.
+
+---
 
 ## Stack
 
