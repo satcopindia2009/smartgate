@@ -31,7 +31,7 @@ export function Layout() {
           </div>
           <div>
             Smart Visitor
-            <small>{schoolName}</small>
+            <span className="school-name">{schoolName}</span>
             {schoolId ? <small className="school-code">{schoolId}</small> : null}
           </div>
         </div>

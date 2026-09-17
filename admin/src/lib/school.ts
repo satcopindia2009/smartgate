@@ -18,10 +18,10 @@ export function schoolRecord(schoolId?: string | null) {
 export function schoolDisplayName(
   user?: Pick<AuthUser, "schoolId" | "schoolName"> | null,
 ): string {
-  const named = (user?.schoolName || "").trim();
-  if (named) return named;
   const rec = schoolRecord(user?.schoolId);
   if (rec) return rec.name;
+  const named = (user?.schoolName || "").trim();
+  if (named) return named;
   return (user?.schoolId || "").trim() || "School";
 }
 

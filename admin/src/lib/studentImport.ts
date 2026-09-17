@@ -361,13 +361,13 @@ export function validateImportRows(
 
     const schoolCode = row.school_code.trim();
     if (schoolCode && !allowedCodes.has(schoolCode)) {
-      const expected = [...allowedCodes].filter((c) => c !== tenantSchoolId).join(" / ") || tenantSchoolId;
+      const expected = [...allowedCodes].join(" or ") || tenantSchoolId;
       errors.push(
         err(
           rowNumber,
           "school_code",
           "TENANT_MISMATCH",
-          `school_code '${schoolCode}' does not match signed-in tenant ${tenantSchoolId} (expected ${expected || tenantSchoolId})`,
+          `school_code '${schoolCode}' does not match signed-in tenant ${tenantSchoolId} (accepted ${expected})`,
         ),
       );
     }
