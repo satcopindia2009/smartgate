@@ -1,6 +1,4 @@
 window.VMS_CONFIG = {
-  apiBase: "https://weed-pumps-laura-upc.trycloudflare.com/v1",
-  hostUser: "host",
-  hostPass: "host123",
+  apiBase: "https://pensions-usb-loops-direction.trycloudflare.com/v1",
   watermark: "DEMO",
 };

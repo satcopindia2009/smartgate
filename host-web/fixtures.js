@@ -1,5 +1,4 @@
 window.VMS_FIXTURES = {
-  host: { id: "H03", name: "Anita Joshi", roleTitle: "Primary Coordinator" },
   pending: {
     id: "V-LOCAL-PRIYA-WAIT",
     visitorName: "Priya Sharma",
@@ -11,6 +10,21 @@ window.VMS_FIXTURES = {
     gateName: "Main Gate",
     status: "pending",
     createdAt: "2026-09-16T14:05:00+05:30",
+  },
+  ravi: {
+    id: "V-AH-VENDOR",
+    visitorName: "Ravi Deshmukh",
+    mobile: "9876544021",
+    visitorType: "Vendor",
+    purpose: "A/C maintenance — Block B",
+    hostId: "H03",
+    gateId: "G-MAIN",
+    gateName: "Main Gate",
+    status: "pending",
+    afterHours: true,
+    policyTrigger: "outside_hours",
+    afterHoursEvaluatedAt: "2026-09-16T19:42:00+05:30",
+    createdAt: "2026-09-16T19:42:00+05:30",
   },
   priya: {
     id: "V-20260916-014",
