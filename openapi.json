@@ -1,1 +1,6598 @@
-{"openapi":"3.1.0","info":{"title":"Satcop Smart Visitor API","description":"MVP Wave 1–2 in-memory stub for Mobile/Admin demos. Demo watermark; no production deploy.","version":"0.1.0"},"paths":{"/v1/auth/login":{"post":{"tags":["auth"],"summary":"Login","operationId":"login_v1_auth_login_post","requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/LoginRequest"}}},"required":true},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/auth/me":{"get":{"tags":["auth"],"summary":"Me","operationId":"me_v1_auth_me_get","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/gates":{"get":{"tags":["gates"],"summary":"List Gates","operationId":"list_gates_v1_gates_get","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/staff":{"get":{"tags":["staff"],"summary":"List Staff","operationId":"list_staff_v1_staff_get","parameters":[{"name":"active","in":"query","required":false,"schema":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Active"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"post":{"tags":["staff"],"summary":"Create Staff","operationId":"create_staff_v1_staff_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StaffCreate"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/staff/{staff_id}":{"patch":{"tags":["staff"],"summary":"Patch Staff","operationId":"patch_staff_v1_staff__staff_id__patch","parameters":[{"name":"staff_id","in":"path","required":true,"schema":{"type":"string","title":"Staff Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/StaffPatch"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/media/upload":{"post":{"tags":["media"],"summary":"Upload Media","operationId":"upload_media_v1_media_upload_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"multipart/form-data":{"schema":{"$ref":"#/components/schemas/Body_upload_media_v1_media_upload_post"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/media/{key}":{"get":{"tags":["media"],"summary":"Get Media","operationId":"get_media_v1_media__key__get","parameters":[{"name":"key","in":"path","required":true,"schema":{"type":"string","title":"Key"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/visits/inside":{"get":{"tags":["visits"],"summary":"Visits Inside","operationId":"visits_inside_v1_visits_inside_get","parameters":[{"name":"gateId","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Gateid"}},{"name":"visitorType","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Visitortype"}},{"name":"hostId","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Hostid"}},{"name":"overdueOnly","in":"query","required":false,"schema":{"type":"boolean","default":false,"title":"Overdueonly"}},{"name":"q","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Q"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/visits":{"get":{"tags":["visits"],"summary":"List Visits","operationId":"list_visits_v1_visits_get","parameters":[{"name":"dateFrom","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Datefrom"}},{"name":"dateTo","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Dateto"}},{"name":"gateId","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Gateid"}},{"name":"visitorType","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Visitortype"}},{"name":"hostId","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Hostid"}},{"name":"status","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Status"}},{"name":"checkoutStatus","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Checkoutstatus"}},{"name":"blacklistHit","in":"query","required":false,"schema":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Blacklisthit"}},{"name":"q","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Q"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"post":{"tags":["visits"],"summary":"Create Visit","operationId":"create_visit_v1_visits_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/VisitCreate"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/visits/{visit_id}":{"get":{"tags":["visits"],"summary":"Get Visit","operationId":"get_visit_v1_visits__visit_id__get","parameters":[{"name":"visit_id","in":"path","required":true,"schema":{"type":"string","title":"Visit Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/visits/{visit_id}/approve":{"post":{"tags":["visits"],"summary":"Approve Visit","operationId":"approve_visit_v1_visits__visit_id__approve_post","parameters":[{"name":"visit_id","in":"path","required":true,"schema":{"type":"string","title":"Visit Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/visits/{visit_id}/reject":{"post":{"tags":["visits"],"summary":"Reject Visit","operationId":"reject_visit_v1_visits__visit_id__reject_post","parameters":[{"name":"visit_id","in":"path","required":true,"schema":{"type":"string","title":"Visit Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/RejectBody"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/visits/{visit_id}/check-in":{"post":{"tags":["visits"],"summary":"Check In","operationId":"check_in_v1_visits__visit_id__check_in_post","parameters":[{"name":"visit_id","in":"path","required":true,"schema":{"type":"string","title":"Visit Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/CheckInBody","default":{}}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/visits/{visit_id}/check-out":{"post":{"tags":["visits"],"summary":"Check Out","operationId":"check_out_v1_visits__visit_id__check_out_post","parameters":[{"name":"visit_id","in":"path","required":true,"schema":{"type":"string","title":"Visit Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/visits/{visit_id}/force-checkout":{"post":{"tags":["visits"],"summary":"Force Checkout","operationId":"force_checkout_v1_visits__visit_id__force_checkout_post","parameters":[{"name":"visit_id","in":"path","required":true,"schema":{"type":"string","title":"Visit Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ForceCheckoutBody"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/visits/{visit_id}/meeting-done":{"post":{"tags":["visits"],"summary":"Meeting Done","operationId":"meeting_done_v1_visits__visit_id__meeting_done_post","parameters":[{"name":"visit_id","in":"path","required":true,"schema":{"type":"string","title":"Visit Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/passes/{pass_id}":{"get":{"tags":["passes"],"summary":"Get Pass","operationId":"get_pass_v1_passes__pass_id__get","parameters":[{"name":"pass_id","in":"path","required":true,"schema":{"type":"string","title":"Pass Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/passes/scan":{"post":{"tags":["passes"],"summary":"Scan Pass","operationId":"scan_pass_v1_passes_scan_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/PassScanBody"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/blacklist":{"get":{"tags":["blacklist"],"summary":"List Blacklist","operationId":"list_blacklist_v1_blacklist_get","parameters":[{"name":"active","in":"query","required":false,"schema":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Active"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}},"post":{"tags":["blacklist"],"summary":"Create Blacklist","operationId":"create_blacklist_v1_blacklist_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BlacklistCreate"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/blacklist/{bl_id}":{"patch":{"tags":["blacklist"],"summary":"Patch Blacklist","operationId":"patch_blacklist_v1_blacklist__bl_id__patch","parameters":[{"name":"bl_id","in":"path","required":true,"schema":{"type":"string","title":"Bl Id"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BlacklistPatch"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/blacklist/match":{"post":{"tags":["blacklist"],"summary":"Match Endpoint","operationId":"match_endpoint_v1_blacklist_match_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/BlacklistMatchRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/reports/today-by-gate":{"get":{"tags":["reports"],"summary":"Today By Gate","operationId":"today_by_gate_v1_reports_today_by_gate_get","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/reports/range-by-gate":{"get":{"tags":["reports"],"summary":"Range By Gate","operationId":"range_by_gate_v1_reports_range_by_gate_get","parameters":[{"name":"from","in":"query","required":true,"schema":{"type":"string","title":"From"}},{"name":"to","in":"query","required":true,"schema":{"type":"string","title":"To"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/reports/visitor-type-mix":{"get":{"tags":["reports"],"summary":"Visitor Type Mix","operationId":"visitor_type_mix_v1_reports_visitor_type_mix_get","parameters":[{"name":"from","in":"query","required":true,"schema":{"type":"string","title":"From"}},{"name":"to","in":"query","required":true,"schema":{"type":"string","title":"To"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/exports":{"post":{"tags":["exports"],"summary":"Create Export","operationId":"create_export_v1_exports_post","parameters":[{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ExportRequest"}}}},"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/v1/internal/notify-outbox":{"get":{"tags":["internal"],"summary":"Notify Outbox","operationId":"notify_outbox_v1_internal_notify_outbox_get","parameters":[{"name":"status","in":"query","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"default":"pending","title":"Status"}},{"name":"authorization","in":"header","required":false,"schema":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Authorization"}}],"responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}},"422":{"description":"Validation Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/HTTPValidationError"}}}}}}},"/health":{"get":{"summary":"Health","operationId":"health_health_get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}}}}},"/":{"get":{"summary":"Root","operationId":"root__get","responses":{"200":{"description":"Successful Response","content":{"application/json":{"schema":{}}}}}}}},"components":{"schemas":{"BlacklistCreate":{"properties":{"name":{"type":"string","title":"Name"},"mobile":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Mobile"},"idType":{"anyOf":[{"$ref":"#/components/schemas/IdType"},{"type":"null"}]},"idNumber":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Idnumber"},"reason":{"type":"string","title":"Reason"},"severity":{"$ref":"#/components/schemas/Severity"},"expiresOn":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Expireson"},"notes":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Notes"},"photoUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Photourl"}},"type":"object","required":["name","reason","severity"],"title":"BlacklistCreate"},"BlacklistMatchRequest":{"properties":{"mobile":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Mobile"},"idType":{"anyOf":[{"$ref":"#/components/schemas/IdType"},{"type":"null"}]},"idNumber":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Idnumber"}},"type":"object","title":"BlacklistMatchRequest"},"BlacklistPatch":{"properties":{"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"mobile":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Mobile"},"idType":{"anyOf":[{"$ref":"#/components/schemas/IdType"},{"type":"null"}]},"idNumber":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Idnumber"},"reason":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Reason"},"severity":{"anyOf":[{"$ref":"#/components/schemas/Severity"},{"type":"null"}]},"active":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Active"},"expiresOn":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Expireson"},"notes":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Notes"},"photoUrl":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Photourl"}},"type":"object","title":"BlacklistPatch"},"Body_upload_media_v1_media_upload_post":{"properties":{"file":{"type":"string","contentMediaType":"application/octet-stream","title":"File"},"kind":{"type":"string","title":"Kind","default":"live_photo"},"visitId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Visitid"}},"type":"object","required":["file"],"title":"Body_upload_media_v1_media_upload_post"},"CheckInBody":{"properties":{"gateId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Gateid"}},"type":"object","title":"CheckInBody"},"ExportRequest":{"properties":{"scope":{"type":"string","enum":["history","inside","blacklist","daily_gate_summary"],"title":"Scope"},"filters":{"additionalProperties":true,"type":"object","title":"Filters"}},"type":"object","required":["scope"],"title":"ExportRequest"},"ForceCheckoutBody":{"properties":{"reason":{"type":"string","minLength":1,"title":"Reason"}},"type":"object","required":["reason"],"title":"ForceCheckoutBody"},"HTTPValidationError":{"properties":{"detail":{"items":{"$ref":"#/components/schemas/ValidationError"},"type":"array","title":"Detail"}},"type":"object","title":"HTTPValidationError"},"IdType":{"type":"string","enum":["Aadhaar","DL","Voter","Passport","Other"],"title":"IdType"},"LoginRequest":{"properties":{"username":{"type":"string","title":"Username"},"password":{"type":"string","title":"Password"}},"type":"object","required":["username","password"],"title":"LoginRequest"},"PassScanBody":{"properties":{"token":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Token"},"passId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Passid"},"action":{"type":"string","enum":["check_in","check_out"],"title":"Action"},"gateId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Gateid"}},"type":"object","required":["action"],"title":"PassScanBody"},"RejectBody":{"properties":{"reason":{"type":"string","minLength":1,"title":"Reason"}},"type":"object","required":["reason"],"title":"RejectBody"},"Severity":{"type":"string","enum":["Block","Alert"],"title":"Severity"},"StaffCreate":{"properties":{"name":{"type":"string","title":"Name"},"roleTitle":{"type":"string","title":"Roletitle"},"mobile":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Mobile"},"userId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Userid"},"active":{"type":"boolean","title":"Active","default":true}},"type":"object","required":["name","roleTitle"],"title":"StaffCreate"},"StaffPatch":{"properties":{"name":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Name"},"roleTitle":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Roletitle"},"mobile":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Mobile"},"userId":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Userid"},"active":{"anyOf":[{"type":"boolean"},{"type":"null"}],"title":"Active"}},"type":"object","title":"StaffPatch"},"ValidationError":{"properties":{"loc":{"items":{"anyOf":[{"type":"string"},{"type":"integer"}]},"type":"array","title":"Location"},"msg":{"type":"string","title":"Message"},"type":{"type":"string","title":"Error Type"},"input":{"title":"Input"},"ctx":{"type":"object","title":"Context"}},"type":"object","required":["loc","msg","type"],"title":"ValidationError"},"VisitCreate":{"properties":{"visitorName":{"type":"string","title":"Visitorname"},"mobile":{"type":"string","title":"Mobile"},"visitorType":{"$ref":"#/components/schemas/VisitorType"},"purpose":{"type":"string","title":"Purpose"},"hostId":{"type":"string","title":"Hostid"},"livePhotoKey":{"type":"string","title":"Livephotokey"},"idType":{"$ref":"#/components/schemas/IdType"},"idNumber":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Idnumber"},"idImageKey":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Idimagekey"},"vehicleNumber":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Vehiclenumber"},"accompanyingCount":{"anyOf":[{"type":"integer"},{"type":"null"}],"title":"Accompanyingcount"},"notes":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Notes"},"signatureKey":{"anyOf":[{"type":"string"},{"type":"null"}],"title":"Signaturekey"},"gateId":{"type":"string","title":"Gateid"},"blacklistOverride":{"type":"boolean","title":"Blacklistoverride","default":false}},"type":"object","required":["visitorName","mobile","visitorType","purpose","hostId","livePhotoKey","idType","gateId"],"title":"VisitCreate"},"VisitorType":{"type":"string","enum":["Parent","Vendor","Guest","Official","Alumni"],"title":"VisitorType"}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Satcop Smart Visitor API",
+    "description": "MVP FastAPI stub + Priority P2 Pickup (P1\u2013P6+H1) + after-hours (A1\u2013A6) + escort/zones Access Rules (B4) + Emergency Blast (E3 / B1\u2013B6). Contract \u00a7\u00a70\u20135 visit lifecycle unchanged. SMS mock / WA skipped_hold. Demo watermark; no production / live-school deploy.",
+    "version": "0.6.0"
+  },
+  "paths": {
+    "/v1/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "operationId": "login_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "operationId": "me_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/gates": {
+      "get": {
+        "tags": [
+          "gates"
+        ],
+        "summary": "List Gates",
+        "operationId": "list_gates_v1_gates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/staff": {
+      "get": {
+        "tags": [
+          "staff"
+        ],
+        "summary": "List Staff",
+        "operationId": "list_staff_v1_staff_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "staff"
+        ],
+        "summary": "Create Staff",
+        "operationId": "create_staff_v1_staff_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/staff/{staff_id}": {
+      "patch": {
+        "tags": [
+          "staff"
+        ],
+        "summary": "Patch Staff",
+        "operationId": "patch_staff_v1_staff__staff_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "staff_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Staff Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/media/upload": {
+      "post": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Upload Media",
+        "operationId": "upload_media_v1_media_upload_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_media_v1_media_upload_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/media/{key}": {
+      "get": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Get Media",
+        "operationId": "get_media_v1_media__key__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/inside": {
+      "get": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Visits Inside",
+        "operationId": "visits_inside_v1_visits_inside_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "gateId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Gateid"
+            }
+          },
+          {
+            "name": "visitorType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Visitortype"
+            }
+          },
+          {
+            "name": "hostId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hostid"
+            }
+          },
+          {
+            "name": "overdueOnly",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Overdueonly"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "afterHours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Afterhours"
+            }
+          },
+          {
+            "name": "policyTrigger",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Policytrigger"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits": {
+      "get": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "List Visits",
+        "operationId": "list_visits_v1_visits_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Datefrom"
+            }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dateto"
+            }
+          },
+          {
+            "name": "gateId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Gateid"
+            }
+          },
+          {
+            "name": "visitorType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Visitortype"
+            }
+          },
+          {
+            "name": "hostId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hostid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "checkoutStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Checkoutstatus"
+            }
+          },
+          {
+            "name": "blacklistHit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Blacklisthit"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "afterHours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Afterhours"
+            }
+          },
+          {
+            "name": "policyTrigger",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Policytrigger"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Create Visit",
+        "operationId": "create_visit_v1_visits_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VisitCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}": {
+      "get": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Get Visit",
+        "operationId": "get_visit_v1_visits__visit_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/approve": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Approve Visit",
+        "operationId": "approve_visit_v1_visits__visit_id__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveBody",
+                "default": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/reject": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Reject Visit",
+        "operationId": "reject_visit_v1_visits__visit_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/check-in": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Check In",
+        "operationId": "check_in_v1_visits__visit_id__check_in_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckInBody",
+                "default": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/check-out": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Check Out",
+        "operationId": "check_out_v1_visits__visit_id__check_out_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/force-checkout": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Force Checkout",
+        "operationId": "force_checkout_v1_visits__visit_id__force_checkout_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForceCheckoutBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/meeting-done": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Meeting Done",
+        "operationId": "meeting_done_v1_visits__visit_id__meeting_done_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/assign-escort": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Assign Escort",
+        "operationId": "assign_escort_v1_visits__visit_id__assign_escort_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignEscortBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/visits/{visit_id}/waive-escort": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Waive Escort",
+        "operationId": "waive_escort_v1_visits__visit_id__waive_escort_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaiveEscortBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/passes/{pass_id}": {
+      "get": {
+        "tags": [
+          "passes"
+        ],
+        "summary": "Get Pass",
+        "operationId": "get_pass_v1_passes__pass_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pass_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pass Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PassOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/passes/scan": {
+      "post": {
+        "tags": [
+          "passes"
+        ],
+        "summary": "Scan Pass",
+        "operationId": "scan_pass_v1_passes_scan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PassScanBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/blacklist": {
+      "get": {
+        "tags": [
+          "blacklist"
+        ],
+        "summary": "List Blacklist",
+        "operationId": "list_blacklist_v1_blacklist_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "blacklist"
+        ],
+        "summary": "Create Blacklist",
+        "operationId": "create_blacklist_v1_blacklist_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlacklistCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/blacklist/{bl_id}": {
+      "patch": {
+        "tags": [
+          "blacklist"
+        ],
+        "summary": "Patch Blacklist",
+        "operationId": "patch_blacklist_v1_blacklist__bl_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bl_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Bl Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlacklistPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/blacklist/match": {
+      "post": {
+        "tags": [
+          "blacklist"
+        ],
+        "summary": "Match Endpoint",
+        "operationId": "match_endpoint_v1_blacklist_match_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlacklistMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/reports/today-by-gate": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Today By Gate",
+        "operationId": "today_by_gate_v1_reports_today_by_gate_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/reports/range-by-gate": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Range By Gate",
+        "operationId": "range_by_gate_v1_reports_range_by_gate_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports/visitor-type-mix": {
+      "get": {
+        "tags": [
+          "reports"
+        ],
+        "summary": "Visitor Type Mix",
+        "operationId": "visitor_type_mix_v1_reports_visitor_type_mix_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/exports": {
+      "post": {
+        "tags": [
+          "exports"
+        ],
+        "summary": "Create Export",
+        "operationId": "create_export_v1_exports_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/internal/notify-outbox": {
+      "get": {
+        "tags": [
+          "internal"
+        ],
+        "summary": "Notify Outbox",
+        "operationId": "notify_outbox_v1_internal_notify_outbox_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "pending",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/students": {
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "List Students",
+        "operationId": "list_students_v1_students_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "class",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Class"
+            }
+          },
+          {
+            "name": "section",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Section"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Create Student",
+        "operationId": "create_student_v1_students_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/students/{student_id}": {
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Get Student",
+        "operationId": "get_student_v1_students__student_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Student Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Patch Student",
+        "operationId": "patch_student_v1_students__student_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Student Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/students/{student_id}/authorized-pickup": {
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "List Authorized Pickup",
+        "operationId": "list_authorized_pickup_v1_students__student_id__authorized_pickup_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Student Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Create Authorized Pickup",
+        "operationId": "create_authorized_pickup_v1_students__student_id__authorized_pickup_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Student Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizedPickupCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/students/{student_id}/authorized-pickup/{person_id}": {
+      "patch": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Patch Authorized Pickup",
+        "operationId": "patch_authorized_pickup_v1_students__student_id__authorized_pickup__person_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Student Id"
+            }
+          },
+          {
+            "name": "person_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Person Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthorizedPickupPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/students/{student_id}/custody-flag": {
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Get Custody Flag",
+        "operationId": "get_custody_flag_v1_students__student_id__custody_flag_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Student Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Put Custody Flag",
+        "operationId": "put_custody_flag_v1_students__student_id__custody_flag_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "student_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Student Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustodyFlagPut"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pickups": {
+      "post": {
+        "tags": [
+          "pickups"
+        ],
+        "summary": "Start Pickup",
+        "operationId": "start_pickup_v1_pickups_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickupCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "pickups"
+        ],
+        "summary": "List Pickups",
+        "operationId": "list_pickups_v1_pickups_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Datefrom"
+            }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dateto"
+            }
+          },
+          {
+            "name": "studentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Studentid"
+            }
+          },
+          {
+            "name": "gateId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Gateid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "override",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Override"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pickups/{pickup_id}/consent": {
+      "post": {
+        "tags": [
+          "pickups"
+        ],
+        "summary": "Record Consent",
+        "operationId": "record_consent_v1_pickups__pickup_id__consent_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pickup_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pickup Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickupConsentBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pickups/{pickup_id}/release": {
+      "post": {
+        "tags": [
+          "pickups"
+        ],
+        "summary": "Release Pickup",
+        "operationId": "release_pickup_v1_pickups__pickup_id__release_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pickup_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pickup Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickupReleaseBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pickups/{pickup_id}/request-override": {
+      "post": {
+        "tags": [
+          "pickups"
+        ],
+        "summary": "Request Override",
+        "operationId": "request_override_v1_pickups__pickup_id__request_override_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pickup_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pickup Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pickups/{pickup_id}/override": {
+      "post": {
+        "tags": [
+          "pickups"
+        ],
+        "summary": "Override Pickup",
+        "operationId": "override_pickup_v1_pickups__pickup_id__override_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pickup_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pickup Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pickups/{pickup_id}": {
+      "get": {
+        "tags": [
+          "pickups"
+        ],
+        "summary": "Get Pickup",
+        "operationId": "get_pickup_v1_pickups__pickup_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pickup_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pickup Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickupOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/access-rules/hours": {
+      "get": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Get Hours",
+        "operationId": "get_hours_v1_access_rules_hours_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Put Hours",
+        "operationId": "put_hours_v1_access_rules_hours_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/CampusHoursRow"
+                },
+                "type": "array",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/access-rules/holidays": {
+      "get": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "List Holidays",
+        "operationId": "list_holidays_v1_access_rules_holidays_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Create Holiday",
+        "operationId": "create_holiday_v1_access_rules_holidays_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HolidayCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/access-rules/holidays/{holiday_id}": {
+      "delete": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Delete Holiday",
+        "operationId": "delete_holiday_v1_access_rules_holidays__holiday_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "holiday_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Holiday Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/access-rules/escort": {
+      "get": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Get Escort Rules",
+        "operationId": "get_escort_rules_v1_access_rules_escort_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "access-rules"
+        ],
+        "summary": "Put Escort Rules",
+        "operationId": "put_escort_rules_v1_access_rules_escort_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/EscortZoneRuleIn"
+                },
+                "type": "array",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/zones": {
+      "get": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "List Zones",
+        "operationId": "list_zones_v1_zones_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/zones/{key}": {
+      "patch": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Patch Zone",
+        "operationId": "patch_zone_v1_zones__key__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneLabelPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts/preview": {
+      "get": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Preview Blast",
+        "operationId": "preview_blast_v1_emergency_blasts_preview_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "templateId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Templateid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts": {
+      "post": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Create Blast",
+        "operationId": "create_blast_v1_emergency_blasts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastConfirmBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/emergency/blasts/{blast_id}": {
+      "get": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Get Blast",
+        "operationId": "get_blast_v1_emergency_blasts__blast_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "blast_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Blast Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts/{blast_id}/confirm": {
+      "post": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Confirm Pending Blast",
+        "operationId": "confirm_pending_blast_v1_emergency_blasts__blast_id__confirm_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "blast_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Blast Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastConfirmOnlyBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blasts/{blast_id}/retry-failed": {
+      "post": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Retry Failed Recipients",
+        "operationId": "retry_failed_recipients_v1_emergency_blasts__blast_id__retry_failed_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "blast_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Blast Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blast-templates": {
+      "get": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "List Templates",
+        "operationId": "list_templates_v1_emergency_blast_templates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Create Template",
+        "operationId": "create_template_v1_emergency_blast_templates_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastTemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/emergency/blast-templates/{template_id}": {
+      "get": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Get Template",
+        "operationId": "get_template_v1_emergency_blast_templates__template_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Put Template",
+        "operationId": "put_template_v1_emergency_blast_templates__template_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastTemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Patch Template",
+        "operationId": "patch_template_v1_emergency_blast_templates__template_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastTemplatePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "emergency"
+        ],
+        "summary": "Delete Template",
+        "operationId": "delete_template_v1_emergency_blast_templates__template_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/schools/me/blast-config": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Get Blast Config",
+        "operationId": "get_blast_config_v1_schools_me_blast_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Put Blast Config",
+        "operationId": "put_blast_config_v1_schools_me_blast_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastConfigPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Patch Blast Config",
+        "operationId": "patch_blast_config_v1_schools_me_blast_config_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlastConfigPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApproveBody": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "title": "ApproveBody",
+        "description": "Optional for in-hours Host Approve; required non-blank reason when afterHours (A6)."
+      },
+      "AssignEscortBody": {
+        "properties": {
+          "escortStaffId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escortstaffid"
+          },
+          "escortSuggestedByHost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escortsuggestedbyhost"
+          }
+        },
+        "type": "object",
+        "title": "AssignEscortBody"
+      },
+      "AuthorizedPickupCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "relation": {
+            "$ref": "#/components/schemas/PickupRelation"
+          },
+          "mobile": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Mobile"
+          },
+          "idType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idnumber"
+          },
+          "idLast4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idlast4"
+          },
+          "photoRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photoref"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          },
+          "effectiveFrom": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectivefrom"
+          },
+          "effectiveTo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectiveto"
+          },
+          "pickupConsentVersion": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Pickupconsentversion"
+          },
+          "pickupConsentAt": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Pickupconsentat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "relation",
+          "mobile",
+          "pickupConsentVersion",
+          "pickupConsentAt"
+        ],
+        "title": "AuthorizedPickupCreate"
+      },
+      "AuthorizedPickupPatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "relation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PickupRelation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mobile"
+          },
+          "idType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idnumber"
+          },
+          "idLast4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idlast4"
+          },
+          "photoRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photoref"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "effectiveFrom": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectivefrom"
+          },
+          "effectiveTo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectiveto"
+          },
+          "pickupConsentVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupconsentversion"
+          },
+          "pickupConsentAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupconsentat"
+          }
+        },
+        "type": "object",
+        "title": "AuthorizedPickupPatch"
+      },
+      "BlacklistCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "mobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mobile"
+          },
+          "idType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idnumber"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "expiresOn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expireson"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "photoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photourl"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "reason",
+          "severity"
+        ],
+        "title": "BlacklistCreate"
+      },
+      "BlacklistMatchRequest": {
+        "properties": {
+          "mobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mobile"
+          },
+          "idType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idnumber"
+          }
+        },
+        "type": "object",
+        "title": "BlacklistMatchRequest"
+      },
+      "BlacklistPatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "mobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mobile"
+          },
+          "idType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idnumber"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Severity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "expiresOn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expireson"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "photoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photourl"
+          }
+        },
+        "type": "object",
+        "title": "BlacklistPatch"
+      },
+      "BlastChannel": {
+        "type": "string",
+        "enum": [
+          "sms",
+          "push",
+          "in_app",
+          "whatsapp"
+        ],
+        "title": "BlastChannel"
+      },
+      "BlastConfigPatch": {
+        "properties": {
+          "emergencyBlastEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emergencyblastenabled"
+          },
+          "blastStaffLaneEnabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blaststafflaneenabled"
+          },
+          "blastChannelsVisitor": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blastchannelsvisitor"
+          },
+          "blastChannelsStaff": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blastchannelsstaff"
+          }
+        },
+        "type": "object",
+        "title": "BlastConfigPatch"
+      },
+      "BlastConfirmBody": {
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Templateid"
+          },
+          "confirm": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "preview",
+                  "pending_confirm"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "templateId"
+        ],
+        "title": "BlastConfirmBody",
+        "description": "Locked one-shot confirm `{ templateId, confirm: true }` plus draft modes."
+      },
+      "BlastConfirmOnlyBody": {
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "title": "Confirm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "confirm"
+        ],
+        "title": "BlastConfirmOnlyBody"
+      },
+      "BlastTemplateCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "instruction": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Instruction"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel",
+            "default": "sms"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "instruction"
+        ],
+        "title": "BlastTemplateCreate"
+      },
+      "BlastTemplatePatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BlastChannel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "title": "BlastTemplatePatch"
+      },
+      "Body_upload_media_v1_media_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MediaKind",
+            "default": "live_photo"
+          },
+          "visitId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visitid"
+          },
+          "pickupId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_media_v1_media_upload_post"
+      },
+      "CampusHoursRow": {
+        "properties": {
+          "schoolId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schoolid"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "Asia/Kolkata"
+          },
+          "weekday": {
+            "$ref": "#/components/schemas/Weekday"
+          },
+          "openTime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opentime"
+          },
+          "closeTime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closetime"
+          },
+          "closed": {
+            "type": "boolean",
+            "title": "Closed",
+            "default": false
+          },
+          "overnight": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overnight",
+            "default": false
+          },
+          "updatedByUserId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedbyuserid"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weekday"
+        ],
+        "title": "CampusHoursRow"
+      },
+      "CheckInBody": {
+        "properties": {
+          "gateId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gateid"
+          }
+        },
+        "type": "object",
+        "title": "CheckInBody"
+      },
+      "CustodyFlag": {
+        "type": "string",
+        "enum": [
+          "none",
+          "restricted",
+          "court_order"
+        ],
+        "title": "CustodyFlag"
+      },
+      "CustodyFlagPut": {
+        "properties": {
+          "flag": {
+            "$ref": "#/components/schemas/CustodyFlag"
+          },
+          "gateInstruction": {
+            "type": "string",
+            "maxLength": 280,
+            "title": "Gateinstruction",
+            "default": ""
+          },
+          "blockedPersonIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Blockedpersonids"
+          },
+          "allowedPersonIds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowedpersonids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "flag"
+        ],
+        "title": "CustodyFlagPut"
+      },
+      "EscortZoneRuleIn": {
+        "properties": {
+          "visitorType": {
+            "$ref": "#/components/schemas/VisitorType"
+          },
+          "escortRequired": {
+            "type": "boolean",
+            "title": "Escortrequired"
+          },
+          "allowedZones": {
+            "items": {
+              "$ref": "#/components/schemas/ZoneKey"
+            },
+            "type": "array",
+            "title": "Allowedzones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "visitorType",
+          "escortRequired"
+        ],
+        "title": "EscortZoneRuleIn"
+      },
+      "ExportRequest": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "history",
+              "inside",
+              "blacklist",
+              "daily_gate_summary",
+              "pickup_events",
+              "pickup_lists"
+            ],
+            "title": "Scope"
+          },
+          "filters": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Filters"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope"
+        ],
+        "title": "ExportRequest"
+      },
+      "ForceCheckoutBody": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "ForceCheckoutBody"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HolidayCreate": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Date"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date"
+        ],
+        "title": "HolidayCreate"
+      },
+      "IdType": {
+        "type": "string",
+        "enum": [
+          "Aadhaar",
+          "DL",
+          "Voter",
+          "Passport",
+          "Other"
+        ],
+        "title": "IdType"
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "LoginResponse": {
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "title": "Accesstoken"
+          },
+          "tokenType": {
+            "type": "string",
+            "title": "Tokentype",
+            "default": "Bearer"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "title": "Expiresin"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserPublic"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accessToken",
+          "expiresIn",
+          "user"
+        ],
+        "title": "LoginResponse"
+      },
+      "MeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "schoolId": {
+            "type": "string",
+            "title": "Schoolid"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "staffId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staffid"
+          },
+          "gateIds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gateids"
+          },
+          "displayName": {
+            "type": "string",
+            "title": "Displayname"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "schoolId",
+          "role",
+          "displayName"
+        ],
+        "title": "MeResponse"
+      },
+      "MediaKind": {
+        "type": "string",
+        "enum": [
+          "live_photo",
+          "id_image",
+          "signature",
+          "other",
+          "collector_live_photo",
+          "pickup_list_photo"
+        ],
+        "title": "MediaKind"
+      },
+      "MediaUploadResponse": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "url"
+        ],
+        "title": "MediaUploadResponse"
+      },
+      "PassOut": {
+        "properties": {
+          "passId": {
+            "type": "string",
+            "title": "Passid"
+          },
+          "visitId": {
+            "type": "string",
+            "title": "Visitid"
+          },
+          "schoolId": {
+            "type": "string",
+            "title": "Schoolid"
+          },
+          "visitorName": {
+            "type": "string",
+            "title": "Visitorname"
+          },
+          "photoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photourl"
+          },
+          "hostId": {
+            "type": "string",
+            "title": "Hostid"
+          },
+          "hostName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hostname"
+          },
+          "gateId": {
+            "type": "string",
+            "title": "Gateid"
+          },
+          "gateName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gatename"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "qrToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qrtoken"
+          },
+          "issuedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuedat"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          },
+          "revoked": {
+            "type": "boolean",
+            "title": "Revoked",
+            "default": false
+          },
+          "escortRequired": {
+            "type": "boolean",
+            "title": "Escortrequired",
+            "default": false
+          },
+          "escortName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escortname"
+          },
+          "allowedZoneLabels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allowedzonelabels"
+          },
+          "afterHours": {
+            "type": "boolean",
+            "title": "Afterhours",
+            "default": false
+          },
+          "policyTrigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policytrigger"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "passId",
+          "visitId",
+          "schoolId",
+          "visitorName",
+          "hostId",
+          "gateId",
+          "status"
+        ],
+        "title": "PassOut"
+      },
+      "PassScanBody": {
+        "properties": {
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "passId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passid"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "check_in",
+              "check_out"
+            ],
+            "title": "Action"
+          },
+          "gateId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gateid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "PassScanBody"
+      },
+      "PickupConsentBody": {
+        "properties": {
+          "pickupConsentVersion": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Pickupconsentversion"
+          },
+          "pickupConsentAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupconsentat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pickupConsentVersion"
+        ],
+        "title": "PickupConsentBody"
+      },
+      "PickupCreate": {
+        "properties": {
+          "studentId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Studentid"
+          },
+          "gateId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Gateid"
+          },
+          "pickupReason": {
+            "$ref": "#/components/schemas/PickupReason"
+          },
+          "reasonOther": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasonother"
+          },
+          "collectorPickupPersonId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectorpickuppersonid"
+          },
+          "collectorName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectorname"
+          },
+          "collectorMobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectormobile"
+          },
+          "idType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idnumber"
+          },
+          "idLast4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idlast4"
+          },
+          "linkVisit": {
+            "type": "boolean",
+            "title": "Linkvisit",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "studentId",
+          "gateId",
+          "pickupReason"
+        ],
+        "title": "PickupCreate"
+      },
+      "PickupOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "schoolId": {
+            "type": "string",
+            "title": "Schoolid"
+          },
+          "gateId": {
+            "type": "string",
+            "title": "Gateid"
+          },
+          "studentId": {
+            "type": "string",
+            "title": "Studentid"
+          },
+          "collectorPickupPersonId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectorpickuppersonid"
+          },
+          "collectorName": {
+            "type": "string",
+            "title": "Collectorname"
+          },
+          "collectorMobile": {
+            "type": "string",
+            "title": "Collectormobile"
+          },
+          "collectorRelation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectorrelation"
+          },
+          "matchMethod": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchmethod"
+          },
+          "pickupReason": {
+            "type": "string",
+            "title": "Pickupreason"
+          },
+          "reasonOther": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasonother"
+          },
+          "collectorLivePhotoRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collectorlivephotoref"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "custodyFlagSnapshot": {
+            "type": "string",
+            "title": "Custodyflagsnapshot"
+          },
+          "override": {
+            "type": "boolean",
+            "title": "Override",
+            "default": false
+          },
+          "overrideByUserId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overridebyuserid"
+          },
+          "overrideReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overridereason"
+          },
+          "linkedVisitId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkedvisitid"
+          },
+          "visitLinkFailed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visitlinkfailed"
+          },
+          "releasedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Releasedat"
+          },
+          "attemptedAt": {
+            "type": "string",
+            "title": "Attemptedat"
+          },
+          "gateUserId": {
+            "type": "string",
+            "title": "Gateuserid"
+          },
+          "pickupConsentAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupconsentat"
+          },
+          "pickupConsentVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupconsentversion"
+          },
+          "createdAt": {
+            "type": "string",
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "type": "string",
+            "title": "Updatedat"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "schoolId",
+          "gateId",
+          "studentId",
+          "collectorName",
+          "collectorMobile",
+          "pickupReason",
+          "status",
+          "custodyFlagSnapshot",
+          "attemptedAt",
+          "gateUserId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "PickupOut"
+      },
+      "PickupReason": {
+        "type": "string",
+        "enum": [
+          "early",
+          "sick",
+          "appointment",
+          "other"
+        ],
+        "title": "PickupReason"
+      },
+      "PickupRelation": {
+        "type": "string",
+        "enum": [
+          "parent",
+          "guardian",
+          "sibling",
+          "relative",
+          "other"
+        ],
+        "title": "PickupRelation"
+      },
+      "PickupReleaseBody": {
+        "properties": {
+          "collectorLivePhotoRef": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Collectorlivephotoref"
+          },
+          "linkVisit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linkvisit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "collectorLivePhotoRef"
+        ],
+        "title": "PickupReleaseBody"
+      },
+      "ReasonBody": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "ReasonBody"
+      },
+      "RejectBody": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "RejectBody"
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "gate",
+          "host",
+          "admin",
+          "security_head"
+        ],
+        "title": "Role"
+      },
+      "Severity": {
+        "type": "string",
+        "enum": [
+          "Block",
+          "Alert"
+        ],
+        "title": "Severity"
+      },
+      "StaffCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "roleTitle": {
+            "type": "string",
+            "title": "Roletitle"
+          },
+          "mobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mobile"
+          },
+          "userId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userid"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "roleTitle"
+        ],
+        "title": "StaffCreate"
+      },
+      "StaffPatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "roleTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roletitle"
+          },
+          "mobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mobile"
+          },
+          "userId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userid"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          }
+        },
+        "type": "object",
+        "title": "StaffPatch"
+      },
+      "StudentCreate": {
+        "properties": {
+          "studentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Studentid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "class": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Class"
+          },
+          "section": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Section"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": true
+          },
+          "enrollmentEndedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollmentendedat"
+          },
+          "legalHold": {
+            "type": "boolean",
+            "title": "Legalhold",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "class",
+          "section"
+        ],
+        "title": "StudentCreate"
+      },
+      "StudentPatch": {
+        "properties": {
+          "studentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Studentid"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "enrollmentEndedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enrollmentendedat"
+          },
+          "legalHold": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legalhold"
+          }
+        },
+        "type": "object",
+        "title": "StudentPatch"
+      },
+      "UserPublic": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "schoolId": {
+            "type": "string",
+            "title": "Schoolid"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "staffId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staffid"
+          },
+          "gateIds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gateids"
+          },
+          "displayName": {
+            "type": "string",
+            "title": "Displayname"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "schoolId",
+          "role",
+          "displayName"
+        ],
+        "title": "UserPublic"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VisitCreate": {
+        "properties": {
+          "visitorName": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Visitorname"
+          },
+          "mobile": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Mobile"
+          },
+          "visitorType": {
+            "$ref": "#/components/schemas/VisitorType"
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Purpose"
+          },
+          "hostId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Hostid"
+          },
+          "livePhotoKey": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Livephotokey"
+          },
+          "idType": {
+            "$ref": "#/components/schemas/IdType"
+          },
+          "idNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idnumber"
+          },
+          "idImageKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idimagekey"
+          },
+          "vehicleNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vehiclenumber"
+          },
+          "accompanyingCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accompanyingcount"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "signatureKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signaturekey"
+          },
+          "gateId": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Gateid"
+          },
+          "blacklistOverride": {
+            "type": "boolean",
+            "title": "Blacklistoverride",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "visitorName",
+          "mobile",
+          "visitorType",
+          "purpose",
+          "hostId",
+          "livePhotoKey",
+          "idType",
+          "gateId"
+        ],
+        "title": "VisitCreate"
+      },
+      "VisitorType": {
+        "type": "string",
+        "enum": [
+          "Parent",
+          "Vendor",
+          "Guest",
+          "Official",
+          "Alumni"
+        ],
+        "title": "VisitorType"
+      },
+      "WaiveEscortBody": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "WaiveEscortBody"
+      },
+      "Weekday": {
+        "type": "string",
+        "enum": [
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat",
+          "sun"
+        ],
+        "title": "Weekday"
+      },
+      "ZoneKey": {
+        "type": "string",
+        "enum": [
+          "reception",
+          "admin",
+          "classroom",
+          "sports",
+          "lab",
+          "restricted",
+          "parking"
+        ],
+        "title": "ZoneKey"
+      },
+      "ZoneLabelPatch": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label"
+        ],
+        "title": "ZoneLabelPatch"
+      },
+      "BlastRecipientStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "sent",
+          "failed",
+          "skipped_no_mobile",
+          "skipped_hold"
+        ]
+      },
+      "EmergencyBlastStatus": {
+        "type": "string",
+        "enum": [
+          "pending_confirm",
+          "queued",
+          "sending",
+          "completed",
+          "partial",
+          "failed",
+          "cancelled"
+        ]
+      },
+      "SchoolBlastConfig": {
+        "type": "object",
+        "required": [
+          "emergencyBlastEnabled",
+          "blastStaffLaneEnabled",
+          "blastChannelsVisitor",
+          "blastChannelsStaff"
+        ],
+        "properties": {
+          "emergencyBlastEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Default OFF (AC-E3e)"
+          },
+          "blastStaffLaneEnabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "blastChannelsVisitor": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            },
+            "default": [
+              "sms"
+            ]
+          },
+          "blastChannelsStaff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            },
+            "default": [
+              "in_app",
+              "push"
+            ]
+          }
+        }
+      },
+      "SchoolBlastConfigUpdate": {
+        "type": "object",
+        "properties": {
+          "emergencyBlastEnabled": {
+            "type": "boolean"
+          },
+          "blastStaffLaneEnabled": {
+            "type": "boolean"
+          },
+          "blastChannelsVisitor": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            }
+          },
+          "blastChannelsStaff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            }
+          }
+        }
+      },
+      "BlastTemplate": {
+        "type": "object",
+        "required": [
+          "id",
+          "schoolId",
+          "name",
+          "instruction",
+          "channel",
+          "active"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "Evacuation \u2014 assembly ground"
+            ]
+          },
+          "instruction": {
+            "type": "string",
+            "description": "SMS-safe short instruction; snapshot at confirm"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "updatedByUserId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EmergencyBlastCreateRequest": {
+        "type": "object",
+        "required": [
+          "templateId"
+        ],
+        "properties": {
+          "templateId": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "preview",
+              "pending_confirm"
+            ],
+            "default": "preview",
+            "description": "preview = no persist; pending_confirm = create row awaiting confirm"
+          }
+        }
+      },
+      "EmergencyBlastConfirmRequest": {
+        "type": "object",
+        "required": [
+          "confirm"
+        ],
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "description": "Must be true (B2 explicit confirm)"
+          }
+        }
+      },
+      "EmergencyBlastPreview": {
+        "type": "object",
+        "required": [
+          "insideCount",
+          "templateId",
+          "instruction",
+          "channelsSummary"
+        ],
+        "properties": {
+          "insideCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "channelsSummary": {
+            "type": "object",
+            "properties": {
+              "visitor": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BlastChannel"
+                }
+              },
+              "staffLaneEnabled": {
+                "type": "boolean"
+              },
+              "whatsappHold": {
+                "type": "boolean",
+                "default": true
+              }
+            }
+          }
+        }
+      },
+      "EmergencyBlast": {
+        "type": "object",
+        "required": [
+          "blast_id",
+          "schoolId",
+          "triggeredByUserId",
+          "triggeredAt",
+          "templateId",
+          "instruction",
+          "insideCount",
+          "recipientCount",
+          "status"
+        ],
+        "properties": {
+          "blast_id": {
+            "type": "string",
+            "description": "Primary audit key (B5)",
+            "examples": [
+              "B-20260916-03"
+            ]
+          },
+          "schoolId": {
+            "type": "string"
+          },
+          "triggeredByUserId": {
+            "type": "string"
+          },
+          "triggeredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string",
+            "description": "Snapshot at confirm"
+          },
+          "insideCount": {
+            "type": "integer"
+          },
+          "recipientCount": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EmergencyBlastStatus"
+          },
+          "confirmAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "BlastRecipient": {
+        "type": "object",
+        "required": [
+          "blast_id",
+          "mobileMasked",
+          "channel",
+          "status"
+        ],
+        "properties": {
+          "blast_id": {
+            "type": "string"
+          },
+          "visitId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mobileMasked": {
+            "type": "string",
+            "examples": [
+              "+91-9xxx-xx4442"
+            ]
+          },
+          "channel": {
+            "$ref": "#/components/schemas/BlastChannel"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BlastRecipientStatus"
+          },
+          "providerMessageId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attemptedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "errorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "EmergencyBlastDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EmergencyBlast"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "recipients": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/BlastRecipient"
+                }
+              },
+              "counts": {
+                "type": "object",
+                "properties": {
+                  "sent": {
+                    "type": "integer"
+                  },
+                  "failed": {
+                    "type": "integer"
+                  },
+                  "queued": {
+                    "type": "integer"
+                  },
+                  "skipped_hold": {
+                    "type": "integer"
+                  },
+                  "skipped_no_mobile": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "EmergencyBlastOutboxPayload": {
+        "type": "object",
+        "description": "Outbox event name emergency.blast \u2014 DEMO/SEED draft enrichment (MVP SoT today is name-only until implemented)",
+        "required": [
+          "blastId",
+          "insideCount",
+          "instruction",
+          "templateId",
+          "schoolId",
+          "triggeredByUserId",
+          "channels",
+          "recipientRefs"
+        ],
+        "properties": {
+          "blastId": {
+            "type": "string"
+          },
+          "insideCount": {
+            "type": "integer"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "string"
+          },
+          "triggeredByUserId": {
+            "type": "string"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlastChannel"
+            }
+          },
+          "recipientRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "visitId",
+                "mobileMasked",
+                "channel"
+              ],
+              "properties": {
+                "visitId": {
+                  "type": "string"
+                },
+                "mobileMasked": {
+                  "type": "string"
+                },
+                "channel": {
+                  "$ref": "#/components/schemas/BlastChannel"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

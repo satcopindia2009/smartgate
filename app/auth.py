@@ -5,12 +5,15 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
 import jwt
-from fastapi import Depends, Header
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import JWT_ALG, JWT_SECRET, JWT_TTL_SECONDS
 from app.errors import AppError
 from app.models import Role
 from app import store
+
+_bearer = HTTPBearer(auto_error=False)
 
 
 def create_access_token(user: dict) -> tuple[str, int]:
@@ -18,6 +21,7 @@ def create_access_token(user: dict) -> tuple[str, int]:
     exp = now + timedelta(seconds=JWT_TTL_SECONDS)
     payload = {
         "sub": user["id"],
+        "userId": user["id"],
         "schoolId": user["schoolId"],
         "role": user["role"],
         "staffId": user.get("staffId"),
@@ -40,12 +44,11 @@ def decode_token(token: str) -> dict:
 
 
 def get_current_user(
-    authorization: Annotated[Optional[str], Header()] = None,
+    creds: Annotated[Optional[HTTPAuthorizationCredentials], Depends(_bearer)] = None,
 ) -> dict:
-    if not authorization or not authorization.lower().startswith("bearer "):
+    if creds is None or not creds.credentials:
         raise AppError("UNAUTHORIZED", "Bearer token required", 401)
-    token = authorization.split(" ", 1)[1].strip()
-    claims = decode_token(token)
+    claims = decode_token(creds.credentials)
     user = store.get_user(claims["sub"])
     if not user or not user.get("active", True):
         raise AppError("UNAUTHORIZED", "User not found or inactive", 401)
@@ -69,3 +72,20 @@ def require_roles(*roles: Role | str):
         return user
 
     return _dep
+
+
+def assert_gate_allowed(user: dict, gate_id: Optional[str]) -> Optional[str]:
+    """Gate users are limited to JWT/user.gateIds (contract §1 User)."""
+    if user.get("role") != "gate":
+        return gate_id
+    allowed = user.get("gateIds")
+    if allowed is None:
+        return gate_id
+    if gate_id and gate_id not in allowed:
+        raise AppError(
+            "FORBIDDEN",
+            f"Gate user is not assigned to {gate_id}",
+            403,
+            {"gateIds": allowed, "gateId": gate_id},
+        )
+    return gate_id

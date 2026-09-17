@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
 from app.auth import CurrentUser, require_roles
-from app.config import SCHOOL_ID, WATERMARK
+from app.config import WATERMARK
 from app.errors import AppError
 from app.models import Role, StaffCreate, StaffPatch
 from app import store
