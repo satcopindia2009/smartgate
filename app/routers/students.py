@@ -14,6 +14,7 @@ from app.models import (
     AuthorizedPickupPatch,
     CustodyFlagPut,
     Role,
+    RosterImportAdminResponse,
     StudentCreate,
     StudentPatch,
 )
@@ -188,10 +189,12 @@ def download_import_template(user: dict = Depends(require_roles(*_WRITE_ROLES)))
 
 @router.post(
     "/students/import:validate",
+    response_model=RosterImportAdminResponse,
     summary="Validate roster CSV/Excel (dry-run)",
     description=(
         "AC-IMP-9 dry-run. Admin / Security Head. Multipart `file` using the locked template. "
         "No writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. "
+        "school_code must be PRANAY for tenant SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01. "
         f"{CSV_CONTRACT}"
     ),
 )
@@ -204,10 +207,12 @@ async def import_students_validate(
 
 @router.post(
     "/students/import:commit",
+    response_model=RosterImportAdminResponse,
     summary="Commit roster CSV/Excel",
     description=(
         "Admin / Security Head. Multipart `file` using the locked template. Writes valid rows. "
         "Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. "
+        "school_code must be PRANAY for tenant SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01. "
         f"{CSV_CONTRACT}"
     ),
 )
@@ -220,11 +225,13 @@ async def import_students_commit(
 
 @router.post(
     "/students/import",
+    response_model=RosterImportAdminResponse,
     summary="Import roster CSV/Excel (commit alias)",
     description=(
         "Admin / Security Head. Alias of `/students/import:commit` (pass `mode=validate` for dry-run). "
-        f"{CSV_CONTRACT} "
-        "Returns `{ imported, updated, failed, errors[], schoolId, school_code }`."
+        "Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. "
+        "school_code must be PRANAY for tenant SCH-PRANAY-01. "
+        f"{CSV_CONTRACT}"
     ),
 )
 async def import_students_csv(
@@ -237,12 +244,14 @@ async def import_students_csv(
 
 @router.post(
     "/students/authorized-pickup/import",
+    response_model=RosterImportAdminResponse,
     summary="Import authorized pickup CSV/Excel",
     description=(
         "Admin / Security Head. Multipart field `file` (.csv or .xlsx). "
         f"{CSV_CONTRACT} "
         "Upsert by (JWT schoolId + student_external_id + mobile). "
-        "`mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`."
+        "`mode=validate` dry-run; `mode=commit` writes. "
+        "Returns `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`."
     ),
 )
 async def import_authorized_pickup_csv(

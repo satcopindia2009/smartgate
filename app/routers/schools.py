@@ -17,7 +17,13 @@ from app.config import (
     WATERMARK,
 )
 from app.errors import AppError
-from app.models import BlastChannel, BlastConfigPatch, Role, SchoolCreate
+from app.models import (
+    BlastChannel,
+    BlastConfigPatch,
+    Role,
+    RosterImportAdminResponse,
+    SchoolCreate,
+)
 from app.roster_import import (
     CSV_CONTRACT,
     import_locked_rows,
@@ -147,6 +153,7 @@ def get_school_me(user: CurrentUser):
 
 @router.post(
     "/me/roster/import",
+    response_model=RosterImportAdminResponse,
     summary="Import students + authorized pickup CSV/Excel",
     description=_IMPORT_DESC,
 )

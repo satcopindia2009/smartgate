@@ -1907,7 +1907,7 @@
           "students"
         ],
         "summary": "Validate roster CSV/Excel (dry-run)",
-        "description": "AC-IMP-9 dry-run. Admin / Security Head. Multipart `file` using the locked template. No writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
+        "description": "AC-IMP-9 dry-run. Admin / Security Head. Multipart `file` using the locked template. No writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. school_code must be PRANAY for tenant SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01. EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
         "operationId": "import_students_validate_v1_students_import_validate_post",
         "requestBody": {
           "content": {
@@ -1924,7 +1924,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
               }
             }
           },
@@ -1952,7 +1954,7 @@
           "students"
         ],
         "summary": "Commit roster CSV/Excel",
-        "description": "Admin / Security Head. Multipart `file` using the locked template. Writes valid rows. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
+        "description": "Admin / Security Head. Multipart `file` using the locked template. Writes valid rows. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. school_code must be PRANAY for tenant SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01. EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
         "operationId": "import_students_commit_v1_students_import_commit_post",
         "requestBody": {
           "content": {
@@ -1969,7 +1971,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
               }
             }
           },
@@ -1997,7 +2001,7 @@
           "students"
         ],
         "summary": "Import roster CSV/Excel (commit alias)",
-        "description": "Admin / Security Head. Alias of `/students/import:commit` (pass `mode=validate` for dry-run). EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student. Returns `{ imported, updated, failed, errors[], schoolId, school_code }`.",
+        "description": "Admin / Security Head. Alias of `/students/import:commit` (pass `mode=validate` for dry-run). Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. school_code must be PRANAY for tenant SCH-PRANAY-01. EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
         "operationId": "import_students_csv_v1_students_import_post",
         "security": [
           {
@@ -2031,7 +2035,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
               }
             }
           },
@@ -2054,7 +2060,7 @@
           "students"
         ],
         "summary": "Import authorized pickup CSV/Excel",
-        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student. Upsert by (JWT schoolId + student_external_id + mobile). `mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`.",
+        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; no thinner camelCase template): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. Internal API models stay camelCase. school_code\u2192schoolId (JWT is source of truth; PRANAY\u2192SCH-PRANAY-01). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192AuthorizedPickupPerson.name, consent_version/consent_at\u2192pickupConsentVersion/At. custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles \u2192 StudentCustodyFlag (mobiles resolved to person ids after upsert). relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student. Upsert by (JWT schoolId + student_external_id + mobile). `mode=validate` dry-run; `mode=commit` writes. Returns `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`.",
         "operationId": "import_authorized_pickup_csv_v1_students_authorized_pickup_import_post",
         "security": [
           {
@@ -2088,7 +2094,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
               }
             }
           },
@@ -3947,7 +3955,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportAdminResponse"
+                }
               }
             }
           },
@@ -6097,6 +6107,206 @@
           "security_head"
         ],
         "title": "Role"
+      },
+      "RosterImportAdminResponse": {
+        "properties": {
+          "imported": {
+            "type": "integer",
+            "title": "Imported"
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/RosterImportError"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "schoolId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schoolid",
+            "description": "JWT school. Locked first tenant is SCH-PRANAY-01."
+          },
+          "school_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "School Code",
+            "description": "Must be PRANAY when schoolId is SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01."
+          },
+          "created": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "dryRun": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dryrun"
+          },
+          "audit": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audit"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          },
+          "students": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RosterImportCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pickup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RosterImportCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "imported",
+          "updated",
+          "failed"
+        ],
+        "title": "RosterImportAdminResponse",
+        "description": "Admin UI / PM import contract."
+      },
+      "RosterImportCounts": {
+        "properties": {
+          "created": {
+            "type": "integer",
+            "title": "Created",
+            "default": 0
+          },
+          "updated": {
+            "type": "integer",
+            "title": "Updated",
+            "default": 0
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/RosterImportError"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "title": "RosterImportCounts"
+      },
+      "RosterImportError": {
+        "properties": {
+          "row": {
+            "type": "integer",
+            "title": "Row"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "default": "VALIDATION"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "row",
+          "message"
+        ],
+        "title": "RosterImportError"
       },
       "SchoolCreate": {
         "properties": {

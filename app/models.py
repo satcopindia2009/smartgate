@@ -1032,8 +1032,9 @@ class SchoolMeOut(BaseModel):
 
 class RosterImportError(BaseModel):
     row: int
-    message: str
     field: Optional[str] = None
+    code: str = "VALIDATION"
+    message: str
     file: Optional[str] = None
 
 
@@ -1050,3 +1051,27 @@ class RosterImportResult(BaseModel):
     students: Optional[RosterImportCounts] = None
     pickup: Optional[RosterImportCounts] = None
     meta: Optional[dict] = None
+
+
+class RosterImportAdminResponse(BaseModel):
+    """Admin UI / PM import contract."""
+
+    imported: int
+    updated: int
+    failed: int
+    errors: list[RosterImportError] = Field(default_factory=list)
+    schoolId: Optional[str] = Field(
+        default=None,
+        description="JWT school. Locked first tenant is SCH-PRANAY-01.",
+    )
+    school_code: Optional[str] = Field(
+        default=None,
+        description="Must be PRANAY when schoolId is SCH-PRANAY-01. Never SCH-PRANAY-PUNE-01.",
+    )
+    created: Optional[int] = None
+    mode: Optional[str] = None
+    dryRun: Optional[bool] = None
+    audit: Optional[dict[str, Any]] = None
+    meta: Optional[dict[str, Any]] = None
+    students: Optional[RosterImportCounts] = None
+    pickup: Optional[RosterImportCounts] = None

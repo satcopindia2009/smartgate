@@ -313,6 +313,79 @@ def test_ac_imp_custody_conflict_fails_student(client):
     assert flag["flag"] == "none"
 
 
+def test_admin_validate_commit_response_shape_and_pranay_lock(client):
+    sh = login(client, "pranay.sh", "pranay123")
+    row = _pranay_row(student_external_id="ADM-UI-01", student_name="Admin UI Kid")
+    dry = client.post(
+        "/v1/students/import:validate",
+        headers=auth(sh),
+        files={"file": ("dry.csv", _csv_bytes([row]), "text/csv")},
+    )
+    assert dry.status_code == 200, dry.text
+    body = dry.json()
+    for key in ("imported", "updated", "failed", "errors", "schoolId", "school_code"):
+        assert key in body
+    assert body["schoolId"] == PRANAY_SCHOOL_ID
+    assert body["school_code"] == PRANAY_SCHOOL_CODE
+    assert body["dryRun"] is True
+    assert client.get("/v1/students?q=Admin+UI", headers=auth(sh)).json()["data"] == []
+
+    committed = client.post(
+        "/v1/students/import:commit",
+        headers=auth(sh),
+        files={"file": ("ok.csv", _csv_bytes([row]), "text/csv")},
+    )
+    assert committed.status_code == 200, committed.text
+    cbody = committed.json()
+    assert cbody["imported"] >= 1
+    assert cbody["failed"] == 0
+    assert cbody["schoolId"] == PRANAY_SCHOOL_ID
+    assert cbody["school_code"] == PRANAY_SCHOOL_CODE
+    assert cbody["errors"] == []
+
+    alias = client.post(
+        "/v1/students/import",
+        headers=auth(sh),
+        files={"file": ("alias.csv", _csv_bytes([row]), "text/csv")},
+    )
+    assert alias.status_code == 200, alias.text
+    assert alias.json()["updated"] >= 1
+    assert alias.json()["school_code"] == PRANAY_SCHOOL_CODE
+
+    blank = client.post(
+        "/v1/students/import:commit",
+        headers=auth(sh),
+        files={
+            "file": (
+                "blank.csv",
+                _csv_bytes([_pranay_row(school_code="", student_external_id="ADM-UI-02")]),
+                "text/csv",
+            )
+        },
+    )
+    assert blank.status_code == 200, blank.text
+    assert blank.json()["failed"] >= 1
+    err = blank.json()["errors"][0]
+    assert {"row", "field", "code", "message"} <= set(err)
+    assert err["field"] == "school_code"
+    assert "PRANAY" in err["message"]
+
+    spec = client.get("/openapi.json").json()
+    schema = spec["components"]["schemas"]["RosterImportAdminResponse"]
+    props = schema["properties"]
+    for key in ("imported", "updated", "failed", "errors", "schoolId", "school_code"):
+        assert key in props
+    val = spec["paths"]["/v1/students/import:validate"]["post"]
+    commit = spec["paths"]["/v1/students/import:commit"]["post"]
+    assert val["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "RosterImportAdminResponse"
+    )
+    assert commit["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "RosterImportAdminResponse"
+    )
+    assert store.get_student("STU-AARAV")["schoolId"] == SCHOOL_ID
+
+
 def test_ac_imp_template_download(client):
     from app.roster_import import LOCKED_HEADERS, TEMPLATE_CSV
 

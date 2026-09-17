@@ -291,9 +291,12 @@ def _err(
     file: Optional[str] = None,
     code: str = "VALIDATION",
 ) -> dict:
-    item: dict[str, Any] = {"row": row_no, "message": message, "code": code}
-    if field:
-        item["field"] = field
+    item: dict[str, Any] = {
+        "row": row_no,
+        "field": field,
+        "code": code,
+        "message": message,
+    }
     if file:
         item["file"] = file
     return item
@@ -301,17 +304,19 @@ def _err(
 
 def _check_school_code(row_code: str, jwt_school: str) -> Optional[str]:
     raw = (row_code or "").strip()
-    if not raw:
-        return None
-    if "PRANAY-PUNE" in raw.upper().replace("_", "-"):
-        return "SCH-PRANAY-PUNE-01 is not a valid school_code — use PRANAY / SCH-PRANAY-01"
-    found = store.get_school_by_code(raw)
     if jwt_school == PRANAY_SCHOOL_ID:
+        if "PRANAY-PUNE" in raw.upper().replace("_", "-"):
+            return "SCH-PRANAY-PUNE-01 is not a valid school_code — use PRANAY / SCH-PRANAY-01"
         if raw.upper() not in {PRANAY_SCHOOL_CODE, PRANAY_SCHOOL_ID}:
             return (
                 f"school_code must be {PRANAY_SCHOOL_CODE} for tenant {PRANAY_SCHOOL_ID}"
             )
         return None
+    if not raw:
+        return None
+    if "PRANAY-PUNE" in raw.upper().replace("_", "-"):
+        return "SCH-PRANAY-PUNE-01 is not a valid school_code — use PRANAY / SCH-PRANAY-01"
+    found = store.get_school_by_code(raw)
     if found:
         if found["id"] != jwt_school:
             return (

@@ -79,8 +79,8 @@ Real school load is **CSV/Excel import + school API push**. Demo school stays se
 | `POST /v1/schools` | Admin / Security Head **or** `X-Bootstrap-Token` | Body `{ name, timezone?, slug?, adminPassword?, securityHeadPassword? }` → `{ schoolId, name, gates, hours, credentials }`. Credentials returned **once**. |
 | `GET /v1/schools/me` | any authed | Current school from JWT |
 | `POST /v1/schools/me/roster/import` | Admin/SH | Multipart `file` locked template; `mode=validate\|commit` |
-| `POST /v1/students/import:validate` | Admin/SH | Dry-run (AC-IMP-9), no writes |
-| `POST /v1/students/import:commit` | Admin/SH | Writes valid rows |
+| `POST /v1/students/import:validate` | Admin/SH | Dry-run (AC-IMP-9), no writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }` |
+| `POST /v1/students/import:commit` | Admin/SH | Writes valid rows. Same response. `school_code` must be `PRANAY` for `SCH-PRANAY-01` |
 | `POST /v1/students/import` | Admin/SH | Commit alias (`mode=validate` still works) |
 | `POST /v1/students/authorized-pickup/import` | Admin/SH | Same locked headers |
 
