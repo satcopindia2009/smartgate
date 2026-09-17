@@ -2,6 +2,8 @@
 
 Android gate / reception kiosk. Phone-friendly `fullUser` orientation (portrait on phones, landscape still works on tablets) + registration steps 1–4 against the live mock when reachable, fixtures otherwise.
 
+On compact width (`< 600.dp`, phone portrait) the shell uses 16.dp padding, a wrap-content card under the header (no empty 40% band), stacked title + full-width Prefill, 2-up type cards, and the school/queue/recent strip below the cards. Tablet/landscape keeps the two-column 280.dp context strip. Header **Demo** overflow opens after-hours / host / visitor QR / escort seed URLs in the external browser.
+
 **Not for live school deploy.** DEMO watermark stays on until Viren says go.
 
 ## Waves

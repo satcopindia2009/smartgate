@@ -32,8 +32,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.satcop.smartvisitor.kiosk.ui.LocalKioskCompact
 import com.satcop.smartvisitor.kiosk.ui.theme.ChipShape
 import com.satcop.smartvisitor.kiosk.ui.theme.ControlShape
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
@@ -56,10 +58,11 @@ fun DemoWatermark(label: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun StepDots(current: Int, total: Int = 4) {
+    val compact = LocalKioskCompact.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 24.dp),
+            .padding(bottom = if (compact) 12.dp else 24.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         repeat(total) { index ->
@@ -103,6 +106,9 @@ fun KioskPrimaryButton(
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -130,6 +136,9 @@ fun KioskCyanButton(
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -156,6 +165,9 @@ fun KioskGhostButton(
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -259,12 +271,15 @@ fun StatusPill(
     foreground: Color,
     onClick: (() -> Unit)? = null,
 ) {
+    val compact = LocalKioskCompact.current
     Box(
         modifier = Modifier
+            .heightIn(min = if (compact) 48.dp else 0.dp)
             .clip(ChipShape)
             .background(background)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = if (compact) 12.dp else 6.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
