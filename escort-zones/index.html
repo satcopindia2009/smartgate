@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Escort / Zones — Access Rules P2</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    body.page { background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; }
+    .story-strip {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      padding: 10px 24px; background: var(--sidebar); border-bottom: 1px solid var(--border-subtle);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .story-strip .label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-dim); margin-right: 4px;
+    }
+    .story-btn {
+      padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text-muted); font-size: 12px; font-weight: 500; min-height: 36px;
+    }
+    .story-btn:hover { border-color: var(--cyan); color: var(--text); }
+    .story-btn.active { background: var(--cyan-dim); border-color: var(--cyan); color: var(--cyan-bright); }
+    .story-btn.story-load {
+      border-style: dashed; color: var(--cyan-bright);
+    }
+    .story-btn.story-load.active {
+      background: var(--cyan-dim); border-style: solid;
+    }
+    .source-pill {
+      margin-left: auto; padding: 6px 12px; border-radius: 999px; font-size: 10px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; background: var(--cyan-dim); color: var(--cyan-bright);
+    }
+    .source-pill.fallback { background: var(--orange-dim); color: #fbbf24; }
+    .shell { max-width: 1180px; width: 100%; margin: 0 auto; padding: 20px 24px 48px; flex: 1; }
+    .gate-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+    .gate-brand { display: flex; align-items: center; gap: 12px; }
+    .gate-brand-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #06b6d4, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .gate-brand-mark svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; }
+    .gate-brand h1 { font-size: 18px; font-weight: 600; }
+    .gate-brand span { display: block; font-size: 12px; color: var(--text-muted); }
+    .meta-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+    .pill-gate { background: var(--cyan-dim); color: var(--cyan-bright); }
+    .pill-p2 { background: var(--purple-dim); color: var(--purple-bright); }
+    .panel {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl);
+      padding: 24px 28px; box-shadow: var(--shadow);
+    }
+    .state { display: none; }
+    .state.active { display: block; animation: fadeUp 0.25s ease; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .block-banner {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: var(--red-dim); border: 2px solid rgba(239,68,68,0.55);
+      border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 20px;
+    }
+    .block-banner h3 { font-size: 16px; font-weight: 700; color: #f87171; margin-bottom: 4px; }
+    .block-banner p { font-size: 13px; color: var(--text); }
+    .ok-banner {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: var(--green-dim); border: 1px solid rgba(34,197,94,0.4);
+      border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 16px;
+    }
+    .ok-banner h3 { font-size: 14px; font-weight: 600; color: #4ade80; }
+    .visitor-card {
+      display: flex; gap: 16px; align-items: center; padding: 16px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 16px;
+    }
+    .zone-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+    .zone-chip {
+      padding: 8px 14px; border-radius: 999px; background: var(--blue-dim); color: var(--blue-bright);
+      font-size: 12px; font-weight: 500; border: 1px solid rgba(59,130,246,0.35);
+    }
+    .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin: 12px 0 20px; }
+    .staff-card {
+      text-align: left; padding: 14px; border-radius: var(--radius-lg);
+      border: 1px solid var(--border); background: var(--bg); color: var(--text); min-height: 72px;
+    }
+    .staff-card:hover { border-color: var(--cyan); }
+    .staff-card.active {
+      border-color: var(--cyan); background: var(--cyan-dim);
+      box-shadow: 0 0 0 1px rgba(34,211,238,0.4);
+    }
+    .staff-card strong { display: block; font-size: 14px; }
+    .staff-card span { font-size: 12px; color: var(--text-muted); }
+    .pass-wrap { display: flex; justify-content: center; padding: 12px 0; }
+    .pass-card {
+      width: 360px; max-width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); padding: 24px; box-shadow: var(--shadow); text-align: center;
+    }
+    .pass-id { font-size: 28px; font-weight: 700; letter-spacing: 0.06em; color: var(--cyan-bright); margin: 8px 0; }
+    .qr-stub {
+      width: 160px; height: 160px; margin: 16px auto; border-radius: 12px;
+      background: repeating-conic-gradient(#111 0% 25%, #eee 0% 50%) 50% / 16px 16px;
+      border: 8px solid #fff;
+    }
+    .stamp-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+    .stamp { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+    .stamp-escort { background: var(--cyan-dim); color: var(--cyan-bright); }
+    .stamp-zone { background: var(--blue-dim); color: var(--blue-bright); }
+    .stamp-soft { background: rgba(255,255,255,0.06); color: var(--text-muted); font-weight: 500; }
+    .admin-layout { display: grid; grid-template-columns: 220px 1fr; gap: 0; min-height: 560px;
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; }
+    .admin-side { background: var(--sidebar); padding: 20px 14px; border-right: 1px solid var(--border); }
+    .admin-side .logo { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; padding: 0 6px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-sm);
+      color: var(--text-muted); font-size: 13px; margin-bottom: 4px;
+    }
+    .nav-item.active { background: var(--purple-dim); color: var(--purple-bright); font-weight: 500; }
+    .admin-main { padding: 20px 24px; }
+    .admin-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+    .admin-top h2 { font-size: 18px; font-weight: 600; }
+    table.live { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.live th {
+      text-align: left; color: var(--text-dim); font-weight: 500; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 1px solid var(--border);
+    }
+    table.live td { padding: 12px 10px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+    .rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) {
+      .admin-layout { grid-template-columns: 1fr; }
+      .rules-grid { grid-template-columns: 1fr; }
+    }
+    .rule-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+      padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+      margin-bottom: 8px;
+    }
+    .toggle {
+      width: 44px; height: 24px; border-radius: 999px; background: var(--border); position: relative; flex-shrink: 0;
+    }
+    .toggle.on { background: var(--green); }
+    .toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+      border-radius: 50%; background: #fff; transition: left 0.15s;
+    }
+    .toggle.on::after { left: 23px; }
+    .zone-edit { display: flex; flex-wrap: wrap; gap: 6px; }
+    .zone-edit label {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
+      padding: 4px 8px; background: var(--card); border-radius: 999px; border: 1px solid var(--border);
+      color: var(--text-muted); cursor: pointer;
+    }
+    .zone-edit input { accent-color: var(--purple); }
+    .soft-note {
+      margin-top: 12px; padding: 10px 12px; border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.03); border: 1px dashed var(--border);
+      font-size: 12px; color: var(--text-muted);
+    }
+    .back-hub { color: var(--text-dim); font-size: 12px; margin-top: 16px; display: inline-block; }
+    .demo-note { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+    .panel-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-subtle); flex-wrap: wrap; }
+    .waive-box {
+      display: none; margin-top: 12px; padding: 12px; border-radius: var(--radius);
+      background: var(--orange-dim); border: 1px solid rgba(245,158,11,0.35);
+    }
+    .waive-box.open { display: block; }
+    #assign-result, #waive-result, #editor-result { display: none; margin-top: 10px; font-size: 12px; color: #fbbf24; }
+    #assign-result.visible, #waive-result.visible, #editor-result.visible { display: block; }
+  </style>
+</head>
+<body class="page">
+  <div class="demo-watermark">DEMO · not live</div>
+  <div class="story-strip">
+    <span class="label">Story</span>
+    <button type="button" class="story-btn active" data-state="assign">1 · Gate escort assign</button>
+    <button type="button" class="story-btn" data-state="stamps">2 · Zone stamps</button>
+    <button type="button" class="story-btn" data-state="pass">3 · Escorted pass</button>
+    <button type="button" class="story-btn" data-state="audit">4 · Admin audit</button>
+    <button type="button" class="story-btn" data-state="editor">5 · Rules editor</button>
+    <button type="button" class="story-btn story-load" id="btn-load-p7k88" title="Demo story: assign Vikram / E01 and paint P-7K88 escort + zone chips from fixtures">Load P-7K88</button>
+    <span id="source-pill" class="source-pill">Checking mock…</span>
+  </div>
+
+  <div class="shell">
+    <div class="state active" id="state-assign">
+      <div class="gate-top">
+        <div class="gate-brand">
+          <div class="gate-brand-mark"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <div>
+            <h1>Issue pass · Escort required</h1>
+            <span>Vendor rule · soft process · no geo-fence</span>
+          </div>
+        </div>
+        <div class="meta-pills">
+          <span class="pill pill-gate">Main Gate</span>
+          <span class="pill pill-p2">P2 · Escort / Zones</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="block-banner" id="escort-block" role="alert">
+          <div style="font-size:22px;">🚫</div>
+          <div>
+            <h3>Cannot issue pass — escort missing</h3>
+            <p>Vendor visits require an escort from the staff directory before check-in (AC-B4e). Assign below, or escalate Security Head to waive with reason.</p>
+          </div>
+        </div>
+        <div class="ok-banner" id="escort-ok" style="display:none;">
+          <div>
+            <h3 id="escort-ok-title">Escort assigned · ready to print pass</h3>
+            <p id="escort-ok-sub" style="font-size:13px;color:var(--text-muted);margin-top:4px;">Vikram More · Gate staff · zones stamped</p>
+          </div>
+        </div>
+        <div class="visitor-card">
+          <div class="avatar avatar-xl avatar-orange">RD</div>
+          <div>
+            <h2 id="ravi-name" style="font-size:18px;font-weight:600;">Ravi Deshmukh</h2>
+            <div id="ravi-meta" style="color:var(--text-muted);font-size:13px;">Vendor · A/C maintenance — Block B · After hours Approved by Meera Kulkarni</div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+              <span class="tag tag-vendor">Vendor</span>
+              <span class="status-pill status-approved" id="ravi-status">Approved</span>
+              <span class="stamp stamp-escort" id="ravi-escort-flag">Escort required</span>
+            </div>
+          </div>
+        </div>
+        <label style="font-size:12px;font-weight:500;color:var(--text-muted);">Allowed zones (from EscortZoneRule)</label>
+        <div class="zone-chips" id="assign-zones"></div>
+        <label style="font-size:12px;font-weight:500;color:var(--text-muted);">Assign escort staff (name + id)</label>
+        <div class="staff-grid" id="staff-grid"></div>
+        <p id="staff-selected" class="demo-note">Escort picker is <strong>E01 Vikram More</strong> only (GET /staff?active=true). Never E02/E03.</p>
+        <div class="waive-box" id="waive-box">
+          <label style="font-size:12px;font-weight:500;color:#fbbf24;">SH waive reason (required)</label>
+          <textarea id="waive-reason" rows="2" style="width:100%;margin-top:8px;">No escort staff available — SH waive (audit escort_waived).</textarea>
+          <button type="button" class="btn btn-primary" id="btn-confirm-waive" style="margin-top:10px;">Confirm SH waive</button>
+          <p class="demo-note">Waive sends reason only — no escortStaffId.</p>
+          <p id="waive-result"></p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-ghost" id="btn-waive">SH waive… (SH only)</button>
+          <div style="display:flex;gap:10px;">
+            <button type="button" class="btn btn-ghost" onclick="showState('editor')">Rules</button>
+            <button type="button" class="btn btn-cyan btn-lg" id="btn-issue" disabled>Issue pass →</button>
+          </div>
+        </div>
+        <p id="assign-result"></p>
+        <p class="demo-note" id="ravi-id-note">visitId V-EZ-VENDOR · Gate assign · SH waive · B4-E5 · DEMO · not live</p>
+        <p class="demo-note">If SH approve returns <strong>INVALID_STATE</strong>, the after-hours visit is already <strong>inside</strong> — use a pending after-hours seed or register fresh. Not an escort bug.</p>
+      </div>
+    </div>
+
+    <div class="state" id="state-stamps">
+      <div class="gate-top">
+        <div class="gate-brand">
+          <div class="gate-brand-mark"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div>
+            <h1>Check-in stamps</h1>
+            <span>Soft process labels · NOT a geo-fence</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ok-banner">
+          <div>
+            <h3>Pass stamps applied</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-top:4px;">Escort + allowed zone labels printed on pass and stored on visit audit.</p>
+          </div>
+        </div>
+        <div class="visitor-card">
+          <div class="avatar avatar-xl avatar-orange">RD</div>
+          <div>
+            <h2 style="font-size:18px;font-weight:600;">Ravi Deshmukh · checked in</h2>
+            <div style="color:var(--text-muted);font-size:13px;">Escort: <strong id="stamp-escort-name" style="color:var(--text);">Vikram More</strong> · Pass <strong id="stamp-pass" style="color:var(--cyan-bright);">P-7K88</strong></div>
+          </div>
+        </div>
+        <h3 style="font-size:14px;margin-bottom:8px;">Zone labels on pass</h3>
+        <div class="zone-chips" id="stamp-zones"></div>
+        <div class="soft-note">
+          Soft SOP only — no beacon / GPS / face match in Priority-P2 (AC-B4d). Guard patrol checkpoints are a separate Later slice.
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="btn btn-ghost" onclick="showState('assign')">← Escort assign</button>
+          <button type="button" class="btn btn-primary btn-lg" onclick="showState('pass')">Preview escorted pass →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state" id="state-pass">
+      <div class="pass-wrap">
+        <div class="pass-card">
+          <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;color:var(--text-dim);text-transform:uppercase;">Visitor pass · DEMO</div>
+          <div class="pass-id" id="pass-id">P-7K88</div>
+          <div class="avatar avatar-2xl avatar-orange" style="margin:0 auto;">RD</div>
+          <h2 style="font-size:20px;font-weight:600;margin-top:12px;">Ravi Deshmukh</h2>
+          <p style="color:var(--text-muted);font-size:13px;">Vendor · A/C maintenance — Block B</p>
+          <div class="qr-stub" aria-hidden="true"></div>
+          <div class="stamp-row">
+            <span class="stamp stamp-escort" id="pass-escort-stamp">Escort: Vikram More</span>
+          </div>
+          <div class="stamp-row" id="pass-zone-stamps"></div>
+          <div class="stamp-row" style="margin-top:10px;">
+            <span class="stamp stamp-soft" id="pass-soft">Main Gate · 16 Sep 19:48 IST</span>
+          </div>
+            <p class="demo-note" style="margin-top:16px;" id="pass-note">Pass id P-7K88 · Host Anita Joshi</p>
+          <a class="btn btn-ghost btn-block" id="pass-qr-link" href="../visitor-qr/index.html?passId=P-7K88&amp;story=escort" style="margin-top:12px;">Open visitor badge →</a>
+          <button type="button" class="btn btn-cyan btn-block" style="margin-top:10px;" onclick="showState('audit')">Admin audit columns →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state" id="state-audit">
+      <div class="admin-layout">
+        <aside class="admin-side">
+          <div class="logo"><div class="avatar avatar-sm avatar-purple">SI</div><strong>Smart Visitor</strong></div>
+          <div class="nav-item">Who’s inside</div>
+          <div class="nav-item active">History</div>
+          <div class="nav-item">Access rules</div>
+        </aside>
+        <div class="admin-main">
+          <div class="admin-top">
+            <div>
+              <h2>Visit history · escort + zone columns</h2>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">Checkout clears live escort; history retains last escort (AC-B4f)</p>
+            </div>
+          </div>
+          <table class="live">
+            <thead>
+              <tr>
+                <th>Visitor</th>
+                <th>Pass</th>
+                <th>Escort</th>
+                <th>Zones</th>
+                <th>Waived?</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="audit-body"></tbody>
+          </table>
+          <p class="demo-note">No silent free-roam for Vendor · AC-B4c</p>
+          <button type="button" class="btn btn-primary" style="margin-top:14px;" onclick="showState('editor')">Zone + escort rules editor →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="state" id="state-editor">
+      <div class="admin-layout">
+        <aside class="admin-side">
+          <div class="logo"><div class="avatar avatar-sm avatar-purple">SI</div><strong>Smart Visitor</strong></div>
+          <div class="nav-item">Who’s inside</div>
+          <div class="nav-item active">Access rules</div>
+          <div class="nav-item">Hours / holidays</div>
+        </aside>
+        <div class="admin-main">
+          <div class="admin-top">
+            <div>
+              <h2>Zone labels + escort rules</h2>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:2px;">Fixed zone keys · school-renamable labels · Admin / SH</p>
+            </div>
+          </div>
+          <div class="rules-grid">
+            <div class="panel" style="padding:16px;box-shadow:none;">
+              <h3 style="font-size:14px;margin-bottom:12px;">Zone labels</h3>
+              <div id="zone-fields"></div>
+              <p class="demo-note">Adding new keys = Later</p>
+            </div>
+            <div class="panel" style="padding:16px;box-shadow:none;">
+              <h3 style="font-size:14px;margin-bottom:12px;">Escort rules by type</h3>
+              <div id="rules-list"></div>
+              <div class="soft-note">If allowed_zones includes <strong>restricted</strong>, escort_required is forced ON regardless of type.</div>
+              <button type="button" class="btn btn-primary" id="btn-save-rules" style="margin-top:14px;">Save rules</button>
+              <p id="editor-result"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <a class="back-hub" href="../afterhours-gate/index.html">← After-hours glance</a>
+    <a class="back-hub" href="../host-web/index.html" style="margin-left:16px;">Host approve</a>
+    <a class="back-hub" href="../visitor-qr/index.html" style="margin-left:16px;">Visitor QR</a>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="fixtures.js"></script>
+  <script src="api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

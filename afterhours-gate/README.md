@@ -32,9 +32,9 @@ Weekday close **18:00** Asia/Kolkata (close exclusive). Sat 08:00–13:00. Sun c
 
 ## Click-path
 
-1. **Gate banner** — high-vis “After hours / holiday — Security Head approval required”. Self-approve blocked.
+1. **Gate banner** — high-vis “After hours / holiday — Admin or Security Head approval required”. Self-approve blocked.
 2. **Host FYI** — Anita. Tap **Approve** → stays pending (`AFTER_HOURS_SH_REQUIRED` live, or fixture no-op). Ack FYI optional. AC-C4d.
-3. **SH decision** — Meera / `security` · `sh123`. **Reason required** for Approve and Reject (A6). Buttons stay disabled until a reason is present. This page is a glance — no Admin hours editor.
+3. **SH decision** — Meera / `pranay.sh` · `PranaySH@2026`. **Reason required** for Approve and Reject (A6). Buttons stay disabled until a reason is present. This page is a glance — no Admin hours editor.
 4. **Holiday pass** — Deepak → P-7K88 + `holiday` chip (AC-C4b).
 5. **Hours + holidays** — read-only calendar from `GET /v1/access-rules/hours` + `/holidays` (or fixtures).
 
