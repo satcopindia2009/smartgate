@@ -44,11 +44,16 @@ LOCKED_HEADERS = (
     "legal_hold",
 )
 CSV_CONTRACT = (
-    "Locked CSV/Excel headers (snake_case, one row = one authorized person): "
+    "EXACT locked CSV/Excel headers (snake_case canonical; one row = one authorized person; "
+    "no thinner camelCase template): "
     + ", ".join(LOCKED_HEADERS)
-    + ". school_code maps to schoolId (JWT is source of truth). "
-    "student_external_id→studentId, student_name→name, person_name→pickup name, "
+    + ". Internal API models stay camelCase. "
+    "school_code→schoolId (JWT is source of truth; PRANAY→SCH-PRANAY-01). "
+    "student_external_id→studentId, student_name→name, "
+    "person_name→AuthorizedPickupPerson.name, "
     "consent_version/consent_at→pickupConsentVersion/At. "
+    "custody_flag + gate_instruction + allowed_person_mobiles + blocked_person_mobiles "
+    "→ StudentCustodyFlag (mobiles resolved to person ids after upsert). "
     "relation: parent|guardian|sibling|relative|other. "
     "Upsert student by (schoolId + student_external_id) and person by "
     "(schoolId + student_external_id + mobile). "
@@ -68,32 +73,16 @@ TEMPLATE_CSV = (
     + "PRANAY,5B-17,Aarav Example,5,B,Rohan Example,relative,9822013002,2002,Other,2026-09-01,2026-12-31,none,,,,pickup_notice_en_hi_v1,2026-06-15,Y,N\n"
 )
 
-# Accept aliases → locked names. Do not document a second thinner template.
-_ALIASES = {
+# Only the locked snake_case names (punctuation-stripped) are accepted.
+# Thinner/camelCase SoT leftovers (studentId, name, pickupConsent*) are rejected.
+_ALIASES = {re.sub(r"[^a-z0-9]+", "", h): h for h in LOCKED_HEADERS}
+_THINNER_REJECT = {
     "schoolid": "school_code",
-    "school_id": "school_code",
-    "schoolcode": "school_code",
     "studentid": "student_external_id",
-    "student_id": "student_external_id",
-    "studentexternalid": "student_external_id",
     "name": "student_name",
-    "studentname": "student_name",
-    "personname": "person_name",
-    "idlast4": "id_last4",
-    "idtype": "id_type",
-    "effectivefrom": "effective_from",
-    "effectiveto": "effective_to",
-    "custodyflag": "custody_flag",
-    "gateinstruction": "gate_instruction",
-    "allowedpersonmobiles": "allowed_person_mobiles",
-    "blockedpersonmobiles": "blocked_person_mobiles",
     "pickupconsentversion": "consent_version",
-    "consentversion": "consent_version",
     "pickupconsentat": "consent_at",
-    "consentat": "consent_at",
     "active": "person_active",
-    "personactive": "person_active",
-    "legalhold": "legal_hold",
 }
 
 COURT_DOC_COLUMNS = {
@@ -185,8 +174,20 @@ def _norm_header(name: Any) -> str:
             400,
             {"column": raw, "code": "AC-IMP-4"},
         )
-    locked = _ALIASES.get(key, raw.strip().lower().replace(" ", "_"))
-    return locked
+    if key in _ALIASES:
+        return _ALIASES[key]
+    if key in _THINNER_REJECT:
+        expected = _THINNER_REJECT[key]
+        raise AppError(
+            "VALIDATION",
+            (
+                f"Thinner/camelCase header '{raw}' is rejected — "
+                f"use locked snake_case '{expected}'"
+            ),
+            400,
+            {"column": raw, "expected": expected, "contract": CSV_CONTRACT},
+        )
+    return raw.strip().lower().replace(" ", "_")
 
 
 def _parse_bool(raw: str, default: bool, field: str) -> bool:
@@ -390,9 +391,10 @@ def import_locked_rows(
     if "student_external_id" not in headers:
         raise AppError(
             "VALIDATION",
-            "Missing required column student_external_id (locked import template)",
+            "Missing required column student_external_id "
+            "(locked snake_case template; thinner camelCase studentId/name is rejected)",
             400,
-            {"contract": CSV_CONTRACT, "filename": filename},
+            {"contract": CSV_CONTRACT, "filename": filename, "lockedHeaders": list(LOCKED_HEADERS)},
         )
     created = 0
     updated = 0

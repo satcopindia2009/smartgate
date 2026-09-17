@@ -44,8 +44,9 @@ _CREATE_DESC = (
 )
 _IMPORT_DESC = (
     "Admin / Security Head multipart roster import for the JWT school. "
-    "Preferred field: `file` (.csv / .xlsx) using the **locked** snake_case template "
-    "(one row = one authorized person). Optional split fields `students` + `pickup` use the same headers. "
+    "Preferred field: `file` (.csv / .xlsx) using the **EXACT** locked snake_case template "
+    "(one row = one authorized person; no thinner camelCase headers). "
+    "Optional split fields `students` + `pickup` use the same locked headers. "
     f"{CSV_CONTRACT} "
     "`mode=validate` is dry-run (no writes); `mode=commit` applies upserts. "
     "Audit returns who/when/filename/counts. Court-document columns are rejected. "

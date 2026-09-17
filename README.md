@@ -96,25 +96,39 @@ Real school load is **CSV/Excel import + school API push**. Demo school stays se
 
 **First real tenant (locked):** `schoolId=SCH-PRANAY-01` · `school_code=PRANAY` · **Pranay School Pune**. Ops seed logins: `pranay.admin` / `pranay.sh` / `pranay.gate` (password `pranay123`). Gates `PS-G-MAIN` / `PS-G-PED` / `PS-G-STAFF` / `PS-G-BUS`. Never use `SCH-PRANAY-PUNE-01`.
 
-**CSV / Excel column contract (LOCKED — snake_case, one row = one authorized person):**
+**CSV / Excel column contract (LOCKED — ship EXACTLY these snake_case headers; one row = one authorized person; student fields repeat). Internal API models stay camelCase. No thinner camelCase template (`schoolId`, `studentId`, `name`, `personName`, `pickupConsentVersion`).**
 
 `school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold`
 
 | CSV header | Maps to |
 |------------|---------|
-| `school_code` | schoolId / schoolCode (JWT wins; `PRANAY` → `SCH-PRANAY-01`) |
-| `student_external_id` | `studentId` |
+| `school_code` | `schoolId` / `schoolCode` (JWT wins; mint/lookup; `PRANAY` → `SCH-PRANAY-01`) |
+| `student_external_id` | student `studentId` |
 | `student_name` | student `name` |
-| `person_name` | authorized pickup `name` |
-| `consent_version` / `consent_at` | `pickupConsentVersion` / `pickupConsentAt` |
-| `custody_flag` + `gate_instruction` + allowed/blocked mobiles | `StudentCustodyFlag` (mobiles resolved to person ids after upsert) |
+| `class` | student `class` |
+| `section` | student `section` |
+| `person_name` | `AuthorizedPickupPerson.name` |
+| `relation` | `AuthorizedPickupPerson.relation` |
+| `mobile` | `AuthorizedPickupPerson.mobile` |
+| `id_last4` | `AuthorizedPickupPerson.idLast4` |
+| `id_type` | `AuthorizedPickupPerson.idType` |
+| `effective_from` | `AuthorizedPickupPerson.effectiveFrom` |
+| `effective_to` | `AuthorizedPickupPerson.effectiveTo` |
+| `custody_flag` | `StudentCustodyFlag.flag` |
+| `gate_instruction` | `StudentCustodyFlag.gateInstruction` |
+| `allowed_person_mobiles` | `StudentCustodyFlag.allowedPersonIds` (resolve mobiles after upsert) |
+| `blocked_person_mobiles` | `StudentCustodyFlag.blockedPersonIds` (resolve mobiles after upsert) |
+| `consent_version` | `pickupConsentVersion` |
+| `consent_at` | `pickupConsentAt` |
+| `person_active` | `AuthorizedPickupPerson.active` |
+| `legal_hold` | student `legalHold` |
 
 - `relation` enum: `parent` \| `guardian` \| `sibling` \| `relative` \| `other`
 - Upsert student by `(schoolId + student_external_id)` and person by `(schoolId + student_external_id + mobile)`
 - `mode=validate` dry-run (no writes); `mode=commit` applies. Audit: who / when / filename / counts
 - Court-document columns (`court_doc`, `court_pdf`, …) are **rejected**
 - `court_order` with blank `gate_instruction` fails (F6). Expired `effective_to` is stored but **not on list** (F3)
-- Response: `{ created, updated, errors[], audit, mode }` with 1-based file row numbers (header is row 1)
+- Response: `{ imported, updated, failed, errors:[{row,field,code,message}], schoolId, school_code, audit, mode }` (header is row 1)
 - Gate / Host → `403`
 
 ### Curl — bootstrap school + import

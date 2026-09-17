@@ -314,9 +314,74 @@ def test_ac_imp_custody_conflict_fails_student(client):
 
 
 def test_ac_imp_template_download(client):
+    from app.roster_import import LOCKED_HEADERS, TEMPLATE_CSV
+
     token = login(client, "pranay.admin", "pranay123")
     r = client.get("/v1/students/import/template", headers=auth(token))
     assert r.status_code == 200
-    assert r.text.splitlines()[0].startswith("school_code,student_external_id")
+    header = r.text.splitlines()[0]
+    assert header == ",".join(LOCKED_HEADERS)
+    assert r.text == TEMPLATE_CSV
+    assert "studentId" not in header
+    assert "personName" not in header
+    assert "pickupConsentVersion" not in header
     host = login(client, "host", "host123")
     assert client.get("/v1/students/import/template", headers=auth(host)).status_code == 403
+
+
+def test_header_lock_rejects_thinner_camelcase_template(client):
+    token = login(client, "pranay.admin", "pranay123")
+    thinner = [
+        "schoolId",
+        "studentId",
+        "name",
+        "class",
+        "section",
+        "personName",
+        "relation",
+        "mobile",
+        "idLast4",
+        "idType",
+        "effectiveFrom",
+        "effectiveTo",
+        "custodyFlag",
+        "gateInstruction",
+        "allowedPersonMobiles",
+        "blockedPersonMobiles",
+        "pickupConsentVersion",
+        "pickupConsentAt",
+        "active",
+        "legalHold",
+    ]
+    row = {
+        "schoolId": PRANAY_SCHOOL_CODE,
+        "studentId": "THIN-01",
+        "name": "Thin Kid",
+        "class": "1",
+        "section": "A",
+        "personName": "Thin Parent",
+        "relation": "parent",
+        "mobile": "9822017001",
+        "idLast4": "7001",
+        "idType": "DL",
+        "effectiveFrom": "",
+        "effectiveTo": "",
+        "custodyFlag": "none",
+        "gateInstruction": "",
+        "allowedPersonMobiles": "",
+        "blockedPersonMobiles": "",
+        "pickupConsentVersion": "pickup_notice_en_hi_v1",
+        "pickupConsentAt": "2026-06-01",
+        "active": "Y",
+        "legalHold": "N",
+    }
+    r = client.post(
+        "/v1/students/import:commit",
+        headers=auth(token),
+        files={"file": ("thin.csv", _csv_bytes([row], thinner), "text/csv")},
+    )
+    assert r.status_code == 400, r.text
+    msg = r.json()["error"]["message"]
+    assert "Thinner" in msg or "student_external_id" in msg
+    assert store.get_student_by_roster_id(PRANAY_SCHOOL_ID, "THIN-01") is None
+    assert store.get_student("STU-AARAV")["schoolId"] == SCHOOL_ID

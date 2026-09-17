@@ -24,6 +24,7 @@ from app.pickup_match import (
 )
 from app.roster_import import (
     CSV_CONTRACT,
+    LOCKED_HEADERS,
     TEMPLATE_CSV,
     import_locked_rows,
     import_pickup,
@@ -170,7 +171,12 @@ async def _run_locked_import(file: UploadFile, user: dict, mode: str) -> dict:
 @router.get(
     "/students/import/template",
     summary="Download locked roster CSV template",
-    description="Admin/SH fictional two-row template (not SCH-DEMO-01 PII). Headers match AC-IMP SoT.",
+    description=(
+        "Admin/SH fictional two-row template (not SCH-DEMO-01 PII). "
+        "EXACT locked headers: "
+        + ", ".join(LOCKED_HEADERS)
+        + ". No thinner camelCase template."
+    ),
 )
 def download_import_template(user: dict = Depends(require_roles(*_WRITE_ROLES))):
     return PlainTextResponse(
