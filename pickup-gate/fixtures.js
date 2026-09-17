@@ -1,11 +1,50 @@
 /**
- * Locked P6 + F2 fixtures (used when the mock tunnel is down).
- * Aarav Mehta 5-B · Neha (Mother) + Rohan (Uncle).
- * Kabir Singh 4-A · court_order · Neha Mehta (Mother) allow · claimed father block.
- * Mother is Neha Mehta — not Priya Singh / not visitor Priya.
+ * Tenant-isolated pickup fixtures (used when the living tunnel is down).
+ *
+ * SCH-PRANAY-01 · Pranay School Pune
+ *   Asha Patil 5-B · Ramesh Patil (parent) + Smita Patil (guardian)
+ *   Rohan Shah 3-A · Kavita Shah (parent)
+ *   Dev Joshi 4-A · restricted fixture (AC-D2) — live Pranay seed has no court_order
+ *
+ * SCH-DEMO-01 · Demo International School (P6, isolated — never overwrite)
+ *   Aarav Mehta 5-B · Neha Mehta (Mother) + Rohan Mehta (Uncle)
+ *   Kabir Singh · court_order
+ *
+ * Not Priya Sharma (visitor). Mother is not Priya Singh.
  */
 window.VMS_PICKUP_FIXTURES = {
   students: [
+    {
+      id: "STU-PS-S-001",
+      schoolId: "SCH-PRANAY-01",
+      studentId: "PS-S-001",
+      name: "Asha Patil",
+      class: "5",
+      section: "B",
+      active: true,
+      legalHold: false,
+    },
+    {
+      id: "STU-PS-S-002",
+      schoolId: "SCH-PRANAY-01",
+      studentId: "PS-S-002",
+      name: "Rohan Shah",
+      class: "3",
+      section: "A",
+      active: true,
+      legalHold: false,
+    },
+    {
+      id: "STU-PS-FX-RESTRICTED",
+      schoolId: "SCH-PRANAY-01",
+      studentId: "PS-FX-R1",
+      name: "Dev Joshi",
+      class: "4",
+      section: "A",
+      active: true,
+      legalHold: true,
+      fixtureOnly: true,
+    },
     {
       id: "STU-AARAV",
       schoolId: "SCH-DEMO-01",
@@ -38,6 +77,68 @@ window.VMS_PICKUP_FIXTURES = {
     },
   ],
   authorized: {
+    "STU-PS-S-001": [
+      {
+        id: "AP-PS-001-1",
+        studentId: "STU-PS-S-001",
+        name: "Ramesh Patil",
+        relation: "parent",
+        relationLabel: "Parent",
+        mobile: "9876500101",
+        idLast4: "1234",
+        active: true,
+        blockedByCustody: false,
+      },
+      {
+        id: "AP-PS-001-2",
+        studentId: "STU-PS-S-001",
+        name: "Smita Patil",
+        relation: "guardian",
+        relationLabel: "Guardian",
+        mobile: "9876500102",
+        idLast4: "",
+        active: true,
+        blockedByCustody: false,
+      },
+    ],
+    "STU-PS-S-002": [
+      {
+        id: "AP-PS-002-1",
+        studentId: "STU-PS-S-002",
+        name: "Kavita Shah",
+        relation: "parent",
+        relationLabel: "Parent",
+        mobile: "9876500201",
+        idLast4: "",
+        active: true,
+        blockedByCustody: false,
+      },
+    ],
+    "STU-PS-FX-RESTRICTED": [
+      {
+        id: "AP-PS-FX-ALLOW",
+        studentId: "STU-PS-FX-RESTRICTED",
+        name: "Nisha Joshi",
+        relation: "guardian",
+        relationLabel: "Guardian",
+        mobile: "9876500301",
+        idLast4: "5501",
+        active: true,
+        blockedByCustody: false,
+      },
+      {
+        id: "AP-PS-FX-BLOCK",
+        studentId: "STU-PS-FX-RESTRICTED",
+        name: "Claimed relative (blocked)",
+        relation: "other",
+        relationLabel: "Not allowed",
+        mobile: "9876500399",
+        idLast4: "",
+        active: true,
+        blockedByCustody: true,
+        demoBlock: true,
+      },
+    ],
     "STU-AARAV": [
       {
         id: "APP-NEHA",
@@ -104,6 +205,27 @@ window.VMS_PICKUP_FIXTURES = {
     ],
   },
   custody: {
+    "STU-PS-S-001": {
+      studentId: "STU-PS-S-001",
+      flag: "none",
+      gateInstruction: "",
+      allowedPersonIds: null,
+      blockedPersonIds: null,
+    },
+    "STU-PS-S-002": {
+      studentId: "STU-PS-S-002",
+      flag: "none",
+      gateInstruction: "",
+      allowedPersonIds: null,
+      blockedPersonIds: null,
+    },
+    "STU-PS-FX-RESTRICTED": {
+      studentId: "STU-PS-FX-RESTRICTED",
+      flag: "restricted",
+      gateInstruction: "Release only to Nisha Joshi (Guardian). Block all others.",
+      allowedPersonIds: ["AP-PS-FX-ALLOW"],
+      blockedPersonIds: ["AP-PS-FX-BLOCK"],
+    },
     "STU-AARAV": {
       studentId: "STU-AARAV",
       flag: "none",

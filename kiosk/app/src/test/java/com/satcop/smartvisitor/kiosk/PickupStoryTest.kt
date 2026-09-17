@@ -9,6 +9,22 @@ import org.junit.Test
 
 class PickupStoryTest {
     @Test
+    fun pranayGateStoryIsAshaRameshSmitaNotPriya() {
+        assertEquals("Pranay School Pune", PickupStory.SCHOOL_PRANAY)
+        assertEquals("SCH-PRANAY-01", PickupStory.SCHOOL_ID_PRANAY)
+        assertEquals("PRANAY", PickupStory.SCHOOL_CODE_PRANAY)
+        assertEquals("pranay.gate", PickupStory.GATE_USER_PRANAY)
+        assertEquals("Asha Patil", PickupStory.STUDENT_ASHA)
+        assertEquals("5-B", PickupStory.CLASS_ASHA)
+        assertEquals("Ramesh Patil", PickupStory.COLLECTOR_PARENT)
+        assertEquals("Smita Patil", PickupStory.COLLECTOR_GUARDIAN)
+        assertEquals("Rohan Shah", PickupStory.STUDENT_ROHAN_SHAH)
+        assertFalse(PickupStory.COLLECTOR_PARENT.contains("Priya"))
+        assertFalse(PickupStory.COLLECTOR_GUARDIAN.contains("Priya"))
+        assertFalse(PickupStory.STUDENT_ASHA.contains("Priya"))
+    }
+
+    @Test
     fun p6StoryIsAaravNehaRohanAndKabirNotPriya() {
         assertEquals("Aarav Mehta", PickupStory.STUDENT_AARAV)
         assertEquals("5-B", PickupStory.CLASS_AARAV)
