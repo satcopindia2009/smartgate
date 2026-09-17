@@ -21,7 +21,7 @@ Demo story: **Priya Sharma** → **Anita Joshi** (`H03`) → **Main Gate** (`G-M
 
 ## Live mock + fallback
 
-Default base: `https://pensions-usb-loops-direction.trycloudflare.com/v1`  
+Default base: `https://replacing-spyware-yes-due.trycloudflare.com/v1`  
 Typed login → `POST /v1/auth/login` → Bearer JWT on later calls. **No** hardcoded `gate`/`gate123` auto-login.
 
 Gate seed: `pranay.gate` / `PranayGate@2026` → `SCH-PRANAY-01` / role `gate` / `PS-G01` / "Pranay Gate".  
