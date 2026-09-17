@@ -10,6 +10,7 @@ import {
 import { AUTH_STORAGE_KEY } from "../lib/constants";
 import { ApiError, isNetworkError, loginApi, meApi } from "../lib/api";
 import { fixtureLogin } from "../lib/fixtures";
+import { authUserFromPayload } from "../lib/school";
 import type { AuthUser, DataSource } from "../lib/types";
 
 interface StoredAuth {
@@ -59,10 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [source, setSource] = useState<DataSource>("api");
 
   const apply = useCallback((next: StoredAuth | null) => {
-    writeStored(next);
-    setToken(next?.token ?? null);
-    setUser(next?.user ?? null);
-    setSource(next?.source ?? "api");
+    const stored = next ? { ...next, user: authUserFromPayload(next.user) } : null;
+    writeStored(stored);
+    setToken(stored?.token ?? null);
+    setUser(stored?.user ?? null);
+    setSource(stored?.source ?? "api");
   }, []);
 
   useEffect(() => {
@@ -164,6 +166,10 @@ export function canEditPickupList(role?: string | null) {
   return role === "admin" || role === "security_head";
 }
 
+export function canImportStudents(role?: string | null) {
+  return role === "admin" || role === "security_head";
+}
+
 export function canSetCourtOrder(role?: string | null) {
   return role === "security_head";
 }
@@ -174,6 +180,11 @@ export function canEditCampusHours(role?: string | null) {
 
 export function canApproveAfterHours(role?: string | null) {
   return role === "security_head";
+}
+
+/** In-hours host-pending only. After-hours stays canApproveAfterHours (SH). */
+export function canApproveHostPending(role?: string | null) {
+  return role === "admin" || role === "security_head";
 }
 
 export function canTriggerBlast(role?: string | null) {

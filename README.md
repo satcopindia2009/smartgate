@@ -18,13 +18,13 @@ npm run build
 ```
 
 Demo logins: `admin` / `admin123` · `security` / `sh123`.  
-Default API: `VITE_API_BASE_URL=https://pensions-usb-loops-direction.trycloudflare.com/v1`. If that tunnel drops, the UI falls back to `admin/public/data/admin-mvp-fixtures.json`.
+Default API: `VITE_API_BASE_URL=https://replacing-spyware-yes-due.trycloudflare.com/v1`. If that tunnel drops, the UI falls back to `admin/public/data/admin-mvp-fixtures.json`.
 
 Walkthrough: **Priya Sharma** · pass **P-4F21** · **Main Gate** · host **Anita Joshi**.
 
 **Out of Day-1 / this Admin P2 slice:** kiosk/gate pickup, production / live school.
 
-Admin Priority P2 pickup (separate from visit Live/History): `/pickup` authorized-list CRUD + custody flags, `/pickup-history` proof trail. Same `/v1` tunnel. Seed **Aarav Mehta 5-B / Neha Mehta**.
+Admin Priority P2 pickup (separate from visit Live/History): `/pickup` authorized-list CRUD + custody flags + Admin/SH CSV import (SoT columns, JWT tenant `SCH-PRANAY-01`, template `school_code=PRANAY`, no court PDF), `/pickup-history` proof trail. Same `/v1` tunnel. Demo seed **Aarav Mehta 5-B / Neha Mehta** stays untouched when importing to Pranay School Pune.
 
 Admin Priority P2 after-hours (Hub A1–A6 / AC-C4): `/access-rules` campus hours + holiday calendar; Live/History `afterHours` flag + filter. Seed weekday close **18:00 Asia/Kolkata**, **Diwali 2026-10-20 `HOL-DIWALI`**, Evening Vendor **Ravi Deshmukh `V-AH-VENDOR`**, Holiday Parent **Deepak Nair / `P-7K88`**. **Priya Sharma `P-4F21` unchanged.**
 

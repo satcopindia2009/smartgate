@@ -89,12 +89,13 @@ export function fixtureLogin(username: string, password: string): AuthUser | nul
   const row = DEMO_LOGINS[username as keyof typeof DEMO_LOGINS];
   if (!row || row.password !== password) return null;
   return {
-    id: username === "admin" ? "U-ADMIN" : "U-SH",
-    schoolId: "SCH-DEMO-01",
+    id: row.id,
+    schoolId: row.schoolId,
+    schoolCode: row.schoolCode,
     role: row.role,
-    staffId: username === "admin" ? "H02" : null,
+    staffId: row.staffId,
     displayName: row.displayName,
-    email: `${username}@demo.school`,
+    email: `${username}@${row.schoolId === "SCH-PRANAY-01" ? "pranay.school" : "demo.school"}`,
   };
 }
 
@@ -140,6 +141,28 @@ export function applyForceCheckoutLocal(visitId: string, reason: string): LiveVi
   }
   persistFixtureSession();
   return row;
+}
+
+export function applyHostPendingDecisionLocal(
+  visitId: string,
+  action: "approve" | "reject",
+  reason?: string,
+): HistoryVisit | null {
+  if (!session) return null;
+  const hist = session.history.find((h) => h.visitId === visitId);
+  if (!hist || hist.afterHours) return null;
+  const now = new Date().toISOString();
+  hist.decision = action === "approve" ? "Approved" : "Rejected";
+  hist.decisionReason = action === "reject" ? reason || null : reason || null;
+  hist.decisionAt = now;
+  if (action === "reject") {
+    hist.notes = [hist.notes, `Host-pending reject: ${reason || ""}`].filter(Boolean).join(" · ");
+  } else {
+    hist.notes = [hist.notes, "Host-pending approve (Admin/SH)"].filter(Boolean).join(" · ");
+    if (!hist.passId) hist.passId = "P-LOCAL";
+  }
+  persistFixtureSession();
+  return hist;
 }
 
 export function applyAfterHoursDecisionLocal(
@@ -270,6 +293,32 @@ function fallbackFixtures(): FixturesFile {
         policyTrigger: "holiday",
         afterHoursEvaluatedAt: "2026-10-20T10:30:00+05:30",
         afterHoursApproveReason: "Holiday walk-in verified by Security Head",
+      },
+      {
+        visitId: "V-20260917-HOST",
+        name: "Kavita Rao",
+        mobile: "9822098810",
+        type: "Parent",
+        purpose: "Meet class teacher — host pending",
+        host: "Anita Joshi",
+        hostId: "H03",
+        decision: "Pending",
+        decisionReason: null,
+        decisionAt: null,
+        gateIn: "Main Gate",
+        timeIn: null,
+        gateOut: null,
+        timeOut: null,
+        checkoutType: "Never",
+        durationMin: null,
+        blacklistHit: false,
+        registeredBy: "Gate — Ramesh",
+        notes: "In-hours Parent demo — Admin/SH may decide while host is busy",
+        passId: null,
+        createdAt: "2026-09-17T10:15:00+05:30",
+        afterHours: false,
+        policyTrigger: null,
+        afterHoursEvaluatedAt: "2026-09-17T10:15:00+05:30",
       },
     ],
     campusHours: seedCampusHours(),

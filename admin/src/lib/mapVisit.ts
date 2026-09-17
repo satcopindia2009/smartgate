@@ -144,6 +144,14 @@ export function mergeVisitsById<T extends { visitId?: string; id?: string }>(lis
   return [...out.values()];
 }
 
+export function isAfterHoursPending(h: Pick<HistoryVisit, "afterHours" | "decision">): boolean {
+  return Boolean(h.afterHours) && h.decision === "Pending";
+}
+
+export function isHostPending(h: Pick<HistoryVisit, "afterHours" | "decision">): boolean {
+  return !h.afterHours && h.decision === "Pending";
+}
+
 export function matchesLiveSearch(v: LiveVisitor, q: string): boolean {
   if (!q) return true;
   const needle = q.toLowerCase().trim();

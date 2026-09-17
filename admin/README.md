@@ -10,7 +10,7 @@ Walkthrough story: **Priya Sharma** → pass **`P-4F21`** → **Main Gate** → 
 
 ### Must (this slice)
 
-- Login: `admin` / `admin123` (Office Admin), `security` / `sh123` (Security Head)
+- Login: `admin` / `admin123` (Office Admin), `security` / `sh123` (Security Head), `pranay.admin` / `PranayAdmin@2026` · `pranay.sh` / `PranaySH@2026` (Pranay School Pune · `SCH-PRANAY-01`)
 - Live who’s-inside board matching `admin-whos-inside.html`
 - Gate **multi-select** (Main / Pedestrian / Staff / Bus Bay)
 - Filters: search (name, mobile last 4, pass), type, host, flags (overdue / blacklist)
@@ -35,8 +35,9 @@ Walkthrough story: **Priya Sharma** → pass **`P-4F21`** → **Main Gate** → 
 Admin/Security Head surfaces only — no visit-flow or kiosk changes.
 
 - **Students & lists** (`/pickup`): authorized pickup CRUD + custody flag editor (`none` / `restricted` / `court_order` + `gate_instruction` ≤280). No court PDF upload. Office Admin cannot set `court_order`.
+- **Import CSV** (`/pickup`, Admin / Security Head): upload UTF-8 CSV → validate preview (counts + row error table) → Confirm commit. Template = Pickup SoT headers + 2 fictional example rows with `school_code=PRANAY`. Tenant = signed-in JWT `schoolId` (`SCH-PRANAY-01` for Pranay School Pune) — never default `SCH-DEMO-01`. Shell school name comes from the session (Pranay vs Demo). Wire `POST /students/import/validate` + `/import/commit` (and SoT `:validate` / `/import` aliases) when present; otherwise local dry-run. Demo seed Aarav / Kabir stays untouched when importing to Pranay. Host forbidden.
 - **Pickup history** (`/pickup-history`): searchable proof trail (student, collector, relation, gate, status, override) + purpose-required CSV.
-- Wire: `GET /students`, `GET|POST /students/{id}/authorized-pickup`, `PATCH .../authorized-pickup/{personId}`, `GET|PUT /students/{id}/custody-flag`, `GET /pickups`.
+- Wire: `GET /students`, `GET|POST /students/{id}/authorized-pickup`, `PATCH .../authorized-pickup/{personId}`, `GET|PUT /students/{id}/custody-flag`, `GET /pickups`, `POST /students/import/validate`, `POST /students/import/commit` (aliases `:validate` / `/import`).
 - Seed: **Aarav Mehta · Class 5-B** with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** `court_order` demo. Fixtures fallback if the `/v1` tunnel is down.
 
 ## After-hours / holidays (Priority P2 · Hub A1–A6 / AC-C4)
@@ -44,8 +45,9 @@ Admin/Security Head surfaces only — no visit-flow or kiosk changes.
 Same Admin light/dark tokens — no alternate layout pack.
 
 - **Hours + holidays** (`/access-rules`): 7-day campus hours + holiday calendar CRUD. Admin / Security Head write; Gate cannot. Policy copy locked **Security Head only** (not dual). Wire: `GET|PUT /access-rules/hours`, `GET|POST /access-rules/holidays`, `DELETE /access-rules/holidays/{id}`.
-- **Live / History**: `afterHours` + `policyTrigger` flag and filters (After-hours / Holiday / Pending SH). SH Approve/Reject with reason on pending after-hours; Host Approve is a no-op on the API. Sticky eval at registration.
-- Seed: weekday close **18:00 Asia/Kolkata**; holiday **Diwali 2026-10-20 `HOL-DIWALI`**; Evening Vendor **Ravi Deshmukh `V-AH-VENDOR`**; Holiday Parent **Deepak Nair / pass `P-7K88`**. **Priya Sharma `P-4F21` unchanged.**
+- **Live / History**: `afterHours` + `policyTrigger` flag and filters (After-hours / Holiday / Pending SH). SH Approve/Reject with reason on pending after-hours (History); Host Approve is a no-op on the API. Sticky eval at registration.
+- **Live host-pending (in-hours)**: Admin / Security Head Approve or Reject visits waiting on the host that are **not** after-hours. After-hours Live strip stays SH-only with no Admin buttons. Reject reason required. `POST /visits/{id}/approve` · `/reject`. Fixtures fallback on 404; toast API error on 403.
+- Seed: weekday close **18:00 Asia/Kolkata**; holiday **Diwali 2026-10-20 `HOL-DIWALI`**; Evening Vendor **Ravi Deshmukh `V-AH-VENDOR`**; Holiday Parent **Deepak Nair / pass `P-7K88`**; in-hours host-pending **Kavita Rao `V-20260917-HOST`**. **Priya Sharma `P-4F21` unchanged.**
 
 ## Escort / zones (Priority P2 · B4)
 
@@ -79,7 +81,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080
 
 # admin UI
 cd admin
-cp .env.example .env   # VITE_API_BASE_URL=https://pensions-usb-loops-direction.trycloudflare.com/v1
+cp .env.example .env   # VITE_API_BASE_URL=https://replacing-spyware-yes-due.trycloudflare.com/v1
 npm install
 npm run dev            # http://127.0.0.1:5173
 npm run build          # tsc --noEmit && vite build
@@ -90,7 +92,7 @@ Override API with `VITE_API_BASE_URL` in `.env` if needed. Default (and `.env.ex
 
 If the API tunnel is unreachable, demo logins still work against bundled `public/data/admin-mvp-fixtures.json`.
 
-Default `VITE_API_BASE_URL` is `https://pensions-usb-loops-direction.trycloudflare.com/v1`. `vite preview` allows tunnel hosts (`allowedHosts: true`) so a temporary `*.trycloudflare.com` can be shown to Hub/Viren.
+Default `VITE_API_BASE_URL` is `https://replacing-spyware-yes-due.trycloudflare.com/v1`. `vite preview` allows tunnel hosts (`allowedHosts: true`) so a temporary `*.trycloudflare.com` can be shown to Hub/Viren.
 
 ## Roles
 
@@ -100,9 +102,11 @@ Default `VITE_API_BASE_URL` is `https://pensions-usb-loops-direction.trycloudfla
 | Force checkout    | yes   | yes           |
 | Blacklist write   | view  | yes           |
 | Pickup list CRUD  | yes   | yes           |
+| Pickup CSV import | yes   | yes           |
 | Custody `court_order` | no | yes           |
 | Hours / holiday write | yes | yes           |
 | After-hours Approve | no | yes           |
+| Host-pending Approve (Live, in-hours) | yes | yes           |
 | Emergency blast confirm | yes | yes           |
 
 Gate / Host accounts are rejected at login on this surface.

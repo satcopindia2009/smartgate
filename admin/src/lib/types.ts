@@ -15,6 +15,8 @@ export interface AuthUser {
   displayName: string;
   phone?: string | null;
   email?: string | null;
+  schoolName?: string | null;
+  schoolCode?: string | null;
 }
 
 export interface LoginResponse {
@@ -311,6 +313,48 @@ export interface CustodyFlagRecord {
   updatedByUserId?: string | null;
   updatedAt?: string;
   meta?: { watermark?: string };
+}
+
+export interface StudentImportError {
+  row: number;
+  field?: string | null;
+  code: string;
+  message: string;
+  studentExternalId?: string | null;
+}
+
+export interface StudentImportResult {
+  imported: number;
+  updated: number;
+  failed: number;
+  valid?: number;
+  errors: StudentImportError[];
+  dryRun?: boolean;
+  source?: "api" | "local";
+  filename?: string;
+}
+
+export interface StudentImportRow {
+  school_code: string;
+  student_external_id: string;
+  student_name: string;
+  class: string;
+  section: string;
+  person_name: string;
+  relation: string;
+  mobile: string;
+  id_last4: string;
+  id_type: string;
+  effective_from: string;
+  effective_to: string;
+  custody_flag: string;
+  gate_instruction: string;
+  allowed_person_mobiles: string;
+  blocked_person_mobiles: string;
+  consent_version: string;
+  consent_at: string;
+  person_active: string;
+  legal_hold: string;
 }
 
 export interface PickupEvent {

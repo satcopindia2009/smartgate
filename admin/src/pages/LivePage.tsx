@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { canForceCheckout, canTriggerBlast, useAuth } from "../auth/AuthContext";
+import { canApproveHostPending, canForceCheckout, canTriggerBlast, useAuth } from "../auth/AuthContext";
+import { PendingVisitDecisionModal } from "../components/PendingVisitDecisionModal";
 import { useAudit } from "../components/AuditContext";
 import { EmergencyBlastModal } from "../components/EmergencyBlastModal";
 import { ExportButton, ExportModal, type ExportScope } from "../components/ExportModal";
@@ -10,6 +11,7 @@ import { useToast } from "../components/Toast";
 import {
   ApiError,
   confirmBlastApi,
+  approveVisitApi,
   forceCheckoutApi,
   getBlast,
   getBlastConfig,
@@ -21,6 +23,7 @@ import {
   listVisits,
   postBlast,
   previewBlast,
+  rejectVisitApi,
   retryFailedBlast,
   todayByGate,
 } from "../lib/api";
@@ -40,16 +43,17 @@ import {
   SEED_TEMPLATES,
 } from "../lib/blast";
 import { escortCell, formatAllowedZones } from "../lib/escort";
+import { schoolDisplayName } from "../lib/school";
 import {
   BLAST_INSTRUCTION_MAX,
   LIVE_REFRESH_MS,
   OVERDUE_HOURS_DEFAULT,
-  SCHOOL_NAME,
   SEED_BLAST_ID,
   VISITOR_TYPES,
 } from "../lib/constants";
 import {
   applyForceCheckoutLocal,
+  applyHostPendingDecisionLocal,
   fixtureGates,
   fixtureReports,
   fixtureStaff,
@@ -67,7 +71,14 @@ import {
   todayIso,
   typeClass,
 } from "../lib/format";
-import { matchesLiveSearch, mergeVisitsById, toHistoryVisit, toLiveVisitor } from "../lib/mapVisit";
+import {
+  isAfterHoursPending,
+  isHostPending,
+  matchesLiveSearch,
+  mergeVisitsById,
+  toHistoryVisit,
+  toLiveVisitor,
+} from "../lib/mapVisit";
 import type {
   BlastPreview,
   BlastTemplate,
@@ -91,6 +102,8 @@ export function LivePage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [rows, setRows] = useState<LiveVisitor[]>([]);
   const [pendingAh, setPendingAh] = useState<HistoryVisit[]>([]);
+  const [pendingHost, setPendingHost] = useState<HistoryVisit[]>([]);
+  const [rejectTarget, setRejectTarget] = useState<HistoryVisit | null>(null);
   const [reports, setReports] = useState<GateReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [usingFixtures, setUsingFixtures] = useState(source === "fixtures");
@@ -115,6 +128,7 @@ export function LivePage() {
   const [blastLoadError, setBlastLoadError] = useState<string | null>(null);
   const [resultBlast, setResultBlast] = useState<EmergencyBlast | null>(null);
   const canBlast = canTriggerBlast(user?.role);
+  const canDecideHost = canApproveHostPending(user?.role);
 
   const refresh = useCallback(async () => {
     const fx = await loadFixtures();
@@ -123,7 +137,8 @@ export function LivePage() {
       setGates(fixtureGates());
       setStaff(fixtureStaff(fx));
       setRows(sess.inside);
-      setPendingAh(sess.history.filter((h) => h.afterHours && h.decision === "Pending"));
+      setPendingAh(sess.history.filter(isAfterHoursPending));
+      setPendingHost(sess.history.filter(isHostPending));
       setReports(fixtureReports(fx));
       setUsingFixtures(true);
       setBlastEnabled(seedBlastConfig().emergencyBlastEnabled);
@@ -133,21 +148,23 @@ export function LivePage() {
     }
     try {
       const today = todayIso();
-      const [g, s, inside, pendingToday, pendingAhOpen, rep] = await Promise.all([
+      const [g, s, inside, pendingToday, pendingAhOpen, pendingStatus, rep] = await Promise.all([
         listGates(token),
         listStaff(token),
         listInside(token),
         listVisits(token, { afterHours: true, dateFrom: today, dateTo: today }).catch(() => ({ data: [] })),
         listVisits(token, { afterHours: true }).catch(() => ({ data: [] })),
+        listVisits(token, { status: "pending" }).catch(() => ({ data: [] })),
         todayByGate(token).catch(() => ({ data: [] as GateReport[] })),
       ]);
       setGates(g.data);
       setStaff(s.data);
       setRows(inside.data.map((v) => toLiveVisitor(v, g.data, s.data)));
-      const pendingMerged = mergeVisitsById([pendingToday.data, pendingAhOpen.data])
-        .map((v) => toHistoryVisit(v, g.data, s.data))
-        .filter((h) => h.afterHours && h.decision === "Pending");
-      setPendingAh(pendingMerged);
+      const pendingMerged = mergeVisitsById([pendingToday.data, pendingAhOpen.data, pendingStatus.data]).map(
+        (v) => toHistoryVisit(v, g.data, s.data),
+      );
+      setPendingAh(pendingMerged.filter(isAfterHoursPending));
+      setPendingHost(pendingMerged.filter(isHostPending));
       setReports(rep.data.length ? rep.data : fixtureReports(fx));
       setUsingFixtures(false);
       try {
@@ -174,7 +191,8 @@ export function LivePage() {
       setGates(fixtureGates());
       setStaff(fixtureStaff(fx));
       setRows(sess.inside);
-      setPendingAh(sess.history.filter((h) => h.afterHours && h.decision === "Pending"));
+      setPendingAh(sess.history.filter(isAfterHoursPending));
+      setPendingHost(sess.history.filter(isHostPending));
       setReports(fixtureReports(fx));
       setUsingFixtures(true);
       setBlastEnabled(seedBlastConfig().emergencyBlastEnabled);
@@ -230,6 +248,70 @@ export function LivePage() {
     );
     return { inside: rows.length, overdue, outToday, blHits };
   }, [rows, reports]);
+
+  async function decideHostPending(target: HistoryVisit, action: "approve" | "reject", reason?: string) {
+    if (target.afterHours) {
+      showToast("After-hours Approve is Security Head only", "warning");
+      return;
+    }
+    if (!canDecideHost) {
+      showToast("Host-pending Approve is Office Admin or Security Head only", "warning");
+      return;
+    }
+    if (action === "reject" && !reason?.trim()) {
+      showToast("Enter a reject reason", "warning");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (!usingFixtures && token && !token.startsWith("fixture:")) {
+        if (action === "approve") {
+          await approveVisitApi(token, target.visitId);
+        } else {
+          await rejectVisitApi(token, target.visitId, reason!.trim());
+        }
+        showToast(
+          action === "approve" ? `Approved ${target.name}` : `Rejected ${target.name}`,
+          action === "approve" ? "success" : "warning",
+        );
+        setRejectTarget(null);
+        await refresh();
+      } else {
+        applyHostPendingDecisionLocal(target.visitId, action, reason);
+        setPendingHost((prev) => prev.filter((p) => p.visitId !== target.visitId));
+        showToast(
+          action === "approve"
+            ? `Approved ${target.name} (fixtures)`
+            : `Rejected ${target.name} (fixtures)`,
+          "warning",
+        );
+        setRejectTarget(null);
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        showToast(err.message, "error");
+        return;
+      }
+      const fallback = (err instanceof ApiError && err.status === 404) || isNetworkError(err);
+      if (fallback) {
+        await getFixtureSession();
+        applyHostPendingDecisionLocal(target.visitId, action, reason);
+        setPendingHost((prev) => prev.filter((p) => p.visitId !== target.visitId));
+        setUsingFixtures(true);
+        setRejectTarget(null);
+        showToast(
+          err instanceof ApiError
+            ? `Saved in fixtures fallback: ${err.message}`
+            : "Decision saved in fixtures fallback",
+          "warning",
+        );
+        return;
+      }
+      showToast(err instanceof Error ? err.message : "Decision failed", "error");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function confirmForce(reason: string) {
     if (!forceTarget) return;
@@ -572,6 +654,50 @@ export function LivePage() {
         </div>
       )}
 
+      {pendingHost.length > 0 && (
+        <div className="pending-sh-strip">
+          <div className="pending-host-head">
+            Pending host approval · in-hours · Admin / Security Head may decide
+          </div>
+          <div className="pending-sh-list">
+            {pendingHost.map((p) => (
+              <div className="pending-sh-item" key={p.visitId}>
+                <div>
+                  <strong>{p.name}</strong>
+                  <div className="subline">
+                    {p.visitId}
+                    {p.passId ? ` · ${p.passId}` : ""} · {p.type} · {p.host}
+                  </div>
+                </div>
+                <span className="status-pill status-pending">Pending · host</span>
+                {canDecideHost ? (
+                  <div className="action-btns">
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm"
+                      disabled={busy}
+                      onClick={() => setRejectTarget(p)}
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-success btn-sm"
+                      disabled={busy}
+                      onClick={() => void decideHostPending(p, "approve")}
+                    >
+                      Approve
+                    </button>
+                  </div>
+                ) : (
+                  <span className="subline">Admin / SH only</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {pendingAh.length > 0 && (
         <div className="pending-sh-strip">
           <div className="pending-sh-head">
@@ -616,7 +742,7 @@ export function LivePage() {
           <tbody>
             {loading ? (
               <tr className="empty-row">
-                <td colSpan={12}>Loading {SCHOOL_NAME}…</td>
+                <td colSpan={12}>Loading {schoolDisplayName(user)}…</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr className="empty-row">
@@ -704,6 +830,14 @@ export function LivePage() {
         onCancel={() => setBlastOpen(false)}
         onConfirmSend={() => void confirmBlastSend()}
         onRetryFailed={() => void retryLastFailed()}
+      />
+      <PendingVisitDecisionModal
+        visit={rejectTarget}
+        busy={busy}
+        onCancel={() => setRejectTarget(null)}
+        onReject={(reason) => {
+          if (rejectTarget) void decideHostPending(rejectTarget, "reject", reason);
+        }}
       />
       <ForceCheckoutModal
         visitor={forceTarget}
