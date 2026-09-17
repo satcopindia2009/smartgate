@@ -415,3 +415,14 @@ OK to stay thin (not blocking Mobile/Admin demos):
 - Priority P2 geo-fence / new zone keys / dual-approve / face match / MSR / live SMS·WhatsApp providers — **not implemented**
 - Production / live-school deploy — **HOLD**
 - Viren **L8 / WA HOLD** remains on — blast is demo/stub only
+
+## Gate after-hours UI (demo)
+
+Static Access Rules glance for after-hours / holiday desk:
+
+```bash
+cd afterhours-gate && python3 -m http.server 8790
+```
+
+Open `http://127.0.0.1:8790/`. Points at living API `https://replacing-spyware-yes-due.trycloudflare.com/v1` with Pranay demo logins.
+
