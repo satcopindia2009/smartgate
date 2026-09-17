@@ -16,3 +16,16 @@ fun KioskWave1Preview() {
         KioskApp()
     }
 }
+
+@Preview(
+    name = "Gate phone portrait",
+    device = "spec:width=390dp,height=844dp,dpi=420,orientation=portrait",
+    showBackground = true,
+    backgroundColor = 0xFF0F1115,
+)
+@Composable
+fun KioskPhonePortraitPreview() {
+    SatcopKioskTheme {
+        KioskApp()
+    }
+}

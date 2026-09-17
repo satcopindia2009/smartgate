@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.data.model.Staff
+import com.satcop.smartvisitor.kiosk.ui.LocalKioskCompact
 import com.satcop.smartvisitor.kiosk.data.registration.FieldKeys
 import com.satcop.smartvisitor.kiosk.data.registration.RegistrationDraft
 import com.satcop.smartvisitor.kiosk.ui.components.KioskField
@@ -45,6 +46,7 @@ fun VisitorDetailsStep(
     onBack: () -> Unit,
     onContinue: () -> Unit,
 ) {
+    val compact = LocalKioskCompact.current
     Column(Modifier.fillMaxWidth()) {
         Text(
             text = "Visitor details",
@@ -61,17 +63,14 @@ fun VisitorDetailsStep(
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+        if (compact) {
             KioskField(
                 label = "Full name",
                 value = draft.visitorName,
                 onValueChange = onName,
                 placeholder = "e.g. Priya Sharma",
                 error = errors[FieldKeys.VISITOR_NAME],
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
             )
             KioskField(
                 label = "Mobile",
@@ -81,8 +80,34 @@ fun VisitorDetailsStep(
                 error = errors[FieldKeys.MOBILE],
                 keyboardType = KeyboardType.Phone,
                 capitalization = KeyboardCapitalization.None,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
             )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                KioskField(
+                    label = "Full name",
+                    value = draft.visitorName,
+                    onValueChange = onName,
+                    placeholder = "e.g. Priya Sharma",
+                    error = errors[FieldKeys.VISITOR_NAME],
+                    modifier = Modifier.weight(1f),
+                )
+                KioskField(
+                    label = "Mobile",
+                    value = draft.mobile,
+                    onValueChange = onMobile,
+                    placeholder = "+91 98220 11122",
+                    error = errors[FieldKeys.MOBILE],
+                    keyboardType = KeyboardType.Phone,
+                    capitalization = KeyboardCapitalization.None,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
 
         KioskField(
@@ -109,6 +134,7 @@ fun VisitorDetailsStep(
             hosts = hosts,
             selectedId = draft.hostId,
             onSelect = onHost,
+            columns = if (compact) 2 else 3,
         )
         if (errors[FieldKeys.HOST_ID] != null) {
             Text(
@@ -120,19 +146,16 @@ fun VisitorDetailsStep(
             )
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+        if (compact) {
             KioskField(
                 label = "Vehicle number (optional)",
                 value = draft.vehicleNumber,
                 onValueChange = onVehicle,
                 placeholder = "MH12AB1234",
                 capitalization = KeyboardCapitalization.Characters,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
             )
             KioskField(
                 label = "Accompanying (optional)",
@@ -142,8 +165,36 @@ fun VisitorDetailsStep(
                 error = errors[FieldKeys.ACCOMPANYING],
                 keyboardType = KeyboardType.Number,
                 capitalization = KeyboardCapitalization.None,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
             )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                KioskField(
+                    label = "Vehicle number (optional)",
+                    value = draft.vehicleNumber,
+                    onValueChange = onVehicle,
+                    placeholder = "MH12AB1234",
+                    capitalization = KeyboardCapitalization.Characters,
+                    modifier = Modifier.weight(1f),
+                )
+                KioskField(
+                    label = "Accompanying (optional)",
+                    value = draft.accompanyingCount,
+                    onValueChange = onAccompanying,
+                    placeholder = "0",
+                    error = errors[FieldKeys.ACCOMPANYING],
+                    keyboardType = KeyboardType.Number,
+                    capitalization = KeyboardCapitalization.None,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
 
         KioskField(
@@ -160,14 +211,34 @@ fun VisitorDetailsStep(
         )
 
         PanelDivider()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            KioskGhostButton(text = "Back", onClick = onBack)
-            KioskPrimaryButton(text = "Continue", onClick = onContinue)
+        if (compact) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                KioskGhostButton(
+                    text = "Back",
+                    onClick = onBack,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                KioskPrimaryButton(
+                    text = "Continue",
+                    onClick = onContinue,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                KioskGhostButton(text = "Back", onClick = onBack)
+                KioskPrimaryButton(text = "Continue", onClick = onContinue)
+            }
         }
     }
 }
@@ -177,9 +248,10 @@ private fun HostGrid(
     hosts: List<Staff>,
     selectedId: String?,
     onSelect: (String) -> Unit,
+    columns: Int = 3,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        hosts.chunked(3).forEach { row ->
+        hosts.chunked(columns).forEach { row ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -192,7 +264,7 @@ private fun HostGrid(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                repeat(3 - row.size) {
+                repeat(columns - row.size) {
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
                 }
             }

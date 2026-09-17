@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -31,6 +30,7 @@ import com.satcop.smartvisitor.kiosk.data.fixture.DemoFixtures
 import com.satcop.smartvisitor.kiosk.data.model.Gate
 import com.satcop.smartvisitor.kiosk.data.model.InsideVisit
 import com.satcop.smartvisitor.kiosk.data.model.VisitorType
+import com.satcop.smartvisitor.kiosk.ui.LocalKioskCompact
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.components.PanelDivider
@@ -53,13 +53,10 @@ fun VisitorTypeStep(
     onPrefill: () -> Unit,
     onContinue: () -> Unit,
 ) {
+    val compact = LocalKioskCompact.current
     Column(Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top,
-        ) {
-            Column {
+        if (compact) {
+            Column(Modifier.fillMaxWidth()) {
                 Text(
                     text = "Who is visiting?",
                     color = KioskColors.text,
@@ -74,47 +71,121 @@ fun VisitorTypeStep(
                     fontFamily = KioskFont,
                     modifier = Modifier.padding(top = 4.dp),
                 )
+                KioskGhostButton(
+                    text = "Prefill sample",
+                    onClick = onPrefill,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
+                        .heightIn(min = 48.dp),
+                )
             }
-            KioskGhostButton(text = "Prefill sample", onClick = onPrefill)
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            FlowRow(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                VisitorType.entries.forEach { type ->
-                    TypeCard(
-                        type = type,
-                        selected = type.apiValue == selectedType,
-                        onClick = { onSelectType(type.apiValue) },
-                        modifier = Modifier.width(168.dp),
+                VisitorType.entries.chunked(2).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        row.forEach { type ->
+                            TypeCard(
+                                type = type,
+                                selected = type.apiValue == selectedType,
+                                onClick = { onSelectType(type.apiValue) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        if (row.size == 1) {
+                            Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+                KioskContextStrip(
+                    schoolName = schoolName,
+                    clockLabel = clockLabel,
+                    recent = recent,
+                    gates = gates,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.Top,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "Who is visiting?",
+                        color = KioskColors.text,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = KioskFont,
+                    )
+                    Text(
+                        text = "Select visitor type to begin registration",
+                        color = KioskColors.textMuted,
+                        fontSize = 14.sp,
+                        fontFamily = KioskFont,
+                        modifier = Modifier.padding(top = 4.dp),
                     )
                 }
+                KioskGhostButton(text = "Prefill sample", onClick = onPrefill)
             }
-            KioskContextStrip(
-                schoolName = schoolName,
-                clockLabel = clockLabel,
-                recent = recent,
-                gates = gates,
-                modifier = Modifier.width(280.dp),
-            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                FlowRow(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    VisitorType.entries.forEach { type ->
+                        TypeCard(
+                            type = type,
+                            selected = type.apiValue == selectedType,
+                            onClick = { onSelectType(type.apiValue) },
+                            modifier = Modifier.width(168.dp),
+                        )
+                    }
+                }
+                KioskContextStrip(
+                    schoolName = schoolName,
+                    clockLabel = clockLabel,
+                    recent = recent,
+                    gates = gates,
+                    modifier = Modifier.width(280.dp),
+                )
+            }
         }
 
         PanelDivider()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 20.dp),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            KioskPrimaryButton(text = "Continue", onClick = onContinue)
+        if (compact) {
+            KioskPrimaryButton(
+                text = "Continue",
+                onClick = onContinue,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp)
+                    .heightIn(min = 52.dp),
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                KioskPrimaryButton(text = "Continue", onClick = onContinue)
+            }
         }
     }
 }
@@ -222,6 +293,7 @@ private fun KioskContextStrip(
                 RecentChip(label = "No recent yet")
             } else {
                 FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
@@ -248,16 +320,7 @@ private fun StripBlock(
     content: @Composable () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (showDivider) {
-                    Modifier
-                        .padding(bottom = 0.dp)
-                } else {
-                    Modifier
-                },
-            ),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Text(
             text = label.uppercase(),

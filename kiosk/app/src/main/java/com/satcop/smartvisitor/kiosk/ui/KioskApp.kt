@@ -1,5 +1,7 @@
 package com.satcop.smartvisitor.kiosk.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -8,8 +10,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -23,6 +27,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,17 +37,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.ui.components.DemoWatermark
 import com.satcop.smartvisitor.kiosk.ui.components.GatePill
+import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.ShieldMark
 import com.satcop.smartvisitor.kiosk.ui.components.SourcePill
 import com.satcop.smartvisitor.kiosk.ui.components.StepDots
 import com.satcop.smartvisitor.kiosk.ui.components.ToastBanner
-import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.ui.steps.OutcomeStep
 import com.satcop.smartvisitor.kiosk.ui.steps.PhotoIdStep
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorDetailsStep
@@ -57,131 +65,161 @@ fun KioskApp(
     viewModel: KioskViewModel = viewModel(factory = KioskViewModel.factory()),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(KioskColors.bg)
             .statusBarsPadding()
             .imePadding(),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .widthIn(max = 1180.dp)
-                .align(Alignment.TopCenter)
-                .padding(horizontal = 28.dp, vertical = 20.dp),
-        ) {
-            KioskHeader(
-                schoolName = state.schoolName,
-                gateName = state.selectedGate?.name ?: "Main Gate",
-                gates = state.gates,
-                clockLabel = state.clockLabel,
-                dataSource = state.dataSource,
-                roleLabel = state.meDisplayName,
-                onSelectGate = viewModel::selectGate,
-            )
-            Box(
+        val compact = maxWidth < CompactWidthBreakpoint
+        val hPad = if (compact) 16.dp else 28.dp
+        val vPad = if (compact) 12.dp else 20.dp
+        val cardHPad = if (compact) 16.dp else 32.dp
+        val cardVPad = if (compact) 16.dp else 28.dp
+        CompositionLocalProvider(LocalKioskCompact provides compact) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
-                    .shadow(24.dp, CardShape, ambientColor = androidx.compose.ui.graphics.Color(0x59000000))
-                    .clip(CardShape)
-                    .background(KioskColors.card)
-                    .border(1.dp, KioskColors.border, CardShape)
-                    .padding(horizontal = 32.dp, vertical = 28.dp),
+                    .then(if (compact) Modifier else Modifier.fillMaxSize())
+                    .widthIn(max = 1180.dp)
+                    .align(Alignment.TopCenter)
+                    .then(if (compact) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                    .padding(horizontal = hPad, vertical = vPad)
+                    .padding(bottom = if (compact) 36.dp else 0.dp),
             ) {
-                Column(Modifier.fillMaxSize()) {
-                    StepDots(current = state.step)
-                    AnimatedContent(
-                        targetState = state.step,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        label = "kiosk-step",
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                    ) { step ->
-                        when (step) {
-                            1 -> VisitorTypeStep(
-                                selectedType = state.draft.visitorType,
-                                schoolName = state.schoolName,
-                                clockLabel = state.clockLabel,
-                                recent = state.recent,
-                                gates = state.gates,
-                                onSelectType = viewModel::selectVisitorType,
-                                onPrefill = viewModel::prefillSample,
-                                onContinue = viewModel::continueFromStep1,
-                            )
-                            2 -> VisitorDetailsStep(
-                                draft = state.draft,
-                                hosts = state.hosts,
-                                errors = state.fieldErrors,
-                                onName = viewModel::updateName,
-                                onMobile = viewModel::updateMobile,
-                                onPurpose = viewModel::updatePurpose,
-                                onHost = viewModel::selectHost,
-                                onVehicle = viewModel::updateVehicle,
-                                onAccompanying = viewModel::updateAccompanying,
-                                onNotes = viewModel::updateNotes,
-                                onBack = viewModel::back,
-                                onContinue = viewModel::continueFromStep2,
-                            )
-                            3 -> PhotoIdStep(
-                                draft = state.draft,
-                                livePhoto = state.livePhoto,
-                                idImage = state.idImage,
-                                errors = state.fieldErrors,
-                                submitting = state.submitting,
-                                blocked = state.blocked,
-                                blacklistHit = state.blacklistHit,
-                                onIdType = viewModel::selectIdType,
-                                onIdNumber = viewModel::updateIdNumber,
-                                onLivePhoto = viewModel::setLivePhoto,
-                                onIdImage = viewModel::setIdImage,
-                                onSignature = viewModel::setSignature,
-                                onClearSignature = viewModel::clearSignature,
-                                onBlockSample = viewModel::applyBlockSample,
-                                onAlertSample = viewModel::applyAlertSample,
-                                onBack = viewModel::back,
-                                onSubmit = viewModel::submitRegistration,
-                            )
-                            else -> OutcomeStep(
-                                draft = state.draft,
-                                visit = state.createdVisit,
-                                hosts = state.hosts,
-                                gates = state.gates,
-                                blacklistHit = state.blacklistHit,
-                                dataSource = state.dataSource,
-                                busy = state.outcomeBusy,
-                                onRefresh = { viewModel.refreshVisit() },
-                                onDemoApprove = viewModel::demoApprove,
-                                onCheckIn = viewModel::scanCheckIn,
-                                onCheckOut = viewModel::scanCheckOut,
-                                onLoadStory = viewModel::loadStoryPass,
-                                onNewVisitor = viewModel::registerAnother,
+                KioskHeader(
+                    schoolName = state.schoolName,
+                    gateName = state.selectedGate?.name ?: "Main Gate",
+                    gates = state.gates,
+                    clockLabel = state.clockLabel,
+                    dataSource = state.dataSource,
+                    roleLabel = state.meDisplayName,
+                    compact = compact,
+                    onSelectGate = viewModel::selectGate,
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (compact) Modifier else Modifier.weight(1f))
+                        .shadow(24.dp, CardShape, ambientColor = androidx.compose.ui.graphics.Color(0x59000000))
+                        .clip(CardShape)
+                        .background(KioskColors.card)
+                        .border(1.dp, KioskColors.border, CardShape)
+                        .padding(horizontal = cardHPad, vertical = cardVPad),
+                ) {
+                    Column(
+                        modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
+                    ) {
+                        StepDots(current = state.step)
+                        AnimatedContent(
+                            targetState = state.step,
+                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            label = "kiosk-step",
+                            modifier = if (compact) {
+                                Modifier.fillMaxWidth()
+                            } else {
+                                Modifier
+                                    .weight(1f)
+                                    .verticalScroll(rememberScrollState())
+                            },
+                        ) { step ->
+                            KioskStep(
+                                step = step,
+                                state = state,
+                                viewModel = viewModel,
                             )
                         }
                     }
                 }
             }
-        }
-        DemoWatermark(
-            label = state.watermark,
-            modifier = Modifier.align(Alignment.BottomStart),
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(24.dp),
-        ) {
-            val toast = state.toast
-            if (toast != null) {
-                LaunchedEffect(toast) {
-                    delay(2800)
-                    viewModel.dismissToast()
+            DemoWatermark(
+                label = state.watermark,
+                modifier = Modifier.align(Alignment.BottomStart),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(if (compact) 16.dp else 24.dp),
+            ) {
+                val toast = state.toast
+                if (toast != null) {
+                    LaunchedEffect(toast) {
+                        delay(2800)
+                        viewModel.dismissToast()
+                    }
                 }
+                ToastBanner(message = toast, kind = state.toastKind)
             }
-            ToastBanner(message = toast, kind = state.toastKind)
         }
+    }
+}
+
+@Composable
+private fun KioskStep(
+    step: Int,
+    state: KioskUiState,
+    viewModel: KioskViewModel,
+) {
+    when (step) {
+        1 -> VisitorTypeStep(
+            selectedType = state.draft.visitorType,
+            schoolName = state.schoolName,
+            clockLabel = state.clockLabel,
+            recent = state.recent,
+            gates = state.gates,
+            onSelectType = viewModel::selectVisitorType,
+            onPrefill = viewModel::prefillSample,
+            onContinue = viewModel::continueFromStep1,
+        )
+        2 -> VisitorDetailsStep(
+            draft = state.draft,
+            hosts = state.hosts,
+            errors = state.fieldErrors,
+            onName = viewModel::updateName,
+            onMobile = viewModel::updateMobile,
+            onPurpose = viewModel::updatePurpose,
+            onHost = viewModel::selectHost,
+            onVehicle = viewModel::updateVehicle,
+            onAccompanying = viewModel::updateAccompanying,
+            onNotes = viewModel::updateNotes,
+            onBack = viewModel::back,
+            onContinue = viewModel::continueFromStep2,
+        )
+        3 -> PhotoIdStep(
+            draft = state.draft,
+            livePhoto = state.livePhoto,
+            idImage = state.idImage,
+            errors = state.fieldErrors,
+            submitting = state.submitting,
+            blocked = state.blocked,
+            blacklistHit = state.blacklistHit,
+            onIdType = viewModel::selectIdType,
+            onIdNumber = viewModel::updateIdNumber,
+            onLivePhoto = viewModel::setLivePhoto,
+            onIdImage = viewModel::setIdImage,
+            onSignature = viewModel::setSignature,
+            onClearSignature = viewModel::clearSignature,
+            onBlockSample = viewModel::applyBlockSample,
+            onAlertSample = viewModel::applyAlertSample,
+            onBack = viewModel::back,
+            onSubmit = viewModel::submitRegistration,
+        )
+        else -> OutcomeStep(
+            draft = state.draft,
+            visit = state.createdVisit,
+            hosts = state.hosts,
+            gates = state.gates,
+            blacklistHit = state.blacklistHit,
+            dataSource = state.dataSource,
+            busy = state.outcomeBusy,
+            onRefresh = { viewModel.refreshVisit() },
+            onDemoApprove = viewModel::demoApprove,
+            onCheckIn = viewModel::scanCheckIn,
+            onCheckOut = viewModel::scanCheckOut,
+            onLoadStory = viewModel::loadStoryPass,
+            onNewVisitor = viewModel::registerAnother,
+        )
     }
 }
 
@@ -193,74 +231,180 @@ private fun KioskHeader(
     clockLabel: String,
     dataSource: DataSource,
     roleLabel: String,
+    compact: Boolean,
     onSelectGate: (String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 20.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    val subtitle = if (roleLabel.isBlank()) {
+        "$schoolName · Gate check-in"
+    } else {
+        "$schoolName · $roleLabel"
+    }
+    if (compact) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ShieldMark()
-            Column {
-                Text(
-                    text = "Satcop Smart Visitor",
-                    color = KioskColors.text,
-                    fontSize = 18.sp,
-                    fontFamily = KioskFont,
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                )
-                Text(
-                    text = if (roleLabel.isBlank()) {
-                        "$schoolName · Gate check-in"
-                    } else {
-                        "$schoolName · $roleLabel"
-                    },
-                    color = KioskColors.textMuted,
-                    fontSize = 12.sp,
-                    fontFamily = KioskFont,
-                )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ShieldMark()
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "Satcop Smart Visitor",
+                        color = KioskColors.text,
+                        fontSize = 16.sp,
+                        fontFamily = KioskFont,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = subtitle,
+                        color = KioskColors.textMuted,
+                        fontSize = 11.sp,
+                        fontFamily = KioskFont,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                SourcePill(live = dataSource == DataSource.LIVE)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box {
+                    GatePill(name = gateName, onClick = { menuOpen = true })
+                    GateMenu(
+                        expanded = menuOpen,
+                        gates = gates,
+                        onDismiss = { menuOpen = false },
+                        onSelectGate = onSelectGate,
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                DemoHubButton()
             }
         }
+    } else {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SourcePill(live = dataSource == DataSource.LIVE)
-            Box {
-                GatePill(name = gateName, onClick = { menuOpen = true })
-                DropdownMenu(
-                    expanded = menuOpen,
-                    onDismissRequest = { menuOpen = false },
-                    modifier = Modifier
-                        .background(KioskColors.card)
-                        .heightIn(max = 280.dp),
-                ) {
-                    gates.forEach { gate ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(gate.name, color = KioskColors.text, fontFamily = KioskFont)
-                            },
-                            onClick = {
-                                onSelectGate(gate.id)
-                                menuOpen = false
-                            },
-                        )
-                    }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ShieldMark()
+                Column {
+                    Text(
+                        text = "Satcop Smart Visitor",
+                        color = KioskColors.text,
+                        fontSize = 18.sp,
+                        fontFamily = KioskFont,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = subtitle,
+                        color = KioskColors.textMuted,
+                        fontSize = 12.sp,
+                        fontFamily = KioskFont,
+                    )
                 }
             }
-            Text(
-                text = clockLabel.ifBlank { "—" },
-                color = KioskColors.textMuted,
-                fontSize = 13.sp,
-                fontFamily = KioskFont,
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SourcePill(live = dataSource == DataSource.LIVE)
+                Box {
+                    GatePill(name = gateName, onClick = { menuOpen = true })
+                    GateMenu(
+                        expanded = menuOpen,
+                        gates = gates,
+                        onDismiss = { menuOpen = false },
+                        onSelectGate = onSelectGate,
+                    )
+                }
+                Text(
+                    text = clockLabel.ifBlank { "—" },
+                    color = KioskColors.textMuted,
+                    fontSize = 13.sp,
+                    fontFamily = KioskFont,
+                )
+                DemoHubButton()
+            }
+        }
+    }
+}
+
+@Composable
+private fun GateMenu(
+    expanded: Boolean,
+    gates: List<com.satcop.smartvisitor.kiosk.data.model.Gate>,
+    onDismiss: () -> Unit,
+    onSelectGate: (String) -> Unit,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = Modifier
+            .background(KioskColors.card)
+            .heightIn(max = 280.dp),
+    ) {
+        gates.forEach { gate ->
+            DropdownMenuItem(
+                text = {
+                    Text(gate.name, color = KioskColors.text, fontFamily = KioskFont)
+                },
+                onClick = {
+                    onSelectGate(gate.id)
+                    onDismiss()
+                },
             )
+        }
+    }
+}
+
+@Composable
+private fun DemoHubButton() {
+    var open by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    Box {
+        KioskGhostButton(
+            text = "Demo",
+            onClick = { open = true },
+            modifier = Modifier.heightIn(min = 48.dp),
+        )
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            modifier = Modifier.background(KioskColors.card),
+        ) {
+            DemoHubLinks.all.forEach { link ->
+                DropdownMenuItem(
+                    text = {
+                        Text(link.label, color = KioskColors.text, fontFamily = KioskFont)
+                    },
+                    onClick = {
+                        open = false
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link.url))
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        runCatching { context.startActivity(intent) }
+                    },
+                )
+            }
         }
     }
 }

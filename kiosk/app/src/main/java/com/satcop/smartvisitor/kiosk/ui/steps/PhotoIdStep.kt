@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +46,7 @@ import com.satcop.smartvisitor.kiosk.data.model.BlacklistEntry
 import com.satcop.smartvisitor.kiosk.data.model.IdType
 import com.satcop.smartvisitor.kiosk.data.registration.FieldKeys
 import com.satcop.smartvisitor.kiosk.data.registration.RegistrationDraft
+import com.satcop.smartvisitor.kiosk.ui.LocalKioskCompact
 import com.satcop.smartvisitor.kiosk.ui.components.KioskField
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
@@ -56,6 +59,7 @@ import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusMd
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PhotoIdStep(
     draft: RegistrationDraft,
@@ -77,6 +81,7 @@ fun PhotoIdStep(
     onSubmit: () -> Unit,
 ) {
     val context = LocalContext.current
+    val compact = LocalKioskCompact.current
     var strokes by remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp ->
         onLivePhoto(bmp)
@@ -101,26 +106,47 @@ fun PhotoIdStep(
     }
 
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = "Photo, ID & signature",
-                    color = KioskColors.text,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = KioskFont,
-                )
-                Text(
-                    text = "Live photo required · ID number or ID image (V1)",
-                    color = KioskColors.textMuted,
-                    fontSize = 14.sp,
-                    fontFamily = KioskFont,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                KioskGhostButton(text = "Block sample", onClick = onBlockSample)
-                KioskGhostButton(text = "Alert sample", onClick = onAlertSample)
+        Column(Modifier.fillMaxWidth()) {
+            Text(
+                text = "Photo, ID & signature",
+                color = KioskColors.text,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = KioskFont,
+            )
+            Text(
+                text = "Live photo required · ID number or ID image (V1)",
+                color = KioskColors.textMuted,
+                fontSize = 14.sp,
+                fontFamily = KioskFont,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            if (compact) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    KioskGhostButton(
+                        text = "Block sample",
+                        onClick = onBlockSample,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    KioskGhostButton(
+                        text = "Alert sample",
+                        onClick = onAlertSample,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    KioskGhostButton(text = "Block sample", onClick = onBlockSample)
+                    KioskGhostButton(text = "Alert sample", onClick = onAlertSample)
+                }
             }
         }
 
@@ -130,56 +156,90 @@ fun PhotoIdStep(
             AlertBanner(hit = blacklistHit)
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            CaptureBox(
-                label = "Live photo",
-                filled = livePhoto != null || draft.livePhotoCaptured,
-                title = if (draft.livePhotoCaptured) "Captured" else "Tap to capture",
-                subtitle = "Camera · demo placeholder if no camera",
-                error = errors[FieldKeys.LIVE_PHOTO],
-                modifier = Modifier.weight(1f),
-                onClick = { captureLive() },
-            ) {
-                if (livePhoto != null) {
-                    Image(
-                        bitmap = livePhoto.asImageBitmap(),
-                        contentDescription = "Live photo",
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                    )
-                } else {
-                    InitialsBubble(PlaceholderBitmap.initials(draft.visitorName))
-                }
+        val livePreview: @Composable () -> Unit = {
+            if (livePhoto != null) {
+                Image(
+                    bitmap = livePhoto.asImageBitmap(),
+                    contentDescription = "Live photo",
+                    modifier = Modifier
+                        .size(72.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                InitialsBubble(PlaceholderBitmap.initials(draft.visitorName))
             }
-            CaptureBox(
-                label = "Govt ID upload",
-                filled = idImage != null || draft.idImageCaptured,
-                title = if (draft.idImageCaptured) "ID attached" else "Tap to upload ID",
-                subtitle = "Aadhaar / DL / Voter · optional if number entered",
-                error = null,
-                modifier = Modifier.weight(1f),
-                onClick = { gallery.launch("image/*") },
+        }
+        val idPreview: @Composable () -> Unit = {
+            if (idImage != null) {
+                Image(
+                    bitmap = idImage.asImageBitmap(),
+                    contentDescription = "ID image",
+                    modifier = Modifier
+                        .height(72.dp)
+                        .fillMaxWidth(0.6f)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Text("🪪", fontSize = 28.sp)
+            }
+        }
+        if (compact) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (idImage != null) {
-                    Image(
-                        bitmap = idImage.asImageBitmap(),
-                        contentDescription = "ID image",
-                        modifier = Modifier
-                            .height(72.dp)
-                            .fillMaxWidth(0.6f)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop,
-                    )
-                } else {
-                    Text("🪪", fontSize = 28.sp)
-                }
+                CaptureBox(
+                    label = "Live photo",
+                    filled = livePhoto != null || draft.livePhotoCaptured,
+                    title = if (draft.livePhotoCaptured) "Captured" else "Tap to capture",
+                    subtitle = "Camera · demo placeholder if no camera",
+                    error = errors[FieldKeys.LIVE_PHOTO],
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { captureLive() },
+                    preview = livePreview,
+                )
+                CaptureBox(
+                    label = "Govt ID upload",
+                    filled = idImage != null || draft.idImageCaptured,
+                    title = if (draft.idImageCaptured) "ID attached" else "Tap to upload ID",
+                    subtitle = "Aadhaar / DL / Voter · optional if number entered",
+                    error = null,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { gallery.launch("image/*") },
+                    preview = idPreview,
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                CaptureBox(
+                    label = "Live photo",
+                    filled = livePhoto != null || draft.livePhotoCaptured,
+                    title = if (draft.livePhotoCaptured) "Captured" else "Tap to capture",
+                    subtitle = "Camera · demo placeholder if no camera",
+                    error = errors[FieldKeys.LIVE_PHOTO],
+                    modifier = Modifier.weight(1f),
+                    onClick = { captureLive() },
+                    preview = livePreview,
+                )
+                CaptureBox(
+                    label = "Govt ID upload",
+                    filled = idImage != null || draft.idImageCaptured,
+                    title = if (draft.idImageCaptured) "ID attached" else "Tap to upload ID",
+                    subtitle = "Aadhaar / DL / Voter · optional if number entered",
+                    error = null,
+                    modifier = Modifier.weight(1f),
+                    onClick = { gallery.launch("image/*") },
+                    preview = idPreview,
+                )
             }
         }
         if (errors[FieldKeys.LIVE_PHOTO] != null) {
@@ -200,12 +260,15 @@ fun PhotoIdStep(
             fontFamily = KioskFont,
             modifier = Modifier.padding(top = 16.dp, bottom = 6.dp),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             IdType.entries.forEach { type ->
                 val selected = draft.idType == type.apiValue
                 Box(
                     modifier = Modifier
-                        .heightIn(min = 44.dp)
+                        .heightIn(min = 48.dp)
                         .clip(RoundedCornerShape(999.dp))
                         .background(if (selected) KioskColors.purpleDim else KioskColors.card)
                         .border(
@@ -263,18 +326,39 @@ fun PhotoIdStep(
         )
 
         PanelDivider()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            KioskGhostButton(text = "Back", onClick = onBack)
-            CyanSubmitButton(
-                text = if (submitting) "Submitting…" else "Submit & notify host",
-                enabled = !submitting && !blocked,
-                onClick = onSubmit,
-            )
+        if (compact) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                KioskGhostButton(
+                    text = "Back",
+                    onClick = onBack,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                CyanSubmitButton(
+                    text = if (submitting) "Submitting…" else "Submit & notify host",
+                    enabled = !submitting && !blocked,
+                    onClick = onSubmit,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                KioskGhostButton(text = "Back", onClick = onBack)
+                CyanSubmitButton(
+                    text = if (submitting) "Submitting…" else "Submit & notify host",
+                    enabled = !submitting && !blocked,
+                    onClick = onSubmit,
+                )
+            }
         }
     }
 }
@@ -382,15 +466,20 @@ private fun AlertBanner(hit: BlacklistEntry) {
 }
 
 @Composable
-private fun CyanSubmitButton(text: String, enabled: Boolean, onClick: () -> Unit) {
+private fun CyanSubmitButton(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val brush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF06B6D4), Color(0xFF0891B2)))
     Box(
-        modifier = Modifier
-            .height(52.dp)
+        modifier = modifier
+            .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (enabled) brush else androidx.compose.ui.graphics.Brush.linearGradient(listOf(KioskColors.border, KioskColors.border)))
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, fontFamily = KioskFont)

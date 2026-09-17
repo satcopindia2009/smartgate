@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,12 +29,14 @@ import com.satcop.smartvisitor.kiosk.data.model.Gate
 import com.satcop.smartvisitor.kiosk.data.model.Staff
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import com.satcop.smartvisitor.kiosk.data.registration.RegistrationDraft
+import com.satcop.smartvisitor.kiosk.ui.LocalKioskCompact
 import com.satcop.smartvisitor.kiosk.ui.components.KioskCyanButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OutcomeStep(
     draft: RegistrationDraft,
@@ -56,6 +60,7 @@ fun OutcomeStep(
     val canDemoApprove = status == "pending" &&
         (dataSource == DataSource.FIXTURES || visit?.id?.startsWith("V-LOCAL") == true)
     val timeLabel = visit?.timeOut ?: visit?.timeIn ?: "—"
+    val compact = LocalKioskCompact.current
 
     Column(
         modifier = Modifier
@@ -94,47 +99,101 @@ fun OutcomeStep(
         if (showQr) {
             PassQrBox(passId = visit?.passId, token = visit?.qrToken)
         }
-        Row(
+        FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = if (showQr) 20.dp else 0.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Meta("Visitor", visit?.visitorName ?: draft.visitorName)
             Meta("Host", host?.name ?: "Anita Joshi")
             Meta(if (visit?.timeOut != null) "Time-out" else "Time-in", timeLabel.displayTime())
             Meta("Gate", gate?.name ?: "Main Gate")
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
-        ) {
-            if (status == "pending") {
-                KioskGhostButton(text = if (busy) "Refreshing…" else "Refresh", onClick = onRefresh, enabled = !busy)
-                if (canDemoApprove) {
-                    KioskCyanButton(text = "Demo host approve", onClick = onDemoApprove, enabled = !busy)
+        if (compact) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (status == "pending") {
+                    KioskGhostButton(
+                        text = if (busy) "Refreshing…" else "Refresh",
+                        onClick = onRefresh,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (canDemoApprove) {
+                        KioskCyanButton(
+                            text = "Demo host approve",
+                            onClick = onDemoApprove,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                if (status == "approved") {
+                    KioskCyanButton(
+                        text = if (busy) "Scanning…" else "Check in",
+                        onClick = onCheckIn,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (status == "inside") {
+                    KioskCyanButton(
+                        text = if (busy) "Scanning…" else "Check out",
+                        onClick = onCheckOut,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                KioskGhostButton(
+                    text = "Load P-4F21 story",
+                    onClick = onLoadStory,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                KioskPrimaryButton(
+                    text = "Register another visitor",
+                    onClick = onNewVisitor,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+            ) {
+                if (status == "pending") {
+                    KioskGhostButton(text = if (busy) "Refreshing…" else "Refresh", onClick = onRefresh, enabled = !busy)
+                    if (canDemoApprove) {
+                        KioskCyanButton(text = "Demo host approve", onClick = onDemoApprove, enabled = !busy)
+                    }
+                }
+                if (status == "approved") {
+                    KioskCyanButton(text = if (busy) "Scanning…" else "Check in", onClick = onCheckIn, enabled = !busy)
+                }
+                if (status == "inside") {
+                    KioskCyanButton(text = if (busy) "Scanning…" else "Check out", onClick = onCheckOut, enabled = !busy)
                 }
             }
-            if (status == "approved") {
-                KioskCyanButton(text = if (busy) "Scanning…" else "Check in", onClick = onCheckIn, enabled = !busy)
+            Row(
+                modifier = Modifier.padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                KioskGhostButton(text = "Load P-4F21 story", onClick = onLoadStory, enabled = !busy)
             }
-            if (status == "inside") {
-                KioskCyanButton(text = if (busy) "Scanning…" else "Check out", onClick = onCheckOut, enabled = !busy)
-            }
+            KioskPrimaryButton(
+                text = "Register another visitor",
+                onClick = onNewVisitor,
+                modifier = Modifier.padding(top = 20.dp),
+            )
         }
-        Row(
-            modifier = Modifier.padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            KioskGhostButton(text = "Load P-4F21 story", onClick = onLoadStory, enabled = !busy)
-        }
-        KioskPrimaryButton(
-            text = "Register another visitor",
-            onClick = onNewVisitor,
-            modifier = Modifier.padding(top = 20.dp),
-        )
     }
 }
 
