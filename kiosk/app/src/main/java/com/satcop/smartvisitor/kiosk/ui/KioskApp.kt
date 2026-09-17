@@ -1,5 +1,8 @@
 package com.satcop.smartvisitor.kiosk.ui
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -9,6 +12,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,17 +38,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.satcop.smartvisitor.kiosk.data.fixture.DemoHubLinks
+import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.ui.components.DemoWatermark
 import com.satcop.smartvisitor.kiosk.ui.components.GatePill
 import com.satcop.smartvisitor.kiosk.ui.components.ShieldMark
 import com.satcop.smartvisitor.kiosk.ui.components.SourcePill
+import com.satcop.smartvisitor.kiosk.ui.components.StatusPill
 import com.satcop.smartvisitor.kiosk.ui.components.StepDots
 import com.satcop.smartvisitor.kiosk.ui.components.ToastBanner
-import com.satcop.smartvisitor.kiosk.data.model.DataSource
+import com.satcop.smartvisitor.kiosk.ui.steps.DemoHubStep
 import com.satcop.smartvisitor.kiosk.ui.steps.OutcomeStep
 import com.satcop.smartvisitor.kiosk.ui.steps.PhotoIdStep
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorDetailsStep
@@ -57,6 +67,19 @@ fun KioskApp(
     viewModel: KioskViewModel = viewModel(factory = KioskViewModel.factory()),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val openPreview: (String) -> Unit = { url ->
+        try {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                    addCategory(Intent.CATEGORY_BROWSABLE)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                },
+            )
+        } catch (_: ActivityNotFoundException) {
+            viewModel.previewOpenFailed()
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -79,6 +102,9 @@ fun KioskApp(
                 dataSource = state.dataSource,
                 roleLabel = state.meDisplayName,
                 onSelectGate = viewModel::selectGate,
+                onOpenHub = viewModel::openDemoHub,
+                onOpenGate = viewModel::openGateCheckIn,
+                onOpenPreview = openPreview,
             )
             Box(
                 modifier = Modifier
@@ -91,7 +117,9 @@ fun KioskApp(
                     .padding(horizontal = 32.dp, vertical = 28.dp),
             ) {
                 Column(Modifier.fillMaxSize()) {
-                    StepDots(current = state.step)
+                    if (state.step > 0) {
+                        StepDots(current = state.step)
+                    }
                     AnimatedContent(
                         targetState = state.step,
                         transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -101,6 +129,10 @@ fun KioskApp(
                             .verticalScroll(rememberScrollState()),
                     ) { step ->
                         when (step) {
+                            0 -> DemoHubStep(
+                                onOpenGate = viewModel::openGateCheckIn,
+                                onOpenPreview = openPreview,
+                            )
                             1 -> VisitorTypeStep(
                                 selectedType = state.draft.visitorType,
                                 schoolName = state.schoolName,
@@ -109,6 +141,7 @@ fun KioskApp(
                                 gates = state.gates,
                                 onSelectType = viewModel::selectVisitorType,
                                 onPrefill = viewModel::prefillSample,
+                                onDemoHub = viewModel::openDemoHub,
                                 onContinue = viewModel::continueFromStep1,
                             )
                             2 -> VisitorDetailsStep(
@@ -185,6 +218,7 @@ fun KioskApp(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun KioskHeader(
     schoolName: String,
@@ -194,14 +228,18 @@ private fun KioskHeader(
     dataSource: DataSource,
     roleLabel: String,
     onSelectGate: (String) -> Unit,
+    onOpenHub: () -> Unit,
+    onOpenGate: () -> Unit,
+    onOpenPreview: (String) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    Row(
+    var demoMenuOpen by remember { mutableStateOf(false) }
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 20.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -228,11 +266,58 @@ private fun KioskHeader(
                 )
             }
         }
-        Row(
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             SourcePill(live = dataSource == DataSource.LIVE)
+            Box {
+                StatusPill(
+                    label = "Demo hub",
+                    background = KioskColors.purpleDim,
+                    foreground = KioskColors.purpleBright,
+                    onClick = { demoMenuOpen = true },
+                )
+                DropdownMenu(
+                    expanded = demoMenuOpen,
+                    onDismissRequest = { demoMenuOpen = false },
+                    modifier = Modifier
+                        .background(KioskColors.card)
+                        .widthIn(min = 260.dp)
+                        .heightIn(max = 360.dp),
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text("Demo hub", color = KioskColors.text, fontFamily = KioskFont)
+                        },
+                        onClick = {
+                            onOpenHub()
+                            demoMenuOpen = false
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text("Visitor gate (this app)", color = KioskColors.text, fontFamily = KioskFont)
+                        },
+                        onClick = {
+                            onOpenGate()
+                            demoMenuOpen = false
+                        },
+                    )
+                    HorizontalDivider(color = KioskColors.border)
+                    DemoHubLinks.webPreviews.forEach { item ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(item.title, color = KioskColors.text, fontFamily = KioskFont)
+                            },
+                            onClick = {
+                                item.url?.let(onOpenPreview)
+                                demoMenuOpen = false
+                            },
+                        )
+                    }
+                }
+            }
             Box {
                 GatePill(name = gateName, onClick = { menuOpen = true })
                 DropdownMenu(
