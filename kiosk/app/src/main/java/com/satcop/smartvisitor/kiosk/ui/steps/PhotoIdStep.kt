@@ -96,6 +96,16 @@ fun PhotoIdStep(
             PackageManager.PERMISSION_GRANTED
         if (granted) camera.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)
     }
+    val gallery = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) {
+            onIdImage(null)
+            return@rememberLauncherForActivityResult
+        }
+        val decoded = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it) }
+        }.getOrNull()
+        onIdImage(decoded)
+    }
     if (!draft.consentAgreed) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -109,7 +119,7 @@ fun PhotoIdStep(
                 fontFamily = KioskFont,
             )
             Text(
-                text = "Agree before live photo or ID capture. Pack §4 · no pre-tick.",
+                text = "Please read and agree before we take a live photo or ID image.",
                 color = KioskColors.textMuted,
                 fontSize = 14.sp,
                 fontFamily = KioskFont,
@@ -118,17 +128,6 @@ fun PhotoIdStep(
             KioskGhostButton(text = "Back", onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp))
         }
         return
-    }
-
-    val gallery = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri == null) {
-            onIdImage(null)
-            return@rememberLauncherForActivityResult
-        }
-        val decoded = runCatching {
-            context.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it) }
-        }.getOrNull()
-        onIdImage(decoded)
     }
 
     Column(Modifier.fillMaxWidth()) {

@@ -61,12 +61,6 @@ fun GateConsentPanel(
             fontFamily = KioskFont,
             lineHeight = 18.sp,
         )
-        Text(
-            text = "consent_version=${GateConsent.VERSION}",
-            color = KioskColors.textDim,
-            fontSize = 11.sp,
-            fontFamily = KioskFont,
-        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             KioskGhostButton(
                 text = GateConsent.DECLINE,
