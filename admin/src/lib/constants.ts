@@ -47,9 +47,9 @@ export const PICKUP_STATUSES = [
 
 /** Reserved demo tenant — never the import default. */
 export const DEMO_SCHOOL_ID = "SCH-DEMO-01";
-/** First real school example (template only). Live tenant comes from JWT schoolId. */
-export const FIRST_SCHOOL_NAME_EXAMPLE = "PRANAY SCHOOL PUNE";
-export const FIRST_SCHOOL_CODE_EXAMPLE = "SCH-PRANAY-PUNE-01";
+/** First real school. Template school_code is PRANAY; JWT schoolId is SCH-PRANAY-01. */
+export const FIRST_SCHOOL_NAME_EXAMPLE = "Pranay School Pune";
+export const FIRST_SCHOOL_CODE_EXAMPLE = "PRANAY";
 export const IMPORT_MAX_ROWS = 5_000;
 
 export const DEMO_LOGINS = {

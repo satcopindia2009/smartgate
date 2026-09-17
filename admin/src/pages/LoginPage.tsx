@@ -37,7 +37,7 @@ export function LoginPage() {
           </div>
           <div>
             <strong>Smart Visitor</strong>
-            <small>Admin dashboard · Demo International School</small>
+            <small>Admin dashboard · school from sign-in</small>
           </div>
         </div>
         <h1>Sign in</h1>
@@ -69,6 +69,8 @@ export function LoginPage() {
         </form>
         <p className="login-hint">
           Demo: <code>admin</code> / <code>admin123</code> · <code>security</code> / <code>sh123</code>
+          <br />
+          Pranay School Pune: <code>pranay.admin</code> / <code>PranayAdmin@2026</code>
         </p>
         <p className="login-hold">No production · no live school gates (V4 HOLD)</p>
       </div>

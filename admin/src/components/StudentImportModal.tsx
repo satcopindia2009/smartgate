@@ -7,10 +7,8 @@ import {
   isNetworkError,
   validateStudentImport,
 } from "../lib/api";
-import {
-  DEMO_SCHOOL_ID,
-  FIRST_SCHOOL_NAME_EXAMPLE,
-} from "../lib/constants";
+import { DEMO_SCHOOL_ID, FIRST_SCHOOL_NAME_EXAMPLE } from "../lib/constants";
+import { schoolDisplayName } from "../lib/school";
 import {
   applyValidRowsLocal,
   downloadImportTemplate,
@@ -76,7 +74,9 @@ export function StudentImportModal({
 
   const canImport = canImportStudents(user?.role);
   const tenantId = (user?.schoolId || "").trim();
-  const exampleCode = templateSchoolCode(tenantId);
+  const tenantCode = (user?.schoolCode || "").trim();
+  const tenantName = schoolDisplayName(user);
+  const exampleCode = templateSchoolCode(tenantId, tenantCode);
 
   useEffect(() => {
     if (!open) return;
@@ -119,7 +119,7 @@ export function StudentImportModal({
     setBusy(true);
     try {
       const csvText = await file.text();
-      const local = previewCsvText(csvText, tenantId, students, name);
+      const local = previewCsvText(csvText, tenantId, students, name, tenantCode);
       let next = local;
       let localValidate = true;
       if (token && !token.startsWith("fixture:") && source !== "fixtures") {
@@ -144,8 +144,27 @@ export function StudentImportModal({
             showToast(err.message || "Import forbidden", "error");
             return;
           } else if (err instanceof ApiError) {
-            showToast(err.message || "Validate failed — using local dry-run", "warning");
-            localValidate = true;
+            next = {
+              ...local,
+              validRows: [],
+              fileErrors: [{ code: err.code || "VALIDATION", message: err.message }],
+              result: {
+                imported: 0,
+                updated: 0,
+                failed: local.rows.length || 1,
+                valid: 0,
+                errors: [{ row: 0, field: null, code: err.code || "VALIDATION", message: err.message }],
+                dryRun: true,
+                source: "api",
+                filename: name,
+              },
+            };
+            localValidate = false;
+            setPreview(next);
+            setUsedLocalValidate(false);
+            setStage("preview");
+            showToast(err.message || "Validate failed", "error");
+            return;
           } else {
             localValidate = true;
           }
@@ -248,13 +267,14 @@ export function StudentImportModal({
         <div className="import-tenant">
           <div>
             <strong>Signed-in tenant</strong>
-            <span>{tenantId || "missing schoolId"}</span>
-            {schoolName ? <span>{schoolName}</span> : null}
+            <span>{tenantName}</span>
+            <span>{tenantId || "missing schoolId"}{tenantCode ? ` · school_code ${tenantCode}` : ""}</span>
+            {schoolName && schoolName !== tenantName ? <span>{schoolName}</span> : null}
           </div>
           <div>
             <strong>Template example</strong>
             <span>
-              {FIRST_SCHOOL_NAME_EXAMPLE} · {exampleCode}
+              {FIRST_SCHOOL_NAME_EXAMPLE} · school_code {exampleCode}
             </span>
             {tenantId === DEMO_SCHOOL_ID ? (
               <span className="import-warn">
@@ -273,7 +293,7 @@ export function StudentImportModal({
               <button
                 type="button"
                 className="btn btn-ghost"
-                onClick={() => downloadImportTemplate(tenantId)}
+                onClick={() => downloadImportTemplate(tenantId, tenantCode)}
               >
                 <IconDownload />
                 Download template

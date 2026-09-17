@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { SCHOOL_NAME } from "../lib/constants";
+import { schoolDisplayName } from "../lib/school";
 import { AuditPanel, AuditProvider } from "./AuditContext";
 import { IconBlacklist, IconGates, IconHistory, IconHours, IconLive, IconPeople, IconPickupHistory, IconReports, IconShield } from "./Icons";
 
@@ -18,6 +18,8 @@ const NAV = [
 export function Layout() {
   const { user, source, logout } = useAuth();
   const roleLabel = user?.role === "security_head" ? "Security Head" : "Office Admin";
+  const schoolName = schoolDisplayName(user);
+  const schoolId = (user?.schoolId || "").trim();
 
   return (
     <div className="admin-page">
@@ -29,7 +31,8 @@ export function Layout() {
           </div>
           <div>
             Smart Visitor
-            <small>{SCHOOL_NAME}</small>
+            <small>{schoolName}</small>
+            {schoolId ? <small className="school-code">{schoolId}</small> : null}
           </div>
         </div>
         <nav className="nav" aria-label="Admin">

@@ -1,7 +1,6 @@
 import {
   CUSTODY_FLAGS,
   DEMO_SCHOOL_ID,
-  FIRST_SCHOOL_CODE_EXAMPLE,
   ID_TYPES,
   IMPORT_MAX_ROWS,
   PICKUP_CONSENT_VERSION,
@@ -9,6 +8,7 @@ import {
   PICKUP_RELATIONS,
 } from "./constants";
 import { downloadCsv, rowsToCsv } from "./csv";
+import { acceptedSchoolCodes, templateSchoolCode as templateCodeFromTenant } from "./school";
 import type {
   AuthorizedPickupPerson,
   CustodyFlagRecord,
@@ -108,11 +108,9 @@ export function isDemoSeedStudent(student?: Pick<Student, "id" | "studentId" | "
   return DEMO_SEED_NAMES.has(String(student.name || "").trim().toLowerCase());
 }
 
-/** Template school_code: JWT tenant if it is not the demo seed; never default SCH-DEMO-01. */
-export function templateSchoolCode(schoolId?: string | null): string {
-  const id = (schoolId || "").trim();
-  if (id && !isDemoSchoolId(id)) return id;
-  return FIRST_SCHOOL_CODE_EXAMPLE;
+/** Template school_code: PRANAY for the first real school. Never SCH-DEMO-01. */
+export function templateSchoolCode(schoolId?: string | null, schoolCode?: string | null): string {
+  return templateCodeFromTenant(schoolId, schoolCode);
 }
 
 export function requireTenantSchoolId(schoolId?: string | null): string {
@@ -296,7 +294,9 @@ export function validateImportRows(
   tenantSchoolId: string,
   existing: Student[] = [],
   filename = "import.csv",
+  tenantSchoolCode?: string | null,
 ): { fileErrors: ImportFileError[]; validRows: NormalizedImportRow[]; rows: StudentImportRow[]; result: StudentImportResult } {
+  const allowedCodes = new Set(acceptedSchoolCodes(tenantSchoolId, tenantSchoolCode));
   const fileErrors: ImportFileError[] = [];
   const errors: StudentImportError[] = [];
   const mappedHeaders = headers.map(headerKey);
@@ -360,13 +360,14 @@ export function validateImportRows(
     rows.push(row);
 
     const schoolCode = row.school_code.trim();
-    if (schoolCode && schoolCode !== tenantSchoolId) {
+    if (schoolCode && !allowedCodes.has(schoolCode)) {
+      const expected = [...allowedCodes].filter((c) => c !== tenantSchoolId).join(" / ") || tenantSchoolId;
       errors.push(
         err(
           rowNumber,
           "school_code",
           "TENANT_MISMATCH",
-          `school_code '${schoolCode}' does not match signed-in tenant '${tenantSchoolId}'`,
+          `school_code '${schoolCode}' does not match signed-in tenant ${tenantSchoolId} (expected ${expected || tenantSchoolId})`,
         ),
       );
     }
@@ -543,9 +544,10 @@ export function previewCsvText(
   tenantSchoolId: string,
   existing: Student[],
   filename: string,
+  tenantSchoolCode?: string | null,
 ): ImportPreview {
   const { headers, rows } = parseCsvText(csvText);
-  const validated = validateImportRows(headers, rows, tenantSchoolId, existing, filename);
+  const validated = validateImportRows(headers, rows, tenantSchoolId, existing, filename, tenantSchoolCode);
   return {
     filename,
     csvText,
@@ -556,12 +558,12 @@ export function previewCsvText(
   };
 }
 
-export function buildTemplateCsv(schoolId?: string | null): string {
-  const schoolCode = templateSchoolCode(schoolId);
+export function buildTemplateCsv(schoolId?: string | null, schoolCode?: string | null): string {
+  const code = templateSchoolCode(schoolId, schoolCode);
   const headers = [...IMPORT_SOT_HEADERS];
   const rows: unknown[][] = [
     [
-      schoolCode,
+      code,
       "3A-21",
       "Diya Kulkarni",
       "3",
@@ -583,7 +585,7 @@ export function buildTemplateCsv(schoolId?: string | null): string {
       "N",
     ],
     [
-      schoolCode,
+      code,
       "2B-08",
       "Arjun Desai",
       "2",
@@ -608,8 +610,8 @@ export function buildTemplateCsv(schoolId?: string | null): string {
   return rowsToCsv(headers, rows);
 }
 
-export function downloadImportTemplate(schoolId?: string | null) {
-  downloadCsv("satcop-pickup-import-template.csv", buildTemplateCsv(schoolId));
+export function downloadImportTemplate(schoolId?: string | null, schoolCode?: string | null) {
+  downloadCsv("satcop-pickup-import-template.csv", buildTemplateCsv(schoolId, schoolCode));
 }
 
 function overlayStorageKey(schoolId: string) {
@@ -836,7 +838,7 @@ export function normalizeImportApiResult(
     imported,
     updated,
     failed,
-    valid: Number(raw.valid ?? 0) || undefined,
+    valid: Number(raw.valid ?? raw.peopleInFile ?? 0) || undefined,
     errors,
     dryRun,
     source: "api",

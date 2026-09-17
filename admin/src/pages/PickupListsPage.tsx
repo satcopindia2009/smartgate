@@ -412,7 +412,7 @@ export function PickupListsPage() {
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                onClick={() => downloadImportTemplate(tenantId)}
+                onClick={() => downloadImportTemplate(tenantId, user?.schoolCode)}
               >
                 <IconDownload />
                 Template CSV

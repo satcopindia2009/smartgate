@@ -15,6 +15,8 @@ export interface AuthUser {
   displayName: string;
   phone?: string | null;
   email?: string | null;
+  schoolName?: string | null;
+  schoolCode?: string | null;
 }
 
 export interface LoginResponse {

@@ -40,11 +40,11 @@ import {
   SEED_TEMPLATES,
 } from "../lib/blast";
 import { escortCell, formatAllowedZones } from "../lib/escort";
+import { schoolDisplayName } from "../lib/school";
 import {
   BLAST_INSTRUCTION_MAX,
   LIVE_REFRESH_MS,
   OVERDUE_HOURS_DEFAULT,
-  SCHOOL_NAME,
   SEED_BLAST_ID,
   VISITOR_TYPES,
 } from "../lib/constants";
@@ -616,7 +616,7 @@ export function LivePage() {
           <tbody>
             {loading ? (
               <tr className="empty-row">
-                <td colSpan={12}>Loading {SCHOOL_NAME}…</td>
+                <td colSpan={12}>Loading {schoolDisplayName(user)}…</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr className="empty-row">

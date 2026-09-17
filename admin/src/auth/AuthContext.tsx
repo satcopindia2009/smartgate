@@ -10,6 +10,7 @@ import {
 import { AUTH_STORAGE_KEY } from "../lib/constants";
 import { ApiError, isNetworkError, loginApi, meApi } from "../lib/api";
 import { fixtureLogin } from "../lib/fixtures";
+import { enrichAuthUser } from "../lib/school";
 import type { AuthUser, DataSource } from "../lib/types";
 
 interface StoredAuth {
@@ -59,10 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [source, setSource] = useState<DataSource>("api");
 
   const apply = useCallback((next: StoredAuth | null) => {
-    writeStored(next);
-    setToken(next?.token ?? null);
-    setUser(next?.user ?? null);
-    setSource(next?.source ?? "api");
+    const stored = next ? { ...next, user: enrichAuthUser(next.user) } : null;
+    writeStored(stored);
+    setToken(stored?.token ?? null);
+    setUser(stored?.user ?? null);
+    setSource(stored?.source ?? "api");
   }, []);
 
   useEffect(() => {

@@ -461,61 +461,101 @@ function looksLikeImportResult(data: Record<string, unknown>): boolean {
     typeof data.imported === "number" ||
     typeof data.created === "number" ||
     typeof data.updated === "number" ||
-    typeof data.failed === "number"
+    typeof data.failed === "number" ||
+    typeof data.ok === "boolean" ||
+    typeof data.peopleInFile === "number"
   );
+}
+
+function needsMultipartFile(err: unknown): boolean {
+  return (
+    err instanceof ApiError &&
+    (err.status === 400 || err.status === 415 || err.status === 422) &&
+    /file is required|multipart|unsupported media/i.test(err.message)
+  );
+}
+
+async function postImportMultipart(
+  path: string,
+  token: string,
+  payload: { filename: string; csvText: string; dryRun: boolean },
+): Promise<Record<string, unknown>> {
+  const fd = new FormData();
+  fd.append("file", new Blob([payload.csvText], { type: "text/csv;charset=utf-8" }), payload.filename);
+  fd.append("filename", payload.filename);
+  fd.append("dryRun", payload.dryRun ? "true" : "false");
+  return apiRequestForm<Record<string, unknown>>(path, token, fd);
 }
 
 async function postStudentImport(
   token: string,
-  path: "/students/import:validate" | "/students/import",
+  paths: string[],
   payload: { filename: string; rows: StudentImportRow[]; csvText: string; dryRun: boolean },
 ): Promise<StudentImportResult> {
-  const jsonBody = {
-    filename: payload.filename,
-    dryRun: payload.dryRun,
-    rows: payload.rows,
-  };
+  let sawMissing = 0;
+  let lastErr: unknown;
+  for (const path of paths) {
+    try {
+      const data = await postImportMultipart(path, token, payload);
+      if (!looksLikeImportResult(data)) {
+        sawMissing += 1;
+        continue;
+      }
+      return normalizeImportApiResult(data, payload.filename, payload.dryRun);
+    } catch (err) {
+      lastErr = err;
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) throw err;
+      if (isImportEndpointMissing(err)) {
+        sawMissing += 1;
+        continue;
+      }
+      if (needsMultipartFile(err)) {
+        sawMissing += 1;
+        continue;
+      }
+      throw err;
+    }
+  }
   try {
-    const data = await apiRequest<Record<string, unknown>>(path, {
+    const data = await apiRequest<Record<string, unknown>>(paths[0], {
       method: "POST",
       token,
-      body: JSON.stringify(jsonBody),
+      body: JSON.stringify({
+        filename: payload.filename,
+        dryRun: payload.dryRun,
+        rows: payload.rows,
+      }),
     });
-    if (!looksLikeImportResult(data)) {
-      throw new ImportEndpointMissingError();
+    if (looksLikeImportResult(data)) {
+      return normalizeImportApiResult(data, payload.filename, payload.dryRun);
     }
-    return normalizeImportApiResult(data, payload.filename, payload.dryRun);
   } catch (err) {
-    if (err instanceof ImportEndpointMissingError || isImportEndpointMissing(err)) {
-      throw new ImportEndpointMissingError();
-    }
-    if (err instanceof ApiError && (err.status === 415 || err.status === 422)) {
-      const fd = new FormData();
-      fd.append("file", new Blob([payload.csvText], { type: "text/csv;charset=utf-8" }), payload.filename);
-      fd.append("filename", payload.filename);
-      fd.append("dryRun", payload.dryRun ? "true" : "false");
-      try {
-        const data = await apiRequestForm<Record<string, unknown>>(path, token, fd);
-        return normalizeImportApiResult(data, payload.filename, payload.dryRun);
-      } catch (retryErr) {
-        if (isImportEndpointMissing(retryErr)) throw new ImportEndpointMissingError();
-        throw retryErr;
-      }
-    }
-    throw err;
+    lastErr = err;
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) throw err;
+    if (!isImportEndpointMissing(err) && !needsMultipartFile(err)) throw err;
   }
+  if (sawMissing || lastErr) throw new ImportEndpointMissingError();
+  throw lastErr instanceof Error ? lastErr : new ImportEndpointMissingError();
 }
 
 export function validateStudentImport(
   token: string,
   payload: { filename: string; rows: StudentImportRow[]; csvText: string },
 ) {
-  return postStudentImport(token, "/students/import:validate", { ...payload, dryRun: true });
+  return postStudentImport(
+    token,
+    ["/students/import/validate", "/students/import:validate"],
+    { ...payload, dryRun: true },
+  );
 }
 
 export function commitStudentImport(
   token: string,
   payload: { filename: string; rows: StudentImportRow[]; csvText: string },
 ) {
-  return postStudentImport(token, "/students/import", { ...payload, dryRun: false });
+  return postStudentImport(
+    token,
+    ["/students/import/commit", "/students/import"],
+    { ...payload, dryRun: false },
+  );
 }
