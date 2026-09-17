@@ -47,4 +47,4 @@ Gate `pranay.gate` / `PranayGate@2026` · Host `pranay.host` / `PranayHost@2026`
 
 ## Out of scope
 
-SH Admin hours editor (Admin desk). Escort / zones. Priya MVP rewrite (`P-4F21` unchanged).
+SH Admin hours editor (Admin desk). Escort / zones. Demo seed only — no Priya fixtures.
