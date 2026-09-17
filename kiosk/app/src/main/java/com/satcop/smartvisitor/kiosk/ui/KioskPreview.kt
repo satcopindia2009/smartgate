@@ -65,3 +65,29 @@ fun KioskPhoneLoginPreview() {
         }
     }
 }
+
+@Preview(
+    name = "Host phone home",
+    device = "spec:width=390dp,height=844dp,dpi=420,orientation=portrait",
+    showBackground = true,
+    backgroundColor = 0xFF0F1115,
+)
+@Composable
+fun KioskPhoneHostHomePreview() {
+    SatcopKioskTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(KioskColors.bg)
+                .padding(16.dp),
+        ) {
+            HostHomeScreen(
+                displayName = "Pranay Host",
+                schoolId = "SCH-PRANAY-01",
+                staffId = "",
+                compact = true,
+                onOpenUrl = {},
+            )
+        }
+    }
+}

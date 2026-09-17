@@ -13,6 +13,7 @@ import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.data.model.DemoStory
 import com.satcop.smartvisitor.kiosk.data.model.Gate
 import com.satcop.smartvisitor.kiosk.data.model.InsideVisit
+import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.Staff
 import com.satcop.smartvisitor.kiosk.data.model.VisitCreate
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
@@ -107,8 +108,8 @@ class KioskViewModel(
         viewModelScope.launch {
             _state.update { it.copy(loginBusy = true, loginError = null, toast = null) }
             try {
-                repository.login(username, password)
-                loadAfterLogin()
+                val user = repository.login(username, password)
+                loadAfterLogin(user)
             } catch (e: Exception) {
                 _state.update {
                     it.copy(
@@ -130,26 +131,75 @@ class KioskViewModel(
         }
     }
 
-    private suspend fun loadAfterLogin() {
-        repository.warmup()
-        val me = repository.me()
-        val school = repository.school()
-        val staff = repository.listStaff(active = true)
-        val gates = repository.listGates()
-        val inside = repository.listInside()
-        val story = repository.demoStory()
-        val allowedGateIds = me.gateIds?.toSet()
-        val matchedGates = gates.data.filter { allowedGateIds == null || it.id in allowedGateIds }
-        val visibleGates = matchedGates.ifEmpty { gates.data }
-        val hosts = staff.data.filter { row -> row.roleTitle != "Guard" }
-        val defaultGateId = story.gateId.takeIf { id -> visibleGates.any { it.id == id } }
-            ?: visibleGates.firstOrNull()?.id
-            ?: DemoFixtures.GATE_MAIN_ID
-        val defaultHostId = story.hostId.takeIf { id -> hosts.any { it.id == id } }
-            ?: hosts.firstOrNull()?.id
-        val watermark = me.meta?.watermark
-            ?: staff.meta?.watermark
-            ?: DemoFixtures.WATERMARK
+    private suspend fun loadAfterLogin(loginUser: MeResponse) {
+        runCatching { repository.warmup() }
+        val me = runCatching { repository.me() }.getOrNull() ?: loginUser
+        when (KioskRole.fromJwt(me.role)) {
+            KioskRole.GATE -> loadGateHome(me)
+            KioskRole.HOST, KioskRole.UNSUPPORTED -> applyIdentityHome(me)
+        }
+    }
+
+    private suspend fun loadGateHome(me: MeResponse) {
+        try {
+            val school = repository.school()
+            val staff = repository.listStaff(active = true)
+            val gates = repository.listGates()
+            val inside = repository.listInside()
+            val story = repository.demoStory()
+            val allowedGateIds = me.gateIds?.toSet()
+            val matchedGates = gates.data.filter { allowedGateIds == null || it.id in allowedGateIds }
+            val visibleGates = matchedGates.ifEmpty { gates.data }
+            val hosts = staff.data.filter { row -> row.roleTitle != "Guard" }
+            val defaultGateId = story.gateId.takeIf { id -> visibleGates.any { it.id == id } }
+                ?: visibleGates.firstOrNull()?.id
+                ?: DemoFixtures.GATE_MAIN_ID
+            val defaultHostId = story.hostId.takeIf { id -> hosts.any { it.id == id } }
+                ?: hosts.firstOrNull()?.id
+            val watermark = me.meta?.watermark
+                ?: staff.meta?.watermark
+                ?: DemoFixtures.WATERMARK
+            val source = repository.dataSource
+            _state.update {
+                it.copy(
+                    signedIn = true,
+                    loginBusy = false,
+                    loginError = null,
+                    loginPassword = "",
+                    schoolName = school.name,
+                    schoolId = me.schoolId,
+                    timezone = school.timezone,
+                    watermark = watermark,
+                    dataSource = source,
+                    meDisplayName = me.displayName,
+                    meRole = me.role,
+                    meStaffId = me.staffId.orEmpty(),
+                    gates = visibleGates,
+                    hosts = hosts,
+                    recent = inside.data.take(4),
+                    story = story,
+                    draft = it.draft.copy(
+                        hostId = defaultHostId,
+                        gateId = defaultGateId,
+                    ),
+                    loaded = true,
+                    toast = if (source == DataSource.LIVE) {
+                        "Signed in · ${me.displayName}"
+                    } else {
+                        "FIXTURES · signed in · live directory unreachable"
+                    },
+                    toastKind = if (source == DataSource.LIVE) ToastKind.SUCCESS else ToastKind.WARNING,
+                )
+            }
+        } catch (_: Exception) {
+            applyIdentityHome(me, warning = true)
+        }
+    }
+
+    private fun applyIdentityHome(
+        me: MeResponse,
+        warning: Boolean = false,
+    ) {
         val source = repository.dataSource
         _state.update {
             it.copy(
@@ -157,29 +207,23 @@ class KioskViewModel(
                 loginBusy = false,
                 loginError = null,
                 loginPassword = "",
-                schoolName = school.name,
+                schoolName = me.schoolId.ifBlank { it.schoolName },
                 schoolId = me.schoolId,
-                timezone = school.timezone,
-                watermark = watermark,
+                watermark = me.meta?.watermark ?: DemoFixtures.WATERMARK,
                 dataSource = source,
                 meDisplayName = me.displayName,
                 meRole = me.role,
                 meStaffId = me.staffId.orEmpty(),
-                gates = visibleGates,
-                hosts = hosts,
-                recent = inside.data.take(4),
-                story = story,
-                draft = it.draft.copy(
-                    hostId = defaultHostId,
-                    gateId = defaultGateId,
-                ),
+                gates = emptyList(),
+                hosts = emptyList(),
+                recent = emptyList(),
                 loaded = true,
-                toast = if (source == DataSource.LIVE) {
-                    "Signed in · ${me.displayName}"
+                toast = if (warning) {
+                    "Signed in · ${me.displayName} · directory unavailable"
                 } else {
-                    "FIXTURES · signed in · live directory unreachable"
+                    "Signed in · ${me.displayName}"
                 },
-                toastKind = if (source == DataSource.LIVE) ToastKind.SUCCESS else ToastKind.WARNING,
+                toastKind = if (warning) ToastKind.WARNING else ToastKind.SUCCESS,
             )
         }
     }

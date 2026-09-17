@@ -71,6 +71,29 @@ class AuthLoginTest {
     }
 
     @Test
+    fun loginResponseParsesPranayHostUser() {
+        val raw = """
+            {
+              "accessToken":"tok-host",
+              "tokenType":"Bearer",
+              "expiresIn":43200,
+              "user":{
+                "id":"U-PRANAY-HOST",
+                "schoolId":"SCH-PRANAY-01",
+                "role":"host",
+                "displayName":"Pranay Host"
+              },
+              "meta":{"watermark":"DEMO"}
+            }
+        """.trimIndent()
+        val parsed = json.decodeFromString<LoginResponse>(raw)
+        assertEquals("tok-host", parsed.accessToken)
+        assertEquals("SCH-PRANAY-01", parsed.user?.schoolId)
+        assertEquals("host", parsed.user?.role)
+        assertEquals("Pranay Host", parsed.user?.displayName)
+    }
+
+    @Test
     fun invalidCredentialsShowsFriendlyError() {
         val error = ApiException("INVALID_CREDENTIALS", "nope", 401)
         assertEquals("Invalid username or password", LoginErrors.message(error))
