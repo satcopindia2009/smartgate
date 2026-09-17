@@ -260,9 +260,9 @@ def test_a4_c4d_host_approve_noop_when_after_hours(client):
     assert ap.status_code == 403
     assert ap.json()["error"]["code"] == "AFTER_HOURS_SH_REQUIRED"
 
-    admin_ap = client.post(f"/v1/visits/{vid}/approve", headers=auth(atoken))
-    assert admin_ap.status_code == 403
-    assert admin_ap.json()["error"]["code"] == "AFTER_HOURS_SH_REQUIRED"
+    admin_missing = client.post(f"/v1/visits/{vid}/approve", headers=auth(atoken))
+    assert admin_missing.status_code == 400
+    assert admin_missing.json()["error"]["code"] == "VALIDATION"
 
     gate_ap = client.post(f"/v1/visits/{vid}/approve", headers=auth(gtoken))
     assert gate_ap.status_code == 403
@@ -272,6 +272,16 @@ def test_a4_c4d_host_approve_noop_when_after_hours(client):
     assert again.json()["afterHours"] is True
     assert again.json()["passId"] is None
     assert again.json()["decidedByUserId"] is None
+
+    admin_ok = client.post(
+        f"/v1/visits/{vid}/approve",
+        headers=auth(atoken),
+        json={"reason": "Office Admin night clearance"},
+    )
+    assert admin_ok.status_code == 200, admin_ok.text
+    assert admin_ok.json()["status"] == "approved"
+    assert admin_ok.json()["decidedByUserId"] == "U-ADMIN"
+    assert admin_ok.json()["afterHoursApproveReason"] == "Office Admin night clearance"
 
 
 def test_a6_sh_approve_requires_reason_then_succeeds(client):

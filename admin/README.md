@@ -44,9 +44,9 @@ Admin/Security Head surfaces only — no visit-flow or kiosk changes.
 
 Same Admin light/dark tokens — no alternate layout pack.
 
-- **Hours + holidays** (`/access-rules`): 7-day campus hours + holiday calendar CRUD. Admin / Security Head write; Gate cannot. Policy copy locked **Security Head only** (not dual). Wire: `GET|PUT /access-rules/hours`, `GET|POST /access-rules/holidays`, `DELETE /access-rules/holidays/{id}`.
-- **Live / History**: `afterHours` + `policyTrigger` flag and filters (After-hours / Holiday / Pending SH). SH Approve/Reject with reason on pending after-hours (History); Host Approve is a no-op on the API. Sticky eval at registration.
-- **Live host-pending (in-hours)**: Admin / Security Head Approve or Reject visits waiting on the host that are **not** after-hours. After-hours Live strip stays SH-only with no Admin buttons. Reject reason required. `POST /visits/{id}/approve` · `/reject`. Fixtures fallback on 404; toast API error on 403.
+- **Hours + holidays** (`/access-rules`): 7-day campus hours + holiday calendar CRUD. Admin / Security Head write; Gate cannot. Policy copy locked **Admin or Security Head** (not dual host+SH). Wire: `GET|PUT /access-rules/hours`, `GET|POST /access-rules/holidays`, `DELETE /access-rules/holidays/{id}`.
+- **Live / History**: `afterHours` + `policyTrigger` flag and filters (After-hours / Holiday / Pending Admin|SH). Admin or SH Approve/Reject with reason on pending after-hours (History); Host Approve is a no-op on the API. Sticky eval at registration.
+- **Live host-pending (in-hours)**: Admin / Security Head Approve or Reject visits waiting on the host that are **not** after-hours. After-hours Live strip is Admin or Security Head (decide on History). Reject reason required. `POST /visits/{id}/approve` · `/reject`. Demo-school fixtures fallback on 404; non-demo tenants never fall back.
 - Seed: weekday close **18:00 Asia/Kolkata**; holiday **Diwali 2026-10-20 `HOL-DIWALI`**; Evening Vendor **Ravi Deshmukh `V-AH-VENDOR`**; Holiday Parent **Deepak Nair / pass `P-7K88`**; in-hours host-pending **Kavita Rao `V-20260917-HOST`**. **Priya Sharma `P-4F21` unchanged.**
 
 ## Escort / zones (Priority P2 · B4)

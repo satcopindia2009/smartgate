@@ -43,7 +43,7 @@ import {
   SEED_TEMPLATES,
 } from "../lib/blast";
 import { escortCell, formatAllowedZones } from "../lib/escort";
-import { schoolDisplayName } from "../lib/school";
+import { schoolDisplayName, withoutDemoChrome } from "../lib/school";
 import {
   BLAST_INSTRUCTION_MAX,
   LIVE_REFRESH_MS,
@@ -130,9 +130,24 @@ export function LivePage() {
   const canBlast = canTriggerBlast(user?.role);
   const canDecideHost = canApproveHostPending(user?.role);
 
+  const hideDemo = withoutDemoChrome(user);
+
   const refresh = useCallback(async () => {
     const fx = await loadFixtures();
     if (source === "fixtures" || !token || token.startsWith("fixture:")) {
+      if (hideDemo) {
+        setGates([]);
+        setStaff([]);
+        setRows([]);
+        setPendingAh([]);
+        setPendingHost([]);
+        setReports([]);
+        setUsingFixtures(false);
+        setBlastEnabled(false);
+        setLastBlast(null);
+        setLoading(false);
+        return;
+      }
       const sess = await getFixtureSession();
       setGates(fixtureGates());
       setStaff(fixtureStaff(fx));
@@ -187,6 +202,13 @@ export function LivePage() {
         setLastBlast(latestBlastLocal());
       }
     } catch (err) {
+      if (hideDemo) {
+        setUsingFixtures(false);
+        if (err instanceof Error) {
+          showToast(err.message, "error");
+        }
+        return;
+      }
       const sess = await getFixtureSession();
       setGates(fixtureGates());
       setStaff(fixtureStaff(fx));
@@ -203,7 +225,7 @@ export function LivePage() {
     } finally {
       setLoading(false);
     }
-  }, [source, token]);
+  }, [source, token, hideDemo, showToast]);
 
   useEffect(() => {
     void refresh();
@@ -251,7 +273,7 @@ export function LivePage() {
 
   async function decideHostPending(target: HistoryVisit, action: "approve" | "reject", reason?: string) {
     if (target.afterHours) {
-      showToast("After-hours Approve is Security Head only", "warning");
+      showToast("After-hours Approve is Admin or Security Head only — use History to decide", "warning");
       return;
     }
     if (!canDecideHost) {
@@ -293,7 +315,7 @@ export function LivePage() {
         return;
       }
       const fallback = (err instanceof ApiError && err.status === 404) || isNetworkError(err);
-      if (fallback) {
+      if (fallback && !hideDemo) {
         await getFixtureSession();
         applyHostPendingDecisionLocal(target.visitId, action, reason);
         setPendingHost((prev) => prev.filter((p) => p.visitId !== target.visitId));
@@ -701,7 +723,7 @@ export function LivePage() {
       {pendingAh.length > 0 && (
         <div className="pending-sh-strip">
           <div className="pending-sh-head">
-            Pending after-hours · Security Head only · Host Approve is a no-op
+            Pending after-hours · Admin or Security Head · Host Approve is a no-op
           </div>
           <div className="pending-sh-list">
             {pendingAh.map((p) => (
@@ -714,7 +736,7 @@ export function LivePage() {
                   </div>
                 </div>
                 <span className="flag flag-ah">{policyTriggerLabel(p.policyTrigger)}</span>
-                <span className="status-pill status-pending">Pending · SH</span>
+                <span className="status-pill status-pending">Pending · Admin|SH</span>
               </div>
             ))}
           </div>

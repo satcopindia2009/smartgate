@@ -84,7 +84,7 @@ def _emit(event: str, visit: dict, extra: Optional[dict] = None) -> None:
 def _after_hours_sh_required(visit: dict) -> None:
     raise AppError(
         "AFTER_HOURS_SH_REQUIRED",
-        "After hours / holiday — Security Head approval required",
+        "After hours / holiday — Admin or Security Head approval required",
         403,
         {
             "afterHours": True,
@@ -401,14 +401,14 @@ def approve_visit(
 
     _block_without_override(v, "approve")
 
-    # A3/A4: sticky afterHours — do not re-evaluate; Host/Admin Approve is no-op
+    # A3/A4: sticky afterHours — do not re-evaluate; Host Approve is no-op
     if v.get("afterHours"):
-        if user["role"] != "security_head":
+        if user["role"] not in ("admin", "security_head"):
             _after_hours_sh_required(v)
         if not body.reason:
             raise AppError(
                 "VALIDATION",
-                "reason is required for Security Head after-hours approve",
+                "reason is required for after-hours approve",
                 400,
             )
 
@@ -453,8 +453,8 @@ def reject_visit(
         raise AppError("FORBIDDEN", "Host may only reject own visits", 403)
     if v["status"] != "pending":
         raise AppError("INVALID_STATE", f"Cannot reject from status {v['status']}", 409)
-    # A4/A6: after-hours reject is SH-only; reason already required by RejectBody
-    if v.get("afterHours") and user["role"] != "security_head":
+    # A4/A6: after-hours reject is Admin or SH; reason already required by RejectBody
+    if v.get("afterHours") and user["role"] not in ("admin", "security_head"):
         _after_hours_sh_required(v)
     ts = now_iso()
     v["status"] = "rejected"

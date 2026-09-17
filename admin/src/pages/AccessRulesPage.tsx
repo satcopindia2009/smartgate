@@ -37,6 +37,7 @@ import {
   ZONE_KEYS,
 } from "../lib/escort";
 import { loadFixtures } from "../lib/fixtures";
+import { withoutDemoChrome } from "../lib/school";
 import type { CampusHoursRow, EscortZoneRule, HolidayEntry, Weekday, ZoneLabel } from "../lib/types";
 
 function emptyHours(): CampusHoursRow[] {
@@ -62,6 +63,7 @@ export function AccessRulesPage() {
   const { token, user, source } = useAuth();
   const { showToast } = useToast();
   const canWrite = canEditCampusHours(user?.role);
+  const hideDemo = withoutDemoChrome(user);
   const [hours, setHours] = useState<CampusHoursRow[]>(emptyHours());
   const [holidays, setHolidays] = useState<HolidayEntry[]>([]);
   const [usingFixtures, setUsingFixtures] = useState(source === "fixtures");
@@ -79,6 +81,11 @@ export function AccessRulesPage() {
   const load = useCallback(async () => {
     const fx = await loadFixtures();
     if (source === "fixtures" || !token || token.startsWith("fixture:")) {
+      if (hideDemo) {
+        setUsingFixtures(false);
+        setLoading(false);
+        return;
+      }
       const sess = getAfterHoursFixtureSession(fx.campusHours, fx.holidays);
       const escort = getEscortFixtureSession(fx.zones, fx.escortRules);
       setHours(mergeHours(sess.hours));
@@ -102,6 +109,13 @@ export function AccessRulesPage() {
       setRules(er.data.length ? er.data : seedEscortRules());
       setUsingFixtures(false);
     } catch (err) {
+      if (hideDemo) {
+        setUsingFixtures(false);
+        if (err instanceof Error) {
+          showToast(err.message, "error");
+        }
+        return;
+      }
       const sess = getAfterHoursFixtureSession(fx.campusHours || seedCampusHours(), fx.holidays || seedHolidays());
       const escort = getEscortFixtureSession(fx.zones || seedZones(), fx.escortRules || seedEscortRules());
       setHours(mergeHours(sess.hours));
@@ -115,7 +129,7 @@ export function AccessRulesPage() {
     } finally {
       setLoading(false);
     }
-  }, [source, token, showToast]);
+  }, [source, token, showToast, hideDemo]);
 
   useEffect(() => {
     void load();
@@ -423,7 +437,7 @@ export function AccessRulesPage() {
       </div>
 
       <div className="policy-lock">
-        After-hours / holiday Approve policy: <strong>Security Head only</strong> (not dual host+SH) · Priority-P2 lock
+        After-hours / holiday Approve policy: <strong>Admin or Security Head</strong> (not dual host+SH) · Priority-P2 lock
         A4. Host Approve is a no-op. Evaluation is sticky at registration.
       </div>
 

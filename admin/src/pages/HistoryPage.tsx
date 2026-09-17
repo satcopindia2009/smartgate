@@ -10,6 +10,7 @@ import { matchesAfterHoursFlag, policyTriggerLabel } from "../lib/afterHours";
 import { escortCell, formatAllowedZones } from "../lib/escort";
 import { GATE_ENUMS, VISITOR_TYPES } from "../lib/constants";
 import { applyAfterHoursDecisionLocal, fixtureGates, fixtureStaff, getFixtureSession, loadFixtures } from "../lib/fixtures";
+import { withoutDemoChrome } from "../lib/school";
 import { avatarClass, formatDateTime, formatDurationMin, formatMobile, initials, todayIso, typeClass } from "../lib/format";
 import { mergeVisitsById, toHistoryVisit } from "../lib/mapVisit";
 import type { ApiVisit, Gate, HistoryVisit, Staff } from "../lib/types";
@@ -19,6 +20,7 @@ export function HistoryPage() {
   const { pushAudit } = useAudit();
   const { showToast } = useToast();
   const canDecideAh = canApproveAfterHours(user?.role);
+  const hideDemo = withoutDemoChrome(user);
   const [rows, setRows] = useState<HistoryVisit[]>([]);
   const [gates, setGates] = useState<Gate[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -49,6 +51,13 @@ export function HistoryPage() {
       return;
     }
     if (source === "fixtures" || !token || token.startsWith("fixture:")) {
+      if (hideDemo) {
+        setGates([]);
+        setStaff([]);
+        setRows([]);
+        setUsingFixtures(false);
+        return;
+      }
       const sess = await getFixtureSession();
       setGates(gLocal);
       setStaff(fixtureStaff(fx));
@@ -82,6 +91,13 @@ export function HistoryPage() {
       setRows(merged.map((v) => toHistoryVisit(v, g.data, s.data as Staff[])));
       setUsingFixtures(false);
     } catch (err) {
+      if (hideDemo) {
+        setUsingFixtures(false);
+        if (err instanceof Error) {
+          showToast(err.message, "error");
+        }
+        return;
+      }
       const sess = await getFixtureSession();
       setGates(fixtureGates());
       setRows(sess.history);
@@ -90,7 +106,7 @@ export function HistoryPage() {
         /* fallback anyway */
       }
     }
-  }, [source, token, dateFrom, dateTo, ahFlag, showToast]);
+  }, [source, token, dateFrom, dateTo, ahFlag, showToast, hideDemo]);
 
   useEffect(() => {
     void load();
@@ -99,7 +115,7 @@ export function HistoryPage() {
   async function confirmAhDecision(action: "approve" | "reject", reason: string) {
     if (!decideTarget) return;
     if (!canDecideAh) {
-      showToast("After-hours Approve is Security Head only", "warning");
+      showToast("After-hours Approve is Admin or Security Head only", "warning");
       return;
     }
     if (!reason.trim()) {
@@ -116,25 +132,31 @@ export function HistoryPage() {
         }
         showToast(
           action === "approve"
-            ? `SH approved ${decideTarget.name}`
-            : `SH rejected ${decideTarget.name}`,
+            ? `Approved ${decideTarget.name}`
+            : `Rejected ${decideTarget.name}`,
           action === "approve" ? "success" : "warning",
         );
         setDecideTarget(null);
         await load();
-      } else {
+      } else if (!hideDemo) {
         applyAfterHoursDecisionLocal(decideTarget.visitId, action, reason);
         showToast(
           action === "approve"
-            ? `SH approved ${decideTarget.name} (fixtures)`
-            : `SH rejected ${decideTarget.name} (fixtures)`,
+            ? `Approved ${decideTarget.name} (fixtures)`
+            : `Rejected ${decideTarget.name} (fixtures)`,
           "warning",
         );
         setDecideTarget(null);
         const sess = await getFixtureSession();
         setRows(sess.history);
+      } else {
+        showToast("After-hours decision requires the living API", "error");
       }
     } catch (err) {
+      if (hideDemo) {
+        showToast(err instanceof Error ? err.message : "Decision failed", "error");
+        return;
+      }
       applyAfterHoursDecisionLocal(decideTarget.visitId, action, reason);
       const sess = await getFixtureSession();
       setRows(sess.history);
@@ -255,7 +277,7 @@ export function HistoryPage() {
           <option value="">Any hours</option>
           <option value="afterhours">After-hours</option>
           <option value="holiday">Holiday</option>
-          <option value="pending_sh">Pending SH</option>
+          <option value="pending_sh">Pending Admin|SH</option>
         </select>
         <ExportButton onClick={() => setExportOpen(true)} />
       </div>
@@ -367,10 +389,10 @@ export function HistoryPage() {
                       {h.afterHours && h.decision === "Pending" ? (
                         canDecideAh ? (
                           <button type="button" className="btn btn-primary btn-sm" onClick={() => setDecideTarget(h)}>
-                            SH decide
+                            Admin / SH decide
                           </button>
                         ) : (
-                          <span className="subline">SH only</span>
+                          <span className="subline">Admin or SH only</span>
                         )
                       ) : null}
                     </td>
