@@ -23,8 +23,39 @@
       display: flex; align-items: center; justify-content: center;
     }
     .app-header .mark svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2.2; }
+    .app-header-copy { flex: 1; min-width: 0; }
     .app-header h1 { font-size: 16px; font-weight: 600; }
     .app-header p { font-size: 11px; color: var(--text-dim); }
+    .app-header .btn-logout {
+      min-height: 36px; margin-top: 6px; padding: 6px 12px; font-size: 12px;
+    }
+    .fyi-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--orange-dim); color: #fbbf24; font-size: 11px; font-weight: 600;
+      padding: 4px 10px; border-radius: 999px; margin: -8px 0 16px;
+    }
+    .hint-box {
+      margin-top: 14px; padding: 12px; border-radius: var(--radius);
+      background: var(--orange-dim); border: 1px solid rgba(245, 158, 11, 0.35);
+      font-size: 12px; color: #fbbf24; line-height: 1.4;
+    }
+    .login-screen {
+      display: flex; flex-direction: column; justify-content: center;
+      min-height: 420px; padding: 8px 4px 16px;
+    }
+    .login-screen h2 { font-size: 20px; margin: 0 0 6px; }
+    .login-screen .login-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 18px; }
+    .login-screen label {
+      display: block; font-size: 11px; font-weight: 600; color: var(--text-dim);
+      margin: 10px 0 6px; letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .login-screen input {
+      width: 100%; min-height: 48px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); padding: 0 14px; font-size: 15px;
+    }
+    .login-screen input:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-dim); }
+    .login-screen .login-error { color: #f87171; font-size: 12px; min-height: 18px; margin-top: 8px; }
+    .login-screen .btn { margin-top: 14px; }
     .source-pill {
       display: inline-flex; margin-bottom: 12px; padding: 4px 10px; border-radius: 999px;
       font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
@@ -101,6 +132,20 @@
         <div class="demo-watermark">DEMO</div>
         <div class="phone-notch"></div>
         <div class="phone-body host-screen">
+          <div class="login-screen" id="login-screen">
+            <div class="source-pill" id="login-pill">Typed sign-in · no demo auto-login</div>
+            <h2>Host sign-in</h2>
+            <p class="login-sub">Type your host username. Demo host/host123 auto-login is off.</p>
+            <form id="login-form" autocomplete="on">
+              <label for="login-user">Username</label>
+              <input id="login-user" name="username" type="text" autocomplete="username" placeholder="pranay.host" required />
+              <label for="login-pass">Password</label>
+              <input id="login-pass" name="password" type="password" autocomplete="current-password" required />
+              <div class="login-error" id="login-error"></div>
+              <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn-login">Sign in</button>
+            </form>
+          </div>
+          <div id="app-main" class="hidden">
           <div class="status-bar">
             <span>9:41</span>
             <span>●●● LTE</span>
@@ -109,20 +154,23 @@
             <div class="mark" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
             </div>
-            <div>
+            <div class="app-header-copy">
               <h1>Visitor request</h1>
-              <p id="host-label">Anita Joshi · Primary Coordinator</p>
+              <p id="host-label">Sign in to continue</p>
+              <button type="button" class="btn btn-ghost btn-logout hidden" id="btn-logout">Sign out</button>
             </div>
           </div>
           <div id="source-pill" class="source-pill">Checking mock…</div>
-          <div class="story-switch">
-            <button type="button" id="tab-pending" class="active">Pending</button>
-            <button type="button" id="tab-priya">Priya (inside)</button>
+          <div class="story-switch" role="tablist" aria-label="Host stories">
+            <button type="button" role="tab" id="tab-pending" class="active" aria-selected="true">Pending</button>
+            <button type="button" role="tab" id="tab-afterhours" aria-selected="false">After-hours</button>
+            <button type="button" role="tab" id="tab-priya" aria-selected="false">Priya (inside)</button>
           </div>
 
           <div id="request-view">
             <div class="notif-card">
               <div class="notif-badge" id="status-badge">Awaiting your decision</div>
+              <div class="fyi-badge hidden" id="fyi-badge">FYI · After hours · you cannot Approve</div>
               <div class="visitor-row">
                 <div class="avatar avatar-2xl avatar-purple" id="visitor-avatar">PS</div>
                 <div>
@@ -136,11 +184,20 @@
                 <div class="meta-row"><span>Requested</span><strong id="req-time">—</strong></div>
                 <div class="meta-row"><span>Mobile</span><strong id="visitor-mobile">+91 98220 11122</strong></div>
                 <div class="meta-row"><span>visitId</span><strong id="visit-id">—</strong></div>
+                <div class="meta-row hidden" id="row-trigger"><span>Policy trigger</span><strong id="visitor-trigger">outside_hours</strong></div>
+                <div class="meta-row hidden" id="row-eval"><span>Evaluated at</span><strong id="visitor-eval">—</strong></div>
+                <div class="meta-row hidden" id="row-decision"><span>Decision</span><strong>Security Head only</strong></div>
               </div>
               <div class="action-row" id="action-row">
                 <button type="button" class="btn btn-danger btn-lg" id="btn-reject">Reject</button>
                 <button type="button" class="btn btn-success btn-lg" id="btn-approve">Approve</button>
               </div>
+              <div class="hint-box hidden" id="ah-hint">
+                AFTER_HOURS_SH_REQUIRED · Host Approve does not move to Approved (AC-C4d). Security Head must decide.
+              </div>
+              <button type="button" class="btn btn-ghost btn-block hidden" id="btn-ack-fyi" style="margin-top:12px;">
+                Ack FYI (optional)
+              </button>
               <button type="button" class="btn btn-cyan btn-block btn-lg hidden" id="btn-meeting" style="margin-top:10px;">
                 Meeting done
               </button>
@@ -171,6 +228,7 @@
 
           <div class="hub-link-bar">
             <a href="../visitor-qr/index.html">Visitor QR →</a>
+          </div>
           </div>
           <div id="toast-box" class="toast-container" aria-live="polite"></div>
         </div>
