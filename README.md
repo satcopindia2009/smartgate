@@ -488,6 +488,7 @@ bash scripts/smoke.sh
 - `tests/test_blast.py` — B1–B6: preview=inside, confirm required, Gate/Host 403, WA `skipped_hold`, visit status unchanged, retry failed, disabled 404
 - `tests/test_blast_acceptance.py` — AC-E3a / AC-E3b / AC-E3c / AC-E3d / AC-E3e / AC-E3f / AC-E3g
 - `tests/test_school_roster.py` — SCH-PRANAY-01 / PRANAY ops seed; cannot overwrite SCH-DEMO-01 or SCH-PRANAY-PUNE-01; locked CSV commit + validate dry-run; court-doc reject; F6/F3; audit; Gate/Host 403
+- `tests/test_import_acceptance.py` — AC-IMP-1..10 + F3/F6 + custody conflict + template download + gate match on imported mobile
 
 ## Remaining thin stubs / out of scope
 

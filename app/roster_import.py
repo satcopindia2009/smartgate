@@ -52,7 +52,20 @@ CSV_CONTRACT = (
     "relation: parent|guardian|sibling|relative|other. "
     "Upsert student by (schoolId + student_external_id) and person by "
     "(schoolId + student_external_id + mobile). "
-    "mode=validate is dry-run; mode=commit writes."
+    "mode=validate is dry-run; mode=commit writes. "
+    "Max 5000 person-rows. person_active/legal_hold accept Y/N. "
+    "allowed_person_mobiles are semicolon-separated. "
+    "Conflicting custody_flag rows for the same student fail that student."
+)
+
+MAX_IMPORT_ROWS = 5000
+GATE_INSTRUCTION_MAX = 280
+
+TEMPLATE_CSV = (
+    ",".join(LOCKED_HEADERS)
+    + "\n"
+    + "PRANAY,5B-17,Aarav Example,5,B,Neha Example,parent,9822013001,1001,DL,,,none,,,,pickup_notice_en_hi_v1,2026-06-15,Y,N\n"
+    + "PRANAY,5B-17,Aarav Example,5,B,Rohan Example,relative,9822013002,2002,Other,2026-09-01,2026-12-31,none,,,,pickup_notice_en_hi_v1,2026-06-15,Y,N\n"
 )
 
 # Accept aliases → locked names. Do not document a second thinner template.
@@ -98,7 +111,23 @@ COURT_DOC_COLUMNS = {
     "courtdocument",
     "court_order_file",
     "narrative",
+    "case_narrative",
+    "casenarrative",
+    "document_url",
+    "documenturl",
+    "opposing_party_address",
+    "opposingpartyaddress",
+    "image_bytes",
+    "imagebytes",
+    "photo_bytes",
+    "photobytes",
+    "court_file",
+    "courtfile",
 }
+_FORBIDDEN_HEADER_RE = re.compile(
+    r"court.?pdf|court.?doc|case.?narrative|document.?url|opposing.?party|image.?bytes|photo.?bytes",
+    re.I,
+)
 
 RELATION_VALUES = {r.value for r in PickupRelation}
 ID_TYPE_VALUES = {i.value for i in IdType}
@@ -144,12 +173,17 @@ def _cell_str(value: Any) -> str:
 def _norm_header(name: Any) -> str:
     raw = _cell_str(name).lstrip("\ufeff").strip()
     key = re.sub(r"[^a-z0-9]+", "", raw.lower())
-    if key in COURT_DOC_COLUMNS or raw.lower().replace(" ", "_") in COURT_DOC_COLUMNS:
+    snake = raw.lower().replace(" ", "_")
+    if (
+        key in COURT_DOC_COLUMNS
+        or snake in COURT_DOC_COLUMNS
+        or (raw and _FORBIDDEN_HEADER_RE.search(raw))
+    ):
         raise AppError(
             "VALIDATION",
             f"Court-document column '{raw}' is rejected — do not import court PDFs/narratives",
             400,
-            {"column": raw},
+            {"column": raw, "code": "AC-IMP-4"},
         )
     locked = _ALIASES.get(key, raw.strip().lower().replace(" ", "_"))
     return locked
@@ -163,7 +197,7 @@ def _parse_bool(raw: str, default: bool, field: str) -> bool:
         return True
     if s in ("0", "false", "no", "n", "inactive"):
         return False
-    raise ValueError(f"{field} must be true/false")
+    raise ValueError(f"{field} must be Y/N (or true/false)")
 
 
 def _filename_kind(filename: Optional[str], content_type: Optional[str]) -> str:
@@ -216,6 +250,13 @@ def _read_tabular(data: bytes, filename: Optional[str], content_type: Optional[s
             }
             mapped["_row"] = str(len(out) + 2)
             out.append(mapped)
+        if len(out) > MAX_IMPORT_ROWS:
+            raise AppError(
+                "VALIDATION",
+                f"Import exceeds {MAX_IMPORT_ROWS} person-rows",
+                400,
+                {"limit": MAX_IMPORT_ROWS, "rows": len(out)},
+            )
         return out
 
     text = data.decode("utf-8-sig")
@@ -228,6 +269,13 @@ def _read_tabular(data: bytes, filename: Optional[str], content_type: Optional[s
         mapped = {_norm_header(k): _cell_str(v) for k, v in (row or {}).items() if k}
         mapped["_row"] = str(i)
         out.append(mapped)
+    if len(out) > MAX_IMPORT_ROWS:
+        raise AppError(
+            "VALIDATION",
+            f"Import exceeds {MAX_IMPORT_ROWS} person-rows",
+            400,
+            {"limit": MAX_IMPORT_ROWS, "rows": len(out)},
+        )
     return out
 
 
@@ -277,7 +325,7 @@ def _check_school_code(row_code: str, jwt_school: str) -> Optional[str]:
 
 def _split_mobiles(raw: str) -> list[str]:
     out: list[str] = []
-    for part in re.split(r"[,;|/]+", raw or ""):
+    for part in re.split(r"[;|,/]+", raw or ""):
         token = part.strip()
         if not token:
             continue
@@ -287,6 +335,42 @@ def _split_mobiles(raw: str) -> list[str]:
         if mobile not in out:
             out.append(mobile)
     return out
+
+
+def _parse_ymd(raw: str, field: str) -> Optional[str]:
+    text = (raw or "").strip()
+    if not text:
+        return None
+    if "T" in text:
+        try:
+            datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise ValueError(f"{field} must be YYYY-MM-DD or ISO datetime") from e
+        return text
+    try:
+        date.fromisoformat(text[:10])
+    except ValueError as e:
+        raise ValueError(f"{field} must be YYYY-MM-DD") from e
+    return text[:10]
+
+
+def _consent_at(raw: str) -> str:
+    text = (raw or "").strip()
+    if not text:
+        return now_iso()
+    parsed = _parse_ymd(text, "consent_at")
+    return parsed or now_iso()
+
+
+def _custody_sig(spec: dict) -> tuple:
+    allowed = tuple(_split_mobiles(spec.get("allowed") or ""))
+    blocked = tuple(_split_mobiles(spec.get("blocked") or ""))
+    return (
+        spec.get("flag") or "none",
+        (spec.get("gate_instruction") or "").strip(),
+        allowed,
+        blocked,
+    )
 
 
 def import_locked_rows(
@@ -314,7 +398,8 @@ def import_locked_rows(
     updated = 0
     errors: list[dict] = []
     ts = now_iso()
-    pending_custody: dict[str, dict] = {}
+    pending_custody: dict[str, list[dict]] = {}
+    custody_conflict: set[str] = set()
     seen_students: set[str] = set()
     role = user.get("role")
     user_id = user.get("id") or "unknown"
@@ -405,8 +490,12 @@ def import_locked_rows(
             person_name = (row.get("person_name") or "").strip()
             relation = (row.get("relation") or "").strip().lower()
             mobile_raw = (row.get("mobile") or "").strip()
-            consent_ver = (row.get("consent_version") or "").strip()
-            consent_at = (row.get("consent_at") or "").strip()
+            consent_ver = (row.get("consent_version") or "").strip() or PICKUP_CONSENT_VERSION
+            try:
+                consent_at = _consent_at(row.get("consent_at") or "")
+            except ValueError as e:
+                errors.append(_err(row_no, str(e), "consent_at", file_label))
+                continue
             if not person_name:
                 errors.append(_err(row_no, "person_name is required", "person_name", file_label))
                 continue
@@ -426,16 +515,12 @@ def import_locked_rows(
                     _err(row_no, "Invalid mobile — expected IN 10-digit or E.164", "mobile", file_label)
                 )
                 continue
-            if not consent_ver:
-                errors.append(_err(row_no, "consent_version is required", "consent_version", file_label))
-                continue
-            if not consent_at:
-                errors.append(_err(row_no, "consent_at is required", "consent_at", file_label))
-                continue
             try:
                 person_active = _parse_bool(row.get("person_active", ""), True, "person_active")
+                effective_from = _parse_ymd(row.get("effective_from") or "", "effective_from")
+                effective_to = _parse_ymd(row.get("effective_to") or "", "effective_to")
             except ValueError as e:
-                errors.append(_err(row_no, str(e), "person_active", file_label))
+                errors.append(_err(row_no, str(e), file=file_label))
                 continue
             id_type_raw = (row.get("id_type") or "").strip()
             id_type = None
@@ -477,8 +562,8 @@ def import_locked_rows(
                 "idNumber": None,
                 "idLast4": (row.get("id_last4") or "").strip() or None,
                 "active": person_active,
-                "effectiveFrom": (row.get("effective_from") or "").strip() or None,
-                "effectiveTo": (row.get("effective_to") or "").strip() or None,
+                "effectiveFrom": effective_from,
+                "effectiveTo": effective_to,
                 "pickupConsentVersion": consent_ver,
                 "pickupConsentAt": consent_at,
                 "updatedByUserId": user_id,
@@ -487,6 +572,7 @@ def import_locked_rows(
             if existing_p:
                 updated += 1
                 if commit:
+                    # Soft-deactivate via person_active=N only — never hard-delete.
                     existing_p.update(payload)
                     store.put_authorized_person(existing_p)
                     denormalize_blocked_by_custody(student["id"], school_id)
@@ -507,7 +593,18 @@ def import_locked_rows(
                     denormalize_blocked_by_custody(student["id"], school_id)
 
         flag_raw = (row.get("custody_flag") or "").strip().lower()
-        if flag_raw or (row.get("gate_instruction") or "").strip() or (
+        instruction = (row.get("gate_instruction") or "").strip()
+        if instruction and len(instruction) > GATE_INSTRUCTION_MAX:
+            errors.append(
+                _err(
+                    row_no,
+                    f"gate_instruction must be ≤{GATE_INSTRUCTION_MAX} characters",
+                    "gate_instruction",
+                    file_label,
+                )
+            )
+            continue
+        if flag_raw or instruction or (
             row.get("allowed_person_mobiles") or ""
         ).strip() or (row.get("blocked_person_mobiles") or "").strip():
             if flag_raw and flag_raw not in CUSTODY_VALUES:
@@ -520,16 +617,36 @@ def import_locked_rows(
                     )
                 )
                 continue
-            pending_custody[roster_id] = {
+            spec = {
                 "row": row_no,
                 "flag": flag_raw or "none",
-                "gate_instruction": (row.get("gate_instruction") or "").strip(),
+                "gate_instruction": instruction,
                 "allowed": row.get("allowed_person_mobiles") or "",
                 "blocked": row.get("blocked_person_mobiles") or "",
                 "file": file_label,
             }
+            pending_custody.setdefault(roster_id, []).append(spec)
 
-    for roster_id, spec in pending_custody.items():
+    for roster_id, specs in pending_custody.items():
+        try:
+            sigs = {_custody_sig(s) for s in specs}
+        except ValueError as e:
+            for s in specs:
+                errors.append(_err(s["row"], str(e), file=s["file"]))
+            continue
+        if len(sigs) > 1:
+            custody_conflict.add(roster_id)
+            for s in specs:
+                errors.append(
+                    _err(
+                        s["row"],
+                        "Conflicting custody_flag / gate_instruction / allow-block mobiles for this student",
+                        "custody_flag",
+                        s["file"],
+                    )
+                )
+            continue
+        spec = specs[-1]
         student = store.get_student_by_roster_id(school_id, roster_id)
         if not student:
             if commit:

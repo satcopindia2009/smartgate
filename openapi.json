@@ -1876,13 +1876,38 @@
         }
       }
     },
+    "/v1/students/import/template": {
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Download locked roster CSV template",
+        "description": "Admin/SH fictional two-row template (not SCH-DEMO-01 PII). Headers match AC-IMP SoT.",
+        "operationId": "download_import_template_v1_students_import_template_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/students/import:validate": {
       "post": {
         "tags": [
           "students"
         ],
         "summary": "Validate roster CSV/Excel (dry-run)",
-        "description": "AC-IMP-9 dry-run. Admin / Security Head. Multipart `file` using the locked template. No writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes.",
+        "description": "AC-IMP-9 dry-run. Admin / Security Head. Multipart `file` using the locked template. No writes. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
         "operationId": "import_students_validate_v1_students_import_validate_post",
         "requestBody": {
           "content": {
@@ -1927,7 +1952,7 @@
           "students"
         ],
         "summary": "Commit roster CSV/Excel",
-        "description": "Admin / Security Head. Multipart `file` using the locked template. Writes valid rows. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes.",
+        "description": "Admin / Security Head. Multipart `file` using the locked template. Writes valid rows. Response `{ imported, updated, failed, errors[{row,field,code,message}], schoolId, school_code }`. Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student.",
         "operationId": "import_students_commit_v1_students_import_commit_post",
         "requestBody": {
           "content": {
@@ -1972,7 +1997,7 @@
           "students"
         ],
         "summary": "Import roster CSV/Excel (commit alias)",
-        "description": "Admin / Security Head. Alias of `/students/import:commit` (pass `mode=validate` for dry-run). Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Returns `{ imported, updated, failed, errors[], schoolId, school_code }`.",
+        "description": "Admin / Security Head. Alias of `/students/import:commit` (pass `mode=validate` for dry-run). Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student. Returns `{ imported, updated, failed, errors[], schoolId, school_code }`.",
         "operationId": "import_students_csv_v1_students_import_post",
         "security": [
           {
@@ -2029,7 +2054,7 @@
           "students"
         ],
         "summary": "Import authorized pickup CSV/Excel",
-        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Upsert by (JWT schoolId + student_external_id + mobile). `mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`.",
+        "description": "Admin / Security Head. Multipart field `file` (.csv or .xlsx). Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student. Upsert by (JWT schoolId + student_external_id + mobile). `mode=validate` dry-run; `mode=commit` writes. Returns `{ created, updated, errors[], audit }`.",
         "operationId": "import_authorized_pickup_csv_v1_students_authorized_pickup_import_post",
         "security": [
           {
@@ -3887,7 +3912,7 @@
           "schools"
         ],
         "summary": "Import students + authorized pickup CSV/Excel",
-        "description": "Admin / Security Head multipart roster import for the JWT school. Preferred field: `file` (.csv / .xlsx) using the **locked** snake_case template (one row = one authorized person). Optional split fields `students` + `pickup` use the same headers. Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. `mode=validate` is dry-run (no writes); `mode=commit` applies upserts. Audit returns who/when/filename/counts. Court-document columns are rejected. Does not wipe SCH-DEMO-01. First real tenant is SCH-PRANAY-01 / school_code PRANAY.",
+        "description": "Admin / Security Head multipart roster import for the JWT school. Preferred field: `file` (.csv / .xlsx) using the **locked** snake_case template (one row = one authorized person). Optional split fields `students` + `pickup` use the same headers. Locked CSV/Excel headers (snake_case, one row = one authorized person): school_code, student_external_id, student_name, class, section, person_name, relation, mobile, id_last4, id_type, effective_from, effective_to, custody_flag, gate_instruction, allowed_person_mobiles, blocked_person_mobiles, consent_version, consent_at, person_active, legal_hold. school_code maps to schoolId (JWT is source of truth). student_external_id\u2192studentId, student_name\u2192name, person_name\u2192pickup name, consent_version/consent_at\u2192pickupConsentVersion/At. relation: parent|guardian|sibling|relative|other. Upsert student by (schoolId + student_external_id) and person by (schoolId + student_external_id + mobile). mode=validate is dry-run; mode=commit writes. Max 5000 person-rows. person_active/legal_hold accept Y/N. allowed_person_mobiles are semicolon-separated. Conflicting custody_flag rows for the same student fail that student. `mode=validate` is dry-run (no writes); `mode=commit` applies upserts. Audit returns who/when/filename/counts. Court-document columns are rejected. Does not wipe SCH-DEMO-01. First real tenant is SCH-PRANAY-01 / school_code PRANAY.",
         "operationId": "import_roster_v1_schools_me_roster_import_post",
         "security": [
           {

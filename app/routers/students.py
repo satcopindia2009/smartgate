@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import PlainTextResponse
 
 from app.auth import require_roles
 from app.config import WATERMARK
@@ -23,6 +24,7 @@ from app.pickup_match import (
 )
 from app.roster_import import (
     CSV_CONTRACT,
+    TEMPLATE_CSV,
     import_locked_rows,
     import_pickup,
     merge_import_results,
@@ -162,6 +164,19 @@ async def _run_locked_import(file: UploadFile, user: dict, mode: str) -> dict:
         user=user,
         filenames=[filename or "file"],
         school_id=user["schoolId"],
+    )
+
+
+@router.get(
+    "/students/import/template",
+    summary="Download locked roster CSV template",
+    description="Admin/SH fictional two-row template (not SCH-DEMO-01 PII). Headers match AC-IMP SoT.",
+)
+def download_import_template(user: dict = Depends(require_roles(*_WRITE_ROLES))):
+    return PlainTextResponse(
+        TEMPLATE_CSV,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="satcop-roster-import-template.csv"'},
     )
 
 
