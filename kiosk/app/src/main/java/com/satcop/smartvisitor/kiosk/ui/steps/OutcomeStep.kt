@@ -52,6 +52,7 @@ fun OutcomeStep(
     onCheckOut: () -> Unit,
     onLoadStory: () -> Unit,
     onNewVisitor: () -> Unit,
+    showStory: Boolean = true,
 ) {
     val host = hosts.firstOrNull { it.id == (visit?.hostId ?: draft.hostId) }
     val gate = gates.firstOrNull { it.id == (visit?.gateId ?: draft.gateId) }
@@ -107,9 +108,9 @@ fun OutcomeStep(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Meta("Visitor", visit?.visitorName ?: draft.visitorName)
-            Meta("Host", host?.name ?: "Anita Joshi")
+            Meta("Host", host?.name ?: visit?.hostId ?: "Host")
             Meta(if (visit?.timeOut != null) "Time-out" else "Time-in", timeLabel.displayTime())
-            Meta("Gate", gate?.name ?: "Main Gate")
+            Meta("Gate", gate?.name ?: visit?.gateId ?: "Gate")
         }
         if (compact) {
             Column(
@@ -150,12 +151,14 @@ fun OutcomeStep(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                KioskGhostButton(
-                    text = "Load P-4F21 story",
-                    onClick = onLoadStory,
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                if (showStory) {
+                    KioskGhostButton(
+                        text = "Load P-4F21 story",
+                        onClick = onLoadStory,
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 KioskPrimaryButton(
                     text = "Register another visitor",
                     onClick = onNewVisitor,
@@ -186,7 +189,9 @@ fun OutcomeStep(
                 modifier = Modifier.padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                KioskGhostButton(text = "Load P-4F21 story", onClick = onLoadStory, enabled = !busy)
+                if (showStory) {
+                    KioskGhostButton(text = "Load P-4F21 story", onClick = onLoadStory, enabled = !busy)
+                }
             }
             KioskPrimaryButton(
                 text = "Register another visitor",

@@ -1,12 +1,14 @@
 package com.satcop.smartvisitor.kiosk
 
-import com.satcop.smartvisitor.kiosk.ui.DemoHubLinks
-import com.satcop.smartvisitor.kiosk.ui.HostWebLinks
+import com.satcop.smartvisitor.kiosk.data.model.AfterHoursCopy
+import com.satcop.smartvisitor.kiosk.data.model.SchoolIds
 import com.satcop.smartvisitor.kiosk.ui.KioskRole
+import com.satcop.smartvisitor.kiosk.ui.KioskScreen
 import com.satcop.smartvisitor.kiosk.ui.KioskUiState
 import com.satcop.smartvisitor.kiosk.ui.homeRole
 import com.satcop.smartvisitor.kiosk.ui.showsGateRegistration
 import com.satcop.smartvisitor.kiosk.ui.showsHostApprove
+import com.satcop.smartvisitor.kiosk.ui.showsPickup
 import com.satcop.smartvisitor.kiosk.ui.showsUnsupportedRole
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,6 +37,7 @@ class RoleHomeTest {
         assertTrue(gate.showsGateRegistration())
         assertFalse(gate.showsHostApprove())
         assertFalse(gate.showsUnsupportedRole())
+        assertFalse(gate.showsPickup())
         assertTrue(host.showsHostApprove())
         assertFalse(host.showsGateRegistration())
         assertFalse(host.showsUnsupportedRole())
@@ -45,21 +48,29 @@ class RoleHomeTest {
     }
 
     @Test
-    fun hostWebOpensEnglandTunnelNotGateDemoHub() {
-        assertEquals(
-            "https://england-content-resulting-heavily.trycloudflare.com",
-            HostWebLinks.BASE,
+    fun gatePickupIsNativeScreenNotWeb() {
+        val pickup = KioskUiState(
+            signedIn = true,
+            meRole = "gate",
+            screen = KioskScreen.PICKUP,
         )
-        assertEquals(
-            "https://england-content-resulting-heavily.trycloudflare.com#pending",
-            HostWebLinks.PENDING,
-        )
-        assertEquals(
-            "https://england-content-resulting-heavily.trycloudflare.com#afterhours",
-            HostWebLinks.AFTER_HOURS,
-        )
-        val gateUrls = DemoHubLinks.all.map { it.url }
-        assertFalse(gateUrls.contains(HostWebLinks.BASE))
-        assertFalse(gateUrls.contains(HostWebLinks.PENDING))
+        assertTrue(pickup.showsPickup())
+        assertFalse(pickup.showsGateRegistration())
+        assertFalse(pickup.showsHostApprove())
+    }
+
+    @Test
+    fun pranayHidesPriyaDemoStory() {
+        assertTrue(SchoolIds.hidesDemoStory("SCH-PRANAY-01"))
+        assertTrue(SchoolIds.hidesDemoStory("sch-pranay-01"))
+        assertFalse(SchoolIds.hidesDemoStory("SCH-DEMO-01"))
+        assertFalse(SchoolIds.hidesDemoStory(null))
+    }
+
+    @Test
+    fun afterHoursCopyNamesAdminOrSecurityHead() {
+        assertTrue(AfterHoursCopy.HOST_NO_OP.contains("Admin or Security Head"))
+        assertFalse(AfterHoursCopy.HOST_NO_OP.contains("SH-only"))
+        assertEquals("AFTER_HOURS_SH_REQUIRED", AfterHoursCopy.CODE)
     }
 }

@@ -1,19 +1,31 @@
 package com.satcop.smartvisitor.kiosk.data.api
 
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
+import com.satcop.smartvisitor.kiosk.data.model.ApproveBody
+import com.satcop.smartvisitor.kiosk.data.model.AuthorizedPickupListResponse
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistMatchRequest
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistMatchResponse
 import com.satcop.smartvisitor.kiosk.data.model.ErrorEnvelope
 import com.satcop.smartvisitor.kiosk.data.model.GateListResponse
+import com.satcop.smartvisitor.kiosk.data.model.HoursListResponse
 import com.satcop.smartvisitor.kiosk.data.model.InsideListResponse
 import com.satcop.smartvisitor.kiosk.data.model.LoginRequest
 import com.satcop.smartvisitor.kiosk.data.model.LoginResponse
 import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.MediaUploadResponse
+import com.satcop.smartvisitor.kiosk.data.model.NotificationListResponse
 import com.satcop.smartvisitor.kiosk.data.model.PassOut
 import com.satcop.smartvisitor.kiosk.data.model.PassScanRequest
+import com.satcop.smartvisitor.kiosk.data.model.PickupConsentBody
+import com.satcop.smartvisitor.kiosk.data.model.PickupCreate
+import com.satcop.smartvisitor.kiosk.data.model.PickupListResponse
+import com.satcop.smartvisitor.kiosk.data.model.PickupOut
+import com.satcop.smartvisitor.kiosk.data.model.PickupReleaseBody
+import com.satcop.smartvisitor.kiosk.data.model.RejectBody
 import com.satcop.smartvisitor.kiosk.data.model.StaffListResponse
+import com.satcop.smartvisitor.kiosk.data.model.StudentListResponse
 import com.satcop.smartvisitor.kiosk.data.model.VisitCreate
+import com.satcop.smartvisitor.kiosk.data.model.VisitListResponse
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
@@ -80,6 +92,60 @@ class LiveVisitorApi(
 
     fun getVisit(id: String): VisitOut = get("/visits/$id")
 
+    fun listPendingVisits(hostId: String? = null): VisitListResponse {
+        val path = buildString {
+            append("/visits?status=pending")
+            if (!hostId.isNullOrBlank()) append("&hostId=").append(hostId)
+        }
+        return get(path)
+    }
+
+    fun approveVisit(id: String, reason: String? = null): VisitOut =
+        post("/visits/$id/approve", json.encodeToString(ApproveBody(reason = reason)))
+
+    fun rejectVisit(id: String, reason: String): VisitOut =
+        post("/visits/$id/reject", json.encodeToString(RejectBody(reason = reason)))
+
+    fun listNotifications(limit: Int = 50): NotificationListResponse =
+        get("/notifications?limit=$limit")
+
+    fun listHours(): HoursListResponse = get("/access-rules/hours")
+
+    fun getMediaBytes(key: String): ByteArray {
+        val url = ApiConfig.mediaUrl(key)
+        val req = authorized(Request.Builder().url(url).get())
+        return executeBytes(req)
+    }
+
+    fun listStudents(q: String? = null, active: Boolean = true): StudentListResponse {
+        val path = buildString {
+            append("/students?active=$active")
+            if (!q.isNullOrBlank()) {
+                append("&q=").append(java.net.URLEncoder.encode(q, Charsets.UTF_8.name()))
+            }
+        }
+        return get(path)
+    }
+
+    fun listAuthorizedPickup(studentId: String): AuthorizedPickupListResponse =
+        get("/students/$studentId/authorized-pickup")
+
+    fun listPickups(status: String? = null): PickupListResponse {
+        val path = if (status.isNullOrBlank()) "/pickups" else "/pickups?status=$status"
+        return get(path)
+    }
+
+    fun startPickup(body: PickupCreate): PickupOut =
+        post("/pickups", json.encodeToString(body))
+
+    fun getPickup(id: String): PickupOut = get("/pickups/$id")
+
+    fun consentPickup(id: String, version: String): PickupOut =
+        post("/pickups/$id/consent", json.encodeToString(PickupConsentBody(version)))
+
+    fun releasePickup(id: String, photoRef: String): PickupOut =
+        post("/pickups/$id/release", json.encodeToString(PickupReleaseBody(photoRef)))
+
     fun getPass(passId: String): PassOut = get("/passes/$passId")
 
     fun scanPass(
@@ -134,15 +200,29 @@ class LiveVisitorApi(
         client.newCall(request).execute().use { resp ->
             val text = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
-                val parsed = runCatching { json.decodeFromString<ErrorEnvelope>(text) }.getOrNull()
-                throw ApiException(
-                    code = parsed?.error?.code ?: "HTTP_${resp.code}",
-                    message = parsed?.error?.message ?: text.take(180).ifBlank { "HTTP ${resp.code}" },
-                    httpStatus = resp.code,
-                )
+                throw apiError(resp.code, text)
             }
             return text
         }
+    }
+
+    private fun executeBytes(request: Request): ByteArray {
+        client.newCall(request).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                val text = resp.body?.string().orEmpty()
+                throw apiError(resp.code, text)
+            }
+            return resp.body?.bytes() ?: ByteArray(0)
+        }
+    }
+
+    private fun apiError(code: Int, text: String): ApiException {
+        val parsed = runCatching { json.decodeFromString<ErrorEnvelope>(text) }.getOrNull()
+        return ApiException(
+            code = parsed?.error?.code ?: "HTTP_$code",
+            message = parsed?.error?.message ?: text.take(180).ifBlank { "HTTP $code" },
+            httpStatus = code,
+        )
     }
 
     companion object {

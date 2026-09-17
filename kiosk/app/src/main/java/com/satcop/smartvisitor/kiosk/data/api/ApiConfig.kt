@@ -9,4 +9,10 @@ object ApiConfig {
     const val BASE_URL = "https://replacing-spyware-yes-due.trycloudflare.com/v1"
     const val CONNECT_TIMEOUT_MS = 4_000L
     const val CALL_TIMEOUT_MS = 8_000L
+
+    /** Keys look like media/live_photo/… → GET {apiBase}/media/{key} with Bearer. */
+    fun mediaUrl(key: String): String {
+        val trimmed = key.trim().trimStart('/')
+        return "$BASE_URL/media/$trimmed"
+    }
 }

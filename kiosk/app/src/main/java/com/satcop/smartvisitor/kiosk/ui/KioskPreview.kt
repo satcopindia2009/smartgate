@@ -84,9 +84,22 @@ fun KioskPhoneHostHomePreview() {
             HostHomeScreen(
                 displayName = "Pranay Host",
                 schoolId = "SCH-PRANAY-01",
-                staffId = "",
+                staffId = "PS-H03",
+                pending = emptyList(),
+                photos = emptyMap(),
+                afterHours = false,
+                busy = false,
+                rejectingVisitId = null,
+                rejectReason = null,
                 compact = true,
-                onOpenUrl = {},
+                onRefresh = {},
+                onApprove = {},
+                onStartReject = {},
+                onPickRejectReason = {},
+                onCancelReject = {},
+                onConfirmReject = {},
+                onShowAfterHours = {},
+                showingAfterHours = false,
             )
         }
     }

@@ -2,16 +2,24 @@ package com.satcop.smartvisitor.kiosk.data.fixture
 
 import com.satcop.smartvisitor.kiosk.data.api.LiveVisitorApi
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
+import com.satcop.smartvisitor.kiosk.data.model.AuthorizedPickup
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistEntry
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistMatchRequest
+import com.satcop.smartvisitor.kiosk.data.model.CampusHoursRow
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.data.model.DemoStory
 import com.satcop.smartvisitor.kiosk.data.model.GateListResponse
+import com.satcop.smartvisitor.kiosk.data.model.HostNotification
 import com.satcop.smartvisitor.kiosk.data.model.InsideListResponse
 import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.MediaUploadResponse
+import com.satcop.smartvisitor.kiosk.data.model.Meta
+import com.satcop.smartvisitor.kiosk.data.model.PickupCreate
+import com.satcop.smartvisitor.kiosk.data.model.PickupOut
 import com.satcop.smartvisitor.kiosk.data.model.School
+import com.satcop.smartvisitor.kiosk.data.model.SchoolIds
 import com.satcop.smartvisitor.kiosk.data.model.StaffListResponse
+import com.satcop.smartvisitor.kiosk.data.model.StudentOut
 import com.satcop.smartvisitor.kiosk.data.model.VisitCreate
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import com.satcop.smartvisitor.kiosk.data.repository.KioskRepository
@@ -77,6 +85,15 @@ class HybridKioskRepository(
 
     override suspend fun school(): School {
         val me = signedIn
+        if (SchoolIds.hidesDemoStory(me?.schoolId)) {
+            return School(
+                id = SchoolIds.PRANAY,
+                name = "Pranay School",
+                timezone = "Asia/Kolkata",
+                overdueHoursDefault = 4,
+                config = DemoFixtures.school.config,
+            )
+        }
         if (me != null && me.schoolId != DemoFixtures.SCHOOL_ID) {
             return DemoFixtures.school.copy(id = me.schoolId, name = me.schoolId)
         }
@@ -84,13 +101,16 @@ class HybridKioskRepository(
     }
 
     override suspend fun listStaff(active: Boolean): StaffListResponse =
-        liveOrFixture { live.listStaff(active) } ?: fixtures.listStaff(active)
+        liveOrFixture { live.listStaff(active) }
+            ?: if (allowDemoFixtures()) fixtures.listStaff(active) else StaffListResponse(emptyList(), DemoFixtures.meta)
 
     override suspend fun listGates(): GateListResponse =
-        liveOrFixture { live.listGates() } ?: fixtures.listGates()
+        liveOrFixture { live.listGates() }
+            ?: if (allowDemoFixtures()) fixtures.listGates() else GateListResponse(emptyList(), DemoFixtures.meta)
 
     override suspend fun listInside(): InsideListResponse =
-        liveOrFixture { live.listInside() } ?: fixtures.listInside()
+        liveOrFixture { live.listInside() }
+            ?: if (allowDemoFixtures()) fixtures.listInside() else emptyInside()
 
     override fun demoStory(): DemoStory = fixtures.demoStory()
 
@@ -197,6 +217,9 @@ class HybridKioskRepository(
     }
 
     override suspend fun storyPass(): VisitOut = withContext(Dispatchers.IO) {
+        if (SchoolIds.hidesDemoStory(signedIn?.schoolId)) {
+            throw ApiException("NOT_FOUND", "Demo story is off for this school", 404)
+        }
         if (dataSource == DataSource.LIVE) {
             runCatching { live.getVisit(DemoFixtures.STORY_VISIT_ID) }.getOrNull()
                 ?.also { local.put(it) }
@@ -208,6 +231,144 @@ class HybridKioskRepository(
             local.get(DemoFixtures.STORY_VISIT_ID) ?: local.storyInside().also { local.put(it) }
         }
     }
+
+    override suspend fun listPendingVisits(hostId: String?): List<VisitOut> =
+        withContext(Dispatchers.IO) {
+            if (dataSource == DataSource.LIVE) {
+                try {
+                    return@withContext live.listPendingVisits(hostId).data
+                } catch (e: Exception) {
+                    if (shouldFallback(e)) markFixtures()
+                    if (!allowDemoFixtures()) return@withContext emptyList()
+                    throw asApi(e, "Pending fetch failed")
+                }
+            }
+            if (!allowDemoFixtures()) emptyList() else emptyList()
+        }
+
+    override suspend fun approveVisit(id: String): VisitOut = withContext(Dispatchers.IO) {
+        try {
+            live.approveVisit(id).also { local.put(it) }
+        } catch (e: Exception) {
+            throw asApi(e, "Approve failed")
+        }
+    }
+
+    override suspend fun rejectVisit(id: String, reason: String): VisitOut =
+        withContext(Dispatchers.IO) {
+            try {
+                live.rejectVisit(id, reason).also { local.put(it) }
+            } catch (e: Exception) {
+                throw asApi(e, "Reject failed")
+            }
+        }
+
+    override suspend fun listNotifications(limit: Int): List<HostNotification> =
+        withContext(Dispatchers.IO) {
+            if (dataSource != DataSource.LIVE) return@withContext emptyList()
+            try {
+                live.listNotifications(limit).data
+            } catch (e: Exception) {
+                if (shouldFallback(e)) markFixtures()
+                emptyList()
+            }
+        }
+
+    override suspend fun listHours(): List<CampusHoursRow> = withContext(Dispatchers.IO) {
+        if (dataSource != DataSource.LIVE) return@withContext emptyList()
+        try {
+            live.listHours().data
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    override suspend fun loadMediaBytes(key: String): ByteArray? = withContext(Dispatchers.IO) {
+        if (key.isBlank() || dataSource != DataSource.LIVE) return@withContext null
+        try {
+            live.getMediaBytes(key)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    override suspend fun listStudents(q: String?): List<StudentOut> = withContext(Dispatchers.IO) {
+        if (dataSource == DataSource.LIVE) {
+            try {
+                return@withContext live.listStudents(q).data
+            } catch (e: Exception) {
+                if (shouldFallback(e)) markFixtures()
+                if (!allowDemoFixtures()) return@withContext emptyList()
+            }
+        }
+        if (allowDemoFixtures()) PickupFixtures.search(q) else emptyList()
+    }
+
+    override suspend fun listAuthorizedPickup(studentId: String): List<AuthorizedPickup> =
+        withContext(Dispatchers.IO) {
+            if (dataSource == DataSource.LIVE) {
+                try {
+                    return@withContext live.listAuthorizedPickup(studentId).data
+                } catch (e: Exception) {
+                    if (shouldFallback(e)) markFixtures()
+                    if (!allowDemoFixtures()) return@withContext emptyList()
+                }
+            }
+            if (allowDemoFixtures()) PickupFixtures.authorizedFor(studentId) else emptyList()
+        }
+
+    override suspend fun startPickup(body: PickupCreate): PickupOut = withContext(Dispatchers.IO) {
+        if (dataSource == DataSource.LIVE) {
+            try {
+                return@withContext live.startPickup(body)
+            } catch (e: ApiException) {
+                throw e
+            } catch (e: Exception) {
+                if (!shouldFallback(e) || !allowDemoFixtures()) throw asApi(e, "Pickup failed")
+                markFixtures()
+            }
+        }
+        if (!allowDemoFixtures()) {
+            throw ApiException("UNAVAILABLE", "Pickup API unreachable", 0)
+        }
+        PickupFixtures.start(
+            studentId = body.studentId,
+            gateId = body.gateId,
+            pickupReason = body.pickupReason,
+            collectorId = body.collectorPickupPersonId,
+            collectorName = body.collectorName,
+            collectorMobile = body.collectorMobile,
+            reasonOther = body.reasonOther,
+        )
+    }
+
+    override suspend fun consentPickup(id: String, version: String): PickupOut =
+        withContext(Dispatchers.IO) {
+            if (dataSource == DataSource.LIVE) {
+                try {
+                    return@withContext live.consentPickup(id, version)
+                } catch (e: ApiException) {
+                    throw e
+                } catch (e: Exception) {
+                    throw asApi(e, "Consent failed")
+                }
+            }
+            throw ApiException("UNAVAILABLE", "Consent requires live pickup", 0)
+        }
+
+    override suspend fun releasePickup(id: String, photoRef: String): PickupOut =
+        withContext(Dispatchers.IO) {
+            if (dataSource == DataSource.LIVE) {
+                try {
+                    return@withContext live.releasePickup(id, photoRef)
+                } catch (e: ApiException) {
+                    throw e
+                } catch (e: Exception) {
+                    throw asApi(e, "Release failed")
+                }
+            }
+            throw ApiException("UNAVAILABLE", "Release requires live pickup", 0)
+        }
 
     private fun markFixtures() {
         dataSource = DataSource.FIXTURES
@@ -238,4 +399,8 @@ class HybridKioskRepository(
         url = null,
         meta = DemoFixtures.meta,
     )
+
+    private fun allowDemoFixtures(): Boolean = !SchoolIds.hidesDemoStory(signedIn?.schoolId)
+
+    private fun emptyInside() = InsideListResponse(data = emptyList(), meta = Meta(watermark = "DEMO"))
 }

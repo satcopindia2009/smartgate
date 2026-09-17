@@ -1,10 +1,15 @@
 package com.satcop.smartvisitor.kiosk.data.repository
 
+import com.satcop.smartvisitor.kiosk.data.model.AuthorizedPickup
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistEntry
-import com.satcop.smartvisitor.kiosk.data.model.BlacklistMatchRequest
+import com.satcop.smartvisitor.kiosk.data.model.CampusHoursRow
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
+import com.satcop.smartvisitor.kiosk.data.model.HostNotification
 import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.MediaUploadResponse
+import com.satcop.smartvisitor.kiosk.data.model.PickupCreate
+import com.satcop.smartvisitor.kiosk.data.model.PickupOut
+import com.satcop.smartvisitor.kiosk.data.model.StudentOut
 import com.satcop.smartvisitor.kiosk.data.model.VisitCreate
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 
@@ -29,6 +34,28 @@ interface KioskRepository : DirectoryRepository {
     suspend fun createVisit(body: VisitCreate): VisitOut
 
     suspend fun getVisit(id: String): VisitOut
+
+    suspend fun listPendingVisits(hostId: String?): List<VisitOut>
+
+    suspend fun approveVisit(id: String): VisitOut
+
+    suspend fun rejectVisit(id: String, reason: String): VisitOut
+
+    suspend fun listNotifications(limit: Int = 50): List<HostNotification>
+
+    suspend fun listHours(): List<CampusHoursRow>
+
+    suspend fun loadMediaBytes(key: String): ByteArray?
+
+    suspend fun listStudents(q: String?): List<StudentOut>
+
+    suspend fun listAuthorizedPickup(studentId: String): List<AuthorizedPickup>
+
+    suspend fun startPickup(body: PickupCreate): PickupOut
+
+    suspend fun consentPickup(id: String, version: String): PickupOut
+
+    suspend fun releasePickup(id: String, photoRef: String): PickupOut
 
     suspend fun scanPass(
         passId: String? = null,
