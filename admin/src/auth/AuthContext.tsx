@@ -164,6 +164,10 @@ export function canEditPickupList(role?: string | null) {
   return role === "admin" || role === "security_head";
 }
 
+export function canImportStudents(role?: string | null) {
+  return role === "admin" || role === "security_head";
+}
+
 export function canSetCourtOrder(role?: string | null) {
   return role === "security_head";
 }

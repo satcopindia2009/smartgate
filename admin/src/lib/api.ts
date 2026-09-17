@@ -20,7 +20,10 @@ import type {
   BlastTemplate,
   BlastPreview,
   EmergencyBlast,
+  StudentImportResult,
+  StudentImportRow,
 } from "./types";
+import { normalizeImportApiResult } from "./studentImport";
 
 export class ApiError extends Error {
   status: number;
@@ -412,4 +415,107 @@ export function retryFailedBlast(token: string, blastId: string) {
     `/emergency/blasts/${encodeURIComponent(blastId)}/retry-failed`,
     { method: "POST", token },
   );
+}
+
+export function getSchoolMe(token: string) {
+  return apiRequest<{ schoolId?: string; name?: string; schoolCode?: string; timezone?: string }>(
+    "/schools/me",
+    { token },
+  );
+}
+
+export class ImportEndpointMissingError extends Error {
+  constructor(message = "Student import API is not available") {
+    super(message);
+    this.name = "ImportEndpointMissingError";
+  }
+}
+
+function isImportEndpointMissing(err: unknown): boolean {
+  if (isNetworkError(err)) return true;
+  if (!(err instanceof ApiError)) return false;
+  if (err.status === 404 || err.status === 405 || err.status === 501) return true;
+  return /method not allowed|not found|not implemented/i.test(err.message);
+}
+
+async function apiRequestForm<T>(path: string, token: string, body: FormData): Promise<T> {
+  const headers = new Headers();
+  headers.set("Authorization", `Bearer ${token}`);
+  const res = await fetch(`${API_BASE}${path}`, { method: "POST", headers, body });
+  const data = await parseBody(res);
+  if (!res.ok) {
+    const err = (data.error as { code?: string; message?: string } | undefined) || {};
+    const detail = typeof data.detail === "string" ? data.detail : "";
+    throw new ApiError(
+      res.status,
+      err.code || "ERROR",
+      err.message || detail || res.statusText || "Request failed",
+    );
+  }
+  return data as T;
+}
+
+function looksLikeImportResult(data: Record<string, unknown>): boolean {
+  return (
+    Array.isArray(data.errors) ||
+    typeof data.imported === "number" ||
+    typeof data.created === "number" ||
+    typeof data.updated === "number" ||
+    typeof data.failed === "number"
+  );
+}
+
+async function postStudentImport(
+  token: string,
+  path: "/students/import:validate" | "/students/import",
+  payload: { filename: string; rows: StudentImportRow[]; csvText: string; dryRun: boolean },
+): Promise<StudentImportResult> {
+  const jsonBody = {
+    filename: payload.filename,
+    dryRun: payload.dryRun,
+    rows: payload.rows,
+  };
+  try {
+    const data = await apiRequest<Record<string, unknown>>(path, {
+      method: "POST",
+      token,
+      body: JSON.stringify(jsonBody),
+    });
+    if (!looksLikeImportResult(data)) {
+      throw new ImportEndpointMissingError();
+    }
+    return normalizeImportApiResult(data, payload.filename, payload.dryRun);
+  } catch (err) {
+    if (err instanceof ImportEndpointMissingError || isImportEndpointMissing(err)) {
+      throw new ImportEndpointMissingError();
+    }
+    if (err instanceof ApiError && (err.status === 415 || err.status === 422)) {
+      const fd = new FormData();
+      fd.append("file", new Blob([payload.csvText], { type: "text/csv;charset=utf-8" }), payload.filename);
+      fd.append("filename", payload.filename);
+      fd.append("dryRun", payload.dryRun ? "true" : "false");
+      try {
+        const data = await apiRequestForm<Record<string, unknown>>(path, token, fd);
+        return normalizeImportApiResult(data, payload.filename, payload.dryRun);
+      } catch (retryErr) {
+        if (isImportEndpointMissing(retryErr)) throw new ImportEndpointMissingError();
+        throw retryErr;
+      }
+    }
+    throw err;
+  }
+}
+
+export function validateStudentImport(
+  token: string,
+  payload: { filename: string; rows: StudentImportRow[]; csvText: string },
+) {
+  return postStudentImport(token, "/students/import:validate", { ...payload, dryRun: true });
+}
+
+export function commitStudentImport(
+  token: string,
+  payload: { filename: string; rows: StudentImportRow[]; csvText: string },
+) {
+  return postStudentImport(token, "/students/import", { ...payload, dryRun: false });
 }

@@ -35,8 +35,9 @@ Walkthrough story: **Priya Sharma** → pass **`P-4F21`** → **Main Gate** → 
 Admin/Security Head surfaces only — no visit-flow or kiosk changes.
 
 - **Students & lists** (`/pickup`): authorized pickup CRUD + custody flag editor (`none` / `restricted` / `court_order` + `gate_instruction` ≤280). No court PDF upload. Office Admin cannot set `court_order`.
+- **Import CSV** (`/pickup`, Admin / Security Head): upload UTF-8 CSV → validate preview (counts + row error table) → Confirm commit. Template = Pickup SoT headers + 2 fictional example rows. `school_code` example `SCH-PRANAY-PUNE-01` (PRANAY SCHOOL PUNE) — never default `SCH-DEMO-01`. Tenant = signed-in JWT `schoolId`. Wire `POST /students/import:validate` + `POST /students/import` when present; otherwise local dry-run so the UI is showable. Demo seed Aarav / Kabir stays untouched when importing to another tenant. Host forbidden.
 - **Pickup history** (`/pickup-history`): searchable proof trail (student, collector, relation, gate, status, override) + purpose-required CSV.
-- Wire: `GET /students`, `GET|POST /students/{id}/authorized-pickup`, `PATCH .../authorized-pickup/{personId}`, `GET|PUT /students/{id}/custody-flag`, `GET /pickups`.
+- Wire: `GET /students`, `GET|POST /students/{id}/authorized-pickup`, `PATCH .../authorized-pickup/{personId}`, `GET|PUT /students/{id}/custody-flag`, `GET /pickups`, `POST /students/import:validate`, `POST /students/import`.
 - Seed: **Aarav Mehta · Class 5-B** with **Neha Mehta (Mother)** + **Rohan Mehta (Uncle/Relative)**; **Kabir Singh** `court_order` demo. Fixtures fallback if the `/v1` tunnel is down.
 
 ## After-hours / holidays (Priority P2 · Hub A1–A6 / AC-C4)
@@ -100,6 +101,7 @@ Default `VITE_API_BASE_URL` is `https://pensions-usb-loops-direction.trycloudfla
 | Force checkout    | yes   | yes           |
 | Blacklist write   | view  | yes           |
 | Pickup list CRUD  | yes   | yes           |
+| Pickup CSV import | yes   | yes           |
 | Custody `court_order` | no | yes           |
 | Hours / holiday write | yes | yes           |
 | After-hours Approve | no | yes           |
