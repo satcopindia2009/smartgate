@@ -358,7 +358,7 @@ def test_admin_validate_commit_response_shape_and_pranay_lock(client):
         files={
             "file": (
                 "blank.csv",
-                _csv_bytes([_pranay_row(school_code="", student_external_id="ADM-UI-02")]),
+                _csv_bytes([_person_row(school_code="", student_external_id="ADM-UI-02")]),
                 "text/csv",
             )
         },
