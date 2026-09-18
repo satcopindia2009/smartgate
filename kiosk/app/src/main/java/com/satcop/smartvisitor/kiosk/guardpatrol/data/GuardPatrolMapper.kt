@@ -27,7 +27,7 @@ object GuardPatrolMapper {
         active = dto.active,
     )
 
-    fun toDomain(dto: PatrolRoundDto): RoundInstance = RoundInstance(
+    fun toDomain(dto: PatrolRoundDto, assignmentId: String? = null): RoundInstance = RoundInstance(
         id = dto.id,
         schoolId = dto.schoolId,
         templateId = dto.templateId,
@@ -36,7 +36,31 @@ object GuardPatrolMapper {
         completedAtEpochMs = parseEpoch(dto.completedAt),
         status = parseStatus(dto.status),
         scans = dto.scans.map { toDomain(it) },
+        assignmentId = assignmentId,
     )
+
+    fun toDomain(dto: PatrolAssignmentDto): PatrolAssignment = PatrolAssignment(
+        id = dto.id,
+        schoolId = dto.schoolId,
+        templateId = dto.templateId,
+        guardId = dto.guardId,
+        dutyDate = dto.dutyDate,
+        shiftStart = dto.shiftStart,
+        shiftEnd = dto.shiftEnd,
+        status = parseAssignmentStatus(dto.status),
+        roundId = dto.roundId,
+        assignedBy = dto.assignedBy,
+        assignedAtEpochMs = parseEpoch(dto.assignedAt),
+        notes = dto.notes,
+    )
+
+    fun parseAssignmentStatus(raw: String?): AssignmentStatus = when (raw?.lowercase()) {
+        "started" -> AssignmentStatus.STARTED
+        "completed" -> AssignmentStatus.COMPLETED
+        "missed" -> AssignmentStatus.MISSED
+        "cancelled" -> AssignmentStatus.CANCELLED
+        else -> AssignmentStatus.ASSIGNED
+    }
 
     fun toDomain(dto: PatrolScanDto): Scan = Scan(
         checkpointId = dto.checkpointId,

@@ -57,8 +57,37 @@ class LiveGuardPatrolApi(
     fun listCheckpoints(): List<PatrolCheckpointDto> =
         get<PatrolListResponse>("/checkpoints").data
 
-    fun startRound(templateId: String, guardId: String): PatrolRoundDto =
-        post("/rounds", json.encodeToString(StartRoundRequest(templateId, guardId)))
+    /**
+     * GET /patrol-assignments?dutyDate=&guardId=
+     * Living may still 404 — callers should fixture-fallback until endpoint returns 200.
+     */
+    fun listAssignments(dutyDate: String, guardId: String = "me"): List<PatrolAssignmentDto> {
+        val path = "/patrol-assignments?dutyDate=$dutyDate&guardId=$guardId"
+        return get<PatrolAssignmentListResponse>(path).data
+    }
+
+    /** Admin create — Mobile mainly GETs; stub ready for when living is seedable. */
+    fun createAssignment(body: CreatePatrolAssignmentRequest): PatrolAssignmentDto =
+        post("/patrol-assignments", json.encodeToString(body))
+
+    fun startRound(
+        templateId: String,
+        guardId: String,
+        assignmentId: String? = null,
+    ): PatrolRoundDto {
+        val body = if (assignmentId.isNullOrBlank()) {
+            json.encodeToString(StartRoundRequest(templateId = templateId, guardId = guardId))
+        } else {
+            json.encodeToString(
+                StartRoundRequest(
+                    templateId = templateId,
+                    guardId = guardId,
+                    assignmentId = assignmentId,
+                ),
+            )
+        }
+        return post("/rounds", body)
+    }
 
     fun getRound(id: String): PatrolRoundDto = get("/rounds/$id")
 

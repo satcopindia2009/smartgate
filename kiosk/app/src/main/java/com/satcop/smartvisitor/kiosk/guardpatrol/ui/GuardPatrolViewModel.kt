@@ -3,7 +3,9 @@ package com.satcop.smartvisitor.kiosk.guardpatrol.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.Checkpoint
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolAssignment
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolEngine
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolFixtures
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolMapper
@@ -43,6 +45,11 @@ data class GuardPatrolUiState(
     val guardLabel: String = "Guard G1",
     val guardId: String = GuardPatrolFixtures.DEFAULT_GUARD_ID,
     val selectedTemplateId: String? = null,
+    /** Assigned-today inbox (fixture-first until GET /patrol-assignments is 200). */
+    val assignments: List<PatrolAssignment> = emptyList(),
+    val assignmentsFromLive: Boolean = false,
+    /** School flag AC-AP7 — hide/disable self-start when true (default false). */
+    val requireAssignment: Boolean = GuardPatrolFixtures.REQUIRE_ASSIGNMENT_DEFAULT,
     val round: RoundInstance? = null,
     val toast: ToastEvent? = null,
     val showScanPicker: Boolean = false,
@@ -82,7 +89,31 @@ class GuardPatrolViewModel(
 
     fun startRound() {
         val id = _state.value.selectedTemplateId ?: return
-        val tpl = templateOf(id) ?: return
+        beginRound(templateId = id, assignmentId = null)
+    }
+
+    /** Start from Assigned-today row — links assignmentId in client state / POST /rounds. */
+    fun startFromAssignment(assignmentId: String) {
+        val asg = _state.value.assignments.find { it.id == assignmentId }
+            ?: GuardPatrolFixtures.assignment(assignmentId)
+            ?: return
+        if (asg.status != AssignmentStatus.ASSIGNED && asg.status != AssignmentStatus.STARTED) {
+            _state.update {
+                it.copy(
+                    toast = ToastEvent(
+                        System.currentTimeMillis(),
+                        "Assignment ${asg.status.display()} — cannot start",
+                        ToastKind.WARNING,
+                    ),
+                )
+            }
+            return
+        }
+        beginRound(templateId = asg.templateId, assignmentId = asg.id)
+    }
+
+    private fun beginRound(templateId: String, assignmentId: String?) {
+        val tpl = templateOf(templateId) ?: return
         if (_state.value.useLive && _state.value.liveReady) {
             viewModelScope.launch {
                 _state.update { it.copy(busy = true) }
@@ -90,10 +121,20 @@ class GuardPatrolViewModel(
                     withContext(Dispatchers.IO) {
                         val guardId = api.signedInUser?.staffId
                             ?: GuardPatrolFixtures.DEFAULT_GUARD_ID
-                        api.startRound(templateId = id, guardId = guardId)
+                        api.startRound(
+                            templateId = templateId,
+                            guardId = guardId,
+                            assignmentId = assignmentId,
+                        )
                     }
                 }.onSuccess { dto ->
-                    val round = GuardPatrolMapper.toDomain(dto)
+                    val round = GuardPatrolMapper.toDomain(dto, assignmentId = assignmentId)
+                    markAssignmentStarted(assignmentId, round.id)
+                    val label = if (assignmentId != null) {
+                        "Started from assignment · ${tpl.name}"
+                    } else {
+                        "Round started · ${tpl.name}"
+                    }
                     _state.update {
                         it.copy(
                             busy = false,
@@ -103,27 +144,81 @@ class GuardPatrolViewModel(
                             simulateOffCampus = false,
                             toast = ToastEvent(
                                 id = System.currentTimeMillis(),
-                                message = "Round started · ${tpl.name}",
+                                message = label,
                                 kind = ToastKind.SUCCESS,
                             ),
                         )
                     }
                 }.onFailure { err ->
-                    _state.update {
-                        it.copy(
-                            busy = false,
-                            toast = ToastEvent(
-                                System.currentTimeMillis(),
-                                err.message ?: "Start failed",
-                                ToastKind.ERROR,
-                            ),
-                        )
+                    // Living may 400/404 on assignmentId until API lands — retry without it,
+                    // keep assignmentId only in client state so scans/end stay LIVE.
+                    if (assignmentId != null) {
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                val guardId = api.signedInUser?.staffId
+                                    ?: GuardPatrolFixtures.DEFAULT_GUARD_ID
+                                api.startRound(
+                                    templateId = templateId,
+                                    guardId = guardId,
+                                    assignmentId = null,
+                                )
+                            }
+                        }.onSuccess { dto ->
+                            val round = GuardPatrolMapper.toDomain(dto, assignmentId = assignmentId)
+                            markAssignmentStarted(assignmentId, round.id)
+                            _state.update {
+                                it.copy(
+                                    busy = false,
+                                    round = round,
+                                    screen = GuardPatrolScreen.ACTIVE,
+                                    showOffCampusBanner = false,
+                                    simulateOffCampus = false,
+                                    toast = ToastEvent(
+                                        System.currentTimeMillis(),
+                                        "Started · ${tpl.name} (assignment linked locally)",
+                                        ToastKind.WARNING,
+                                    ),
+                                )
+                            }
+                        }.onFailure { err2 ->
+                            _state.update {
+                                it.copy(
+                                    busy = false,
+                                    toast = ToastEvent(
+                                        System.currentTimeMillis(),
+                                        err2.message ?: err.message ?: "Start failed",
+                                        ToastKind.ERROR,
+                                    ),
+                                )
+                            }
+                        }
+                    } else {
+                        _state.update {
+                            it.copy(
+                                busy = false,
+                                toast = ToastEvent(
+                                    System.currentTimeMillis(),
+                                    err.message ?: "Start failed",
+                                    ToastKind.ERROR,
+                                ),
+                            )
+                        }
                     }
                 }
             }
             return
         }
-        val round = GuardPatrolEngine.startRound(tpl, guardId = _state.value.guardId)
+        val round = GuardPatrolEngine.startRound(
+            tpl,
+            guardId = _state.value.guardId,
+            assignmentId = assignmentId,
+        )
+        markAssignmentStarted(assignmentId, round.id)
+        val label = if (assignmentId != null) {
+            "Started from assignment · ${tpl.name}"
+        } else {
+            "Round started · ${tpl.name}"
+        }
         _state.update {
             it.copy(
                 round = round,
@@ -132,9 +227,24 @@ class GuardPatrolViewModel(
                 simulateOffCampus = false,
                 toast = ToastEvent(
                     id = System.currentTimeMillis(),
-                    message = "Round started · ${tpl.name}",
+                    message = label,
                     kind = ToastKind.SUCCESS,
                 ),
+            )
+        }
+    }
+
+    private fun markAssignmentStarted(assignmentId: String?, roundId: String) {
+        if (assignmentId == null) return
+        _state.update { st ->
+            st.copy(
+                assignments = st.assignments.map { a ->
+                    if (a.id == assignmentId) {
+                        a.copy(status = AssignmentStatus.STARTED, roundId = roundId)
+                    } else {
+                        a
+                    }
+                },
             )
         }
     }
@@ -361,6 +471,9 @@ class GuardPatrolViewModel(
         val guardId = _state.value.guardId
         val liveReady = _state.value.liveReady
         val statusLine = _state.value.statusLine
+        val assignments = _state.value.assignments
+        val assignmentsFromLive = _state.value.assignmentsFromLive
+        val requireAssignment = _state.value.requireAssignment
         _state.update {
             GuardPatrolUiState(
                 templates = if (templates.isNotEmpty()) templates else GuardPatrolFixtures.activeTemplates(),
@@ -376,6 +489,11 @@ class GuardPatrolViewModel(
                 useLive = keepLive,
                 liveReady = liveReady,
                 statusLine = statusLine,
+                assignments = assignments.ifEmpty {
+                    GuardPatrolFixtures.assignmentsForToday(guardId)
+                },
+                assignmentsFromLive = assignmentsFromLive,
+                requireAssignment = requireAssignment,
             )
         }
     }
@@ -411,6 +529,9 @@ class GuardPatrolViewModel(
                 return@launch
             }
             val (templates, checkpoints, user) = ok
+            val guardId = user?.staffId ?: GuardPatrolFixtures.DEFAULT_GUARD_ID
+            val dutyDate = GuardPatrolFixtures.todayDutyDateIst()
+            val (assignments, fromLive) = loadAssignments(dutyDate, guardId)
             _state.update {
                 it.copy(
                     busy = false,
@@ -422,12 +543,20 @@ class GuardPatrolViewModel(
                     },
                     schoolId = user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID,
                     schoolName = "Demo Public School — Campus A",
-                    guardId = user?.staffId ?: GuardPatrolFixtures.DEFAULT_GUARD_ID,
+                    guardId = guardId,
                     guardLabel = user?.displayName ?: "Guard G1",
-                    statusLine = "LIVE · ${user?.displayName ?: "guard"} · ${user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID}",
+                    assignments = assignments,
+                    assignmentsFromLive = fromLive,
+                    requireAssignment = GuardPatrolFixtures.REQUIRE_ASSIGNMENT_DEFAULT,
+                    statusLine = "LIVE · ${user?.displayName ?: "guard"} · ${user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID}" +
+                        if (fromLive) " · assignments live" else " · assignments fixture",
                     toast = ToastEvent(
                         System.currentTimeMillis(),
-                        "Connected to living API",
+                        if (fromLive) {
+                            "Connected · ${assignments.size} assignment(s)"
+                        } else {
+                            "Connected · Assigned today (fixture)"
+                        },
                         ToastKind.SUCCESS,
                     ),
                 )
@@ -435,7 +564,26 @@ class GuardPatrolViewModel(
         }
     }
 
+    /**
+     * Try living GET /patrol-assignments; on 404/error return G1 demo fixtures for today.
+     * @return Pair(list, fromLive)
+     */
+    private suspend fun loadAssignments(
+        dutyDate: String,
+        guardId: String,
+    ): Pair<List<PatrolAssignment>, Boolean> {
+        val live = runCatching {
+            withContext(Dispatchers.IO) {
+                api.listAssignments(dutyDate = dutyDate, guardId = "me")
+                    .map(GuardPatrolMapper::toDomain)
+            }
+        }.getOrNull()
+        if (live != null) return live to true
+        return GuardPatrolFixtures.assignmentsForToday(guardId) to false
+    }
+
     private fun applyFixtures(status: String) {
+        val guardId = GuardPatrolFixtures.DEFAULT_GUARD_ID
         _state.update {
             it.copy(
                 busy = false,
@@ -445,8 +593,11 @@ class GuardPatrolViewModel(
                 checkpoints = GuardPatrolFixtures.checkpoints.associateBy { cp -> cp.id },
                 schoolId = GuardPatrolFixtures.SCHOOL_ID,
                 schoolName = GuardPatrolFixtures.school.name,
-                guardId = GuardPatrolFixtures.DEFAULT_GUARD_ID,
+                guardId = guardId,
                 guardLabel = "Guard G1",
+                assignments = GuardPatrolFixtures.assignmentsForToday(guardId),
+                assignmentsFromLive = false,
+                requireAssignment = GuardPatrolFixtures.REQUIRE_ASSIGNMENT_DEFAULT,
                 statusLine = status,
                 toast = ToastEvent(System.currentTimeMillis(), status, ToastKind.INFO),
             )
