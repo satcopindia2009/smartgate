@@ -166,13 +166,13 @@ fun CheckoutVerifyScreen(inside: List<InsideVisit>, selectedId: String?, busy: B
         else inside.forEach { row ->
             val sel = row.id == selectedId
             Column(Modifier.fillMaxWidth().clip(ControlShape).background(if (sel) KioskColors.purpleDim else KioskColors.sidebar).border(1.dp, if (sel) KioskColors.purple else KioskColors.border, ControlShape).clickable { onSelect(row.id) }.padding(12.dp)) {
-                Text(row.visitorName, color = KioskColors.text, fontFamily = KioskFont, fontWeight = FontWeight.Medium)
-                Text("${row.visitorType} · ${row.status} · gate ${row.gateId}", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+                Text(row.visitorName ?: row.id, color = KioskColors.text, fontFamily = KioskFont, fontWeight = FontWeight.Medium)
+                Text("${row.visitorType ?: "?"} · ${row.status} · gate ${row.gateId ?: "?"}", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
             }
             Spacer(Modifier.height(8.dp))
         }
         if (selected != null) {
-            Text("Confirm checkout for ${selected.visitorName}?", color = KioskColors.text, fontFamily = KioskFont)
+            Text("Confirm checkout for ${selected.visitorName ?: selected.id}?", color = KioskColors.text, fontFamily = KioskFont)
             Spacer(Modifier.height(8.dp))
             KioskPrimaryButton(text = if (busy) "Checking out…" else "Confirm checkout", onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth())
         }

@@ -187,7 +187,21 @@ class KioskViewModel(
             _state.update { it.copy(loginBusy = true, loginError = null, toast = null) }
             try {
                 val user = repository.login(username, password)
-                loadAfterLogin(user)
+                try {
+                    loadAfterLogin(user)
+                } catch (e: Exception) {
+                    // Never hard-crash post-auth — land on minimal Gate/home shell.
+                    applyIdentityHome(user, warning = true)
+                    _state.update {
+                        it.copy(
+                            toast = "Signed in · home load issue: ${e.message?.take(80) ?: "error"}",
+                            toastKind = ToastKind.WARNING,
+                            loginBusy = false,
+                            loaded = true,
+                            screen = KioskScreen.HOME,
+                        )
+                    }
+                }
             } catch (e: Exception) {
                 _state.update {
                     it.copy(

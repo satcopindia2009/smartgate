@@ -74,12 +74,12 @@ data class StaffListResponse(
 @Serializable
 data class InsideVisit(
     val id: String,
-    val visitorName: String,
+    val visitorName: String? = null,
     val timeIn: String? = null,
-    val gateId: String,
-    val hostId: String,
-    val visitorType: String,
-    val status: String,
+    val gateId: String? = null,
+    val hostId: String? = null,
+    val visitorType: String? = null,
+    val status: String = "inside",
 )
 
 @Serializable

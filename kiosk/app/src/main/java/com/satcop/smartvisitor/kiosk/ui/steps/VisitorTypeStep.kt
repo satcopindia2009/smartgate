@@ -317,7 +317,7 @@ private fun KioskContextStrip(
                         val gate = gates.firstOrNull { it.id == visit.gateId }?.name
                         RecentChip(
                             label = listOfNotNull(
-                                visit.visitorName,
+                                visit.visitorName ?: visit.id,
                                 formatTimeIn(visit.timeIn),
                                 gate,
                             ).joinToString(" · "),

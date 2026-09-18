@@ -66,10 +66,9 @@ class LiveVisitorApi(
         .callTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .addInterceptor { chain ->
             var resp = chain.proceed(chain.request())
-            // Cloudflare quick-tunnel blip: one quiet retry on 530/1033 HTML.
+            // Cloudflare quick-tunnel blip: one quiet retry on 530/502–504 (no sleep — avoid jank).
             if (resp.code == 530 || (resp.code in 502..504)) {
                 resp.close()
-                Thread.sleep(400)
                 resp = chain.proceed(chain.request())
             }
             resp

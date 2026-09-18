@@ -263,6 +263,13 @@ fun KioskApp(
                                     onBack = viewModel::closeGuardTool,
                                 )
                             }
+                            role == KioskRole.GATE && !state.loaded -> {
+                                Text(
+                                    "Loading gate…",
+                                    color = KioskColors.textMuted,
+                                    fontFamily = KioskFont,
+                                )
+                            }
                             role == KioskRole.GATE -> {
                                 Column(
                                     modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
@@ -276,23 +283,26 @@ fun KioskApp(
                                         )
                                     }
                                     StepDots(current = state.step)
+                                    // Avoid weight()+verticalScroll() (measure crash on some devices).
                                     AnimatedContent(
                                         targetState = state.step,
                                         transitionSpec = { fadeIn() togetherWith fadeOut() },
                                         label = "kiosk-step",
-                                        modifier = if (compact) {
-                                            Modifier.fillMaxWidth()
-                                        } else {
-                                            Modifier
-                                                .weight(1f)
-                                                .verticalScroll(rememberScrollState())
-                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .then(if (compact) Modifier else Modifier.weight(1f, fill = true)),
                                     ) { step ->
-                                        KioskStep(
-                                            step = step,
-                                            state = state,
-                                            viewModel = viewModel,
-                                        )
+                                        Column(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .verticalScroll(rememberScrollState()),
+                                        ) {
+                                            KioskStep(
+                                                step = step,
+                                                state = state,
+                                                viewModel = viewModel,
+                                            )
+                                        }
                                     }
                                 }
                             }
