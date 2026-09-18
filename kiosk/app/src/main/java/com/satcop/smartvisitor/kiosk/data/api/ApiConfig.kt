@@ -7,8 +7,8 @@ package com.satcop.smartvisitor.kiosk.data.api
  */
 object ApiConfig {
     const val BASE_URL = "https://valley-questions-poultry-kid.trycloudflare.com/v1"
-    const val CONNECT_TIMEOUT_MS = 4_000L
-    const val CALL_TIMEOUT_MS = 8_000L
+    const val CONNECT_TIMEOUT_MS = 12_000L
+    const val CALL_TIMEOUT_MS = 20_000L
 
     /** Keys look like media/live_photo/… → GET {apiBase}/media/{key} with Bearer. */
     fun mediaUrl(key: String): String {

@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.ui.components.KioskField
+import com.satcop.smartvisitor.kiosk.data.api.ApiConfig
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.components.ShieldMark
@@ -91,7 +92,7 @@ fun LoginScreen(
             fontFamily = KioskFont,
         )
         Text(
-            text = "Demos: pranay.gate · pranay.host · guard/guard123 (or gate/gate123). Role from JWT routes Gate | Host | Guard.",
+            text = "Demos: pranay.gate / PranayGate@2026 · pranay.host · gate/gate123 · guard/guard123. API ${ApiConfig.BASE_URL}",
             color = KioskColors.textMuted,
             fontSize = 14.sp,
             fontFamily = KioskFont,

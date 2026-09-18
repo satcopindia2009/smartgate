@@ -64,6 +64,16 @@ class LiveVisitorApi(
         .readTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .writeTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .callTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        .addInterceptor { chain ->
+            var resp = chain.proceed(chain.request())
+            // Cloudflare quick-tunnel blip: one quiet retry on 530/1033 HTML.
+            if (resp.code == 530 || (resp.code in 502..504)) {
+                resp.close()
+                Thread.sleep(400)
+                resp = chain.proceed(chain.request())
+            }
+            resp
+        }
         .build()
 
     val accessToken: String?
@@ -241,6 +251,14 @@ class LiveVisitorApi(
     }
 
     private fun apiError(code: Int, text: String): ApiException {
+        val lower = text.lowercase()
+        if (code == 530 || "error code: 1033" in lower || ("cloudflare" in lower && "1033" in lower)) {
+            return ApiException(
+                code = "TUNNEL_DOWN",
+                message = "Cloudflare tunnel 1033/530 — origin offline. Retry; not invalid password.",
+                httpStatus = code,
+            )
+        }
         val parsed = runCatching { json.decodeFromString<ErrorEnvelope>(text) }.getOrNull()
         return ApiException(
             code = parsed?.error?.code ?: "HTTP_$code",
