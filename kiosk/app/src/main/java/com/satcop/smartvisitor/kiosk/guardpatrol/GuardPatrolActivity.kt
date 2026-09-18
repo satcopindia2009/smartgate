@@ -12,7 +12,7 @@ import com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolApp
 import com.satcop.smartvisitor.kiosk.ui.theme.SatcopKioskTheme
 
 /**
- * Isolated Phase 2 Guard Patrol demo entry.
+ * Isolated Phase 2 Guard Patrol LIVE entry (SCH-DEMO-01 · guard/guard123).
  * Separate LAUNCHER — does not open Phase 1 kiosk/host/visitor flows (AC-GP6).
  */
 class GuardPatrolActivity : ComponentActivity() {

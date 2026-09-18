@@ -1,16 +1,24 @@
 package com.satcop.smartvisitor.kiosk.guardpatrol.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.satcop.smartvisitor.kiosk.data.model.ApiException
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.Checkpoint
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolEngine
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolFixtures
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolMapper
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.LiveGuardPatrolApi
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.RoundInstance
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.RoundStatus
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.RoundTemplate
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.ScanResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class GuardPatrolScreen {
     START,
@@ -28,7 +36,12 @@ enum class ToastKind { INFO, SUCCESS, WARNING, ERROR }
 
 data class GuardPatrolUiState(
     val screen: GuardPatrolScreen = GuardPatrolScreen.START,
-    val templates: List<RoundTemplate> = GuardPatrolFixtures.activeTemplates(),
+    val templates: List<RoundTemplate> = emptyList(),
+    val checkpoints: Map<String, Checkpoint> = emptyMap(),
+    val schoolName: String = "Demo Public School — Campus A",
+    val schoolId: String = LiveGuardPatrolApi.DEMO_SCHOOL_ID,
+    val guardLabel: String = "Guard G1",
+    val guardId: String = GuardPatrolFixtures.DEFAULT_GUARD_ID,
     val selectedTemplateId: String? = null,
     val round: RoundInstance? = null,
     val toast: ToastEvent? = null,
@@ -36,20 +49,80 @@ data class GuardPatrolUiState(
     val scanPickerMode: String = "QR",
     val simulateOffCampus: Boolean = false,
     val showOffCampusBanner: Boolean = false,
+    /** Default LIVE against living /v1; toggle for offline fixture engine. */
+    val useLive: Boolean = true,
+    val liveReady: Boolean = false,
+    val busy: Boolean = false,
+    val statusLine: String = "Connecting…",
 )
 
-class GuardPatrolViewModel : ViewModel() {
+class GuardPatrolViewModel(
+    private val api: LiveGuardPatrolApi = LiveGuardPatrolApi(),
+) : ViewModel() {
     private val _state = MutableStateFlow(GuardPatrolUiState())
     val state: StateFlow<GuardPatrolUiState> = _state.asStateFlow()
+
+    init {
+        bootstrapLive()
+    }
 
     fun selectTemplate(id: String) {
         _state.update { it.copy(selectedTemplateId = id) }
     }
 
+    fun setUseLive(value: Boolean) {
+        if (value == _state.value.useLive) return
+        if (value) {
+            _state.update { it.copy(useLive = true, busy = true, statusLine = "Connecting…") }
+            bootstrapLive()
+        } else {
+            applyFixtures(status = "Fixture mode (offline)")
+        }
+    }
+
     fun startRound() {
         val id = _state.value.selectedTemplateId ?: return
-        val tpl = GuardPatrolFixtures.template(id) ?: return
-        val round = GuardPatrolEngine.startRound(tpl, guardId = GuardPatrolFixtures.DEFAULT_GUARD_ID)
+        val tpl = templateOf(id) ?: return
+        if (_state.value.useLive && _state.value.liveReady) {
+            viewModelScope.launch {
+                _state.update { it.copy(busy = true) }
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        val guardId = api.signedInUser?.id ?: LiveGuardPatrolApi.DEMO_USERNAME
+                        api.startRound(templateId = id, guardId = guardId)
+                    }
+                }.onSuccess { dto ->
+                    val round = GuardPatrolMapper.toDomain(dto)
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            round = round,
+                            screen = GuardPatrolScreen.ACTIVE,
+                            showOffCampusBanner = false,
+                            simulateOffCampus = false,
+                            toast = ToastEvent(
+                                id = System.currentTimeMillis(),
+                                message = "Round started · ${tpl.name}",
+                                kind = ToastKind.SUCCESS,
+                            ),
+                        )
+                    }
+                }.onFailure { err ->
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            toast = ToastEvent(
+                                System.currentTimeMillis(),
+                                err.message ?: "Start failed",
+                                ToastKind.ERROR,
+                            ),
+                        )
+                    }
+                }
+            }
+            return
+        }
+        val round = GuardPatrolEngine.startRound(tpl, guardId = _state.value.guardId)
         _state.update {
             it.copy(
                 round = round,
@@ -80,13 +153,99 @@ class GuardPatrolViewModel : ViewModel() {
     fun scanCheckpoint(checkpointId: String) {
         val current = _state.value
         val round = current.round ?: return
-        val tpl = GuardPatrolFixtures.template(round.templateId) ?: return
+        val tpl = templateOf(round.templateId) ?: return
         val offCampus = current.simulateOffCampus
+        if (current.useLive && current.liveReady) {
+            viewModelScope.launch {
+                _state.update { it.copy(busy = true, showScanPicker = false) }
+                // Client-side pre-check (dedupe / inactive) — warn-never-block for OOO.
+                val (_, local) = GuardPatrolEngine.simulateScan(
+                    round = round,
+                    template = tpl,
+                    checkpointId = checkpointId,
+                    offCampusSuspect = offCampus,
+                    checkpointLookup = { current.checkpoints[it] ?: GuardPatrolFixtures.checkpoint(it) },
+                )
+                if (local is ScanResult.Rejected && local.reason != "dedupe") {
+                    // Still allow server to decide unknowns; only soft-block inactive locally when known.
+                    if (local.reason == "inactive") {
+                        _state.update {
+                            it.copy(
+                                busy = false,
+                                toast = ToastEvent(System.currentTimeMillis(), local.message, ToastKind.ERROR),
+                            )
+                        }
+                        return@launch
+                    }
+                }
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        api.scan(
+                            roundId = round.id,
+                            checkpointId = checkpointId,
+                            deviceId = LiveGuardPatrolApi.DEMO_DEVICE_ID,
+                            offCampusSuspect = offCampus,
+                        )
+                    }
+                }.onSuccess { dto ->
+                    if (dto.deduped == true) {
+                        _state.update {
+                            it.copy(
+                                busy = false,
+                                toast = ToastEvent(
+                                    System.currentTimeMillis(),
+                                    dto.message ?: "Already scanned — ignored (2-min dedupe)",
+                                    ToastKind.INFO,
+                                ),
+                            )
+                        }
+                        return@onSuccess
+                    }
+                    val updated = GuardPatrolMapper.toDomain(dto)
+                    val last = dto.lastScan ?: dto.scans.lastOrNull()
+                    val outOfOrder = last?.outOfOrder == true || dto.outOfOrder == true
+                    val cpName = current.checkpoints[checkpointId]?.name
+                        ?: GuardPatrolFixtures.checkpoint(checkpointId)?.name
+                        ?: checkpointId
+                    val mode = current.scanPickerMode
+                    val msg = if (outOfOrder) {
+                        "Out of sequence — scan recorded"
+                    } else {
+                        "$mode OK · $cpName"
+                    }
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            round = updated,
+                            simulateOffCampus = false,
+                            showOffCampusBanner = it.showOffCampusBanner || offCampus ||
+                                (last?.offCampusSuspect == true),
+                            toast = ToastEvent(
+                                System.currentTimeMillis(),
+                                msg,
+                                if (outOfOrder) ToastKind.WARNING else ToastKind.SUCCESS,
+                            ),
+                        )
+                    }
+                }.onFailure { err ->
+                    val msg = (err as? ApiException)?.message ?: err.message ?: "Scan failed"
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            toast = ToastEvent(System.currentTimeMillis(), msg, ToastKind.ERROR),
+                        )
+                    }
+                }
+            }
+            return
+        }
+
         val (updated, result) = GuardPatrolEngine.simulateScan(
             round = round,
             template = tpl,
             checkpointId = checkpointId,
             offCampusSuspect = offCampus,
+            checkpointLookup = { current.checkpoints[it] ?: GuardPatrolFixtures.checkpoint(it) },
         )
         when (result) {
             is ScanResult.Rejected -> {
@@ -101,12 +260,10 @@ class GuardPatrolViewModel : ViewModel() {
             is ScanResult.Accepted -> {
                 val kind = if (result.outOfOrder) ToastKind.WARNING else ToastKind.SUCCESS
                 val mode = current.scanPickerMode
-                val cpName = GuardPatrolFixtures.checkpoint(checkpointId)?.name ?: checkpointId
-                val msg = if (result.outOfOrder) {
-                    result.message
-                } else {
-                    "$mode OK · $cpName"
-                }
+                val cpName = current.checkpoints[checkpointId]?.name
+                    ?: GuardPatrolFixtures.checkpoint(checkpointId)?.name
+                    ?: checkpointId
+                val msg = if (result.outOfOrder) result.message else "$mode OK · $cpName"
                 _state.update {
                     it.copy(
                         round = updated,
@@ -122,7 +279,57 @@ class GuardPatrolViewModel : ViewModel() {
 
     fun endRound() {
         val round = _state.value.round ?: return
-        val tpl = GuardPatrolFixtures.template(round.templateId) ?: return
+        val tpl = templateOf(round.templateId) ?: return
+        if (_state.value.useLive && _state.value.liveReady) {
+            viewModelScope.launch {
+                _state.update { it.copy(busy = true) }
+                runCatching {
+                    withContext(Dispatchers.IO) { api.endRound(round.id) }
+                }.onSuccess { dto ->
+                    val ended = GuardPatrolMapper.toDomain(dto)
+                    val kind = when (ended.status) {
+                        RoundStatus.COMPLETED -> ToastKind.SUCCESS
+                        RoundStatus.MISSED -> ToastKind.ERROR
+                        RoundStatus.PARTIAL -> ToastKind.WARNING
+                        RoundStatus.IN_PROGRESS -> ToastKind.INFO
+                    }
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            round = ended,
+                            screen = GuardPatrolScreen.RESULT,
+                            toast = ToastEvent(
+                                System.currentTimeMillis(),
+                                "Round ${ended.status.display()}",
+                                kind,
+                            ),
+                        )
+                    }
+                }.onFailure { err ->
+                    // Client-side End→Completed|Partial still apply if live end fails.
+                    val ended = GuardPatrolEngine.endRound(round, tpl)
+                    val kind = when (ended.status) {
+                        RoundStatus.COMPLETED -> ToastKind.SUCCESS
+                        RoundStatus.MISSED -> ToastKind.ERROR
+                        RoundStatus.PARTIAL -> ToastKind.WARNING
+                        RoundStatus.IN_PROGRESS -> ToastKind.INFO
+                    }
+                    _state.update {
+                        it.copy(
+                            busy = false,
+                            round = ended,
+                            screen = GuardPatrolScreen.RESULT,
+                            toast = ToastEvent(
+                                System.currentTimeMillis(),
+                                "Offline end · ${ended.status.display()} (${err.message ?: "live end failed"})",
+                                kind,
+                            ),
+                        )
+                    }
+                }
+            }
+            return
+        }
         val ended = GuardPatrolEngine.endRound(round, tpl)
         val kind = when (ended.status) {
             RoundStatus.COMPLETED -> ToastKind.SUCCESS
@@ -144,14 +351,104 @@ class GuardPatrolViewModel : ViewModel() {
     }
 
     fun backToStart() {
+        val keepLive = _state.value.useLive
+        val templates = _state.value.templates
+        val checkpoints = _state.value.checkpoints
+        val schoolName = _state.value.schoolName
+        val schoolId = _state.value.schoolId
+        val guardLabel = _state.value.guardLabel
+        val guardId = _state.value.guardId
+        val liveReady = _state.value.liveReady
+        val statusLine = _state.value.statusLine
         _state.update {
             GuardPatrolUiState(
-                templates = GuardPatrolFixtures.activeTemplates(),
+                templates = if (templates.isNotEmpty()) templates else GuardPatrolFixtures.activeTemplates(),
+                checkpoints = if (checkpoints.isNotEmpty()) {
+                    checkpoints
+                } else {
+                    GuardPatrolFixtures.checkpoints.associateBy { cp -> cp.id }
+                },
+                schoolName = schoolName,
+                schoolId = schoolId,
+                guardLabel = guardLabel,
+                guardId = guardId,
+                useLive = keepLive,
+                liveReady = liveReady,
+                statusLine = statusLine,
             )
         }
     }
 
     fun clearToast() {
         _state.update { it.copy(toast = null) }
+    }
+
+    fun templateOf(id: String): RoundTemplate? =
+        _state.value.templates.find { it.id == id } ?: GuardPatrolFixtures.template(id)
+
+    fun checkpointOf(id: String): Checkpoint? =
+        _state.value.checkpoints[id] ?: GuardPatrolFixtures.checkpoint(id)
+
+    private fun bootstrapLive() {
+        viewModelScope.launch {
+            _state.update { it.copy(busy = true, statusLine = "Signing in…") }
+            val ok = runCatching {
+                withContext(Dispatchers.IO) {
+                    if (!api.isSignedIn) {
+                        api.login(LiveGuardPatrolApi.DEMO_USERNAME, LiveGuardPatrolApi.DEMO_PASSWORD)
+                    }
+                    val templates = api.listTemplates().map(GuardPatrolMapper::toDomain).filter { it.active }
+                    val checkpoints = api.listCheckpoints().map(GuardPatrolMapper::toDomain)
+                        .filter { it.active }
+                        .associateBy { it.id }
+                    Triple(templates, checkpoints, api.signedInUser)
+                }
+            }.getOrNull()
+
+            if (ok == null) {
+                applyFixtures(status = "Live unreachable — fixture fallback")
+                return@launch
+            }
+            val (templates, checkpoints, user) = ok
+            _state.update {
+                it.copy(
+                    busy = false,
+                    useLive = true,
+                    liveReady = true,
+                    templates = templates.ifEmpty { GuardPatrolFixtures.activeTemplates() },
+                    checkpoints = checkpoints.ifEmpty {
+                        GuardPatrolFixtures.checkpoints.associateBy { cp -> cp.id }
+                    },
+                    schoolId = user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID,
+                    schoolName = "Demo Public School — Campus A",
+                    guardId = user?.id ?: "U-GUARD",
+                    guardLabel = user?.displayName ?: "Guard G1",
+                    statusLine = "LIVE · ${user?.displayName ?: "guard"} · ${user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID}",
+                    toast = ToastEvent(
+                        System.currentTimeMillis(),
+                        "Connected to living API",
+                        ToastKind.SUCCESS,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun applyFixtures(status: String) {
+        _state.update {
+            it.copy(
+                busy = false,
+                useLive = false,
+                liveReady = false,
+                templates = GuardPatrolFixtures.activeTemplates(),
+                checkpoints = GuardPatrolFixtures.checkpoints.associateBy { cp -> cp.id },
+                schoolId = GuardPatrolFixtures.SCHOOL_ID,
+                schoolName = GuardPatrolFixtures.school.name,
+                guardId = GuardPatrolFixtures.DEFAULT_GUARD_ID,
+                guardLabel = "Guard G1",
+                statusLine = status,
+                toast = ToastEvent(System.currentTimeMillis(), status, ToastKind.INFO),
+            )
+        }
     }
 }

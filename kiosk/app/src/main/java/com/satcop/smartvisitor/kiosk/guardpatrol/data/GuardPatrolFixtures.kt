@@ -5,7 +5,7 @@ package com.satcop.smartvisitor.kiosk.guardpatrol.data
  * School: Demo Public School — Campus A; 6 checkpoints; 3 active templates.
  */
 object GuardPatrolFixtures {
-    const val SCHOOL_ID = "sch-demo-a"
+    const val SCHOOL_ID = "SCH-DEMO-01"
     const val DEVICE_ID = "guard-phone-G1"
     const val DEFAULT_GUARD_ID = "G1"
 

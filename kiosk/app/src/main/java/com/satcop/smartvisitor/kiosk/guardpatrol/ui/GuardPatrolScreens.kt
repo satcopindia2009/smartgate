@@ -34,7 +34,10 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,6 +67,13 @@ fun GuardPatrolApp(vm: GuardPatrolViewModel = viewModel()) {
     val state by vm.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val lastToastKind = remember { mutableStateOf(ToastKind.INFO) }
+    val activity = LocalContext.current as? Activity
+    BackHandler {
+        when (state.screen) {
+            GuardPatrolScreen.ACTIVE, GuardPatrolScreen.RESULT -> vm.backToStart()
+            GuardPatrolScreen.START -> activity?.finishAffinity()
+        }
+    }
 
     LaunchedEffect(state.toast?.id) {
         val toast = state.toast ?: return@LaunchedEffect
@@ -84,6 +94,7 @@ fun GuardPatrolApp(vm: GuardPatrolViewModel = viewModel()) {
                     state = state,
                     onSelect = vm::selectTemplate,
                     onStart = vm::startRound,
+                    onToggleLive = vm::setUseLive,
                 )
                 GuardPatrolScreen.ACTIVE -> ActiveRoundScreen(
                     state = state,
@@ -101,7 +112,7 @@ fun GuardPatrolApp(vm: GuardPatrolViewModel = viewModel()) {
         }
 
         Text(
-            text = "DEMO",
+            text = if (state.useLive) "LIVE" else "DEMO",
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(12.dp),
@@ -139,13 +150,17 @@ fun GuardPatrolApp(vm: GuardPatrolViewModel = viewModel()) {
         }
 
         if (state.showScanPicker && state.round != null) {
-            val tpl = GuardPatrolFixtures.template(state.round!!.templateId)!!
-            CheckpointPickerDialog(
-                mode = state.scanPickerMode,
-                checkpointIds = tpl.checkpointIds,
-                onPick = vm::scanCheckpoint,
-                onDismiss = vm::dismissScanPicker,
-            )
+            val tpl = state.templates.find { it.id == state.round!!.templateId }
+                ?: GuardPatrolFixtures.template(state.round!!.templateId)
+            if (tpl != null) {
+                CheckpointPickerDialog(
+                    mode = state.scanPickerMode,
+                    checkpointIds = tpl.checkpointIds,
+                    checkpoints = state.checkpoints,
+                    onPick = vm::scanCheckpoint,
+                    onDismiss = vm::dismissScanPicker,
+                )
+            }
         }
     }
 }
@@ -159,7 +174,7 @@ private fun Phase2Banner() {
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Text(
-            text = "Phase 2 · Guard Patrol — not Phase 1 visitor flow",
+            text = "Phase 2 · Guard Patrol LIVE — Start+Active on living /v1",
             color = KioskColors.cyanBright,
             fontSize = 11.sp,
             fontFamily = KioskFont,
@@ -173,6 +188,7 @@ private fun StartRoundScreen(
     state: GuardPatrolUiState,
     onSelect: (String) -> Unit,
     onStart: () -> Unit,
+    onToggleLive: (Boolean) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -181,10 +197,39 @@ private fun StartRoundScreen(
     ) {
         HeaderBlock(
             title = "Start round",
-            subtitle = GuardPatrolFixtures.school.name,
+            subtitle = state.schoolName,
         )
         Spacer(Modifier.height(10.dp))
-        RoleChip()
+        RoleChip(guardLabel = state.guardLabel)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = state.statusLine,
+            color = if (state.useLive && state.liveReady) KioskColors.greenBright else KioskColors.textDim,
+            fontSize = 11.sp,
+            fontFamily = KioskFont,
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onToggleLive(!state.useLive) },
+        ) {
+            Checkbox(
+                checked = state.useLive,
+                onCheckedChange = onToggleLive,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = KioskColors.cyan,
+                    uncheckedColor = KioskColors.border,
+                ),
+            )
+            Text(
+                text = "Use living API (SCH-DEMO-01)",
+                color = KioskColors.textDim,
+                fontSize = 11.sp,
+                fontFamily = KioskFont,
+            )
+        }
         Spacer(Modifier.height(8.dp))
         Text(
             text = "Pick a template, then Start. Ordered templates warn on skip-ahead (F1) — scans still count.",
@@ -209,8 +254,8 @@ private fun StartRoundScreen(
         }
         Spacer(Modifier.height(12.dp))
         PrimaryButton(
-            label = "Start round",
-            enabled = state.selectedTemplateId != null,
+            label = if (state.busy) "Working…" else "Start round",
+            enabled = state.selectedTemplateId != null && !state.busy,
             onClick = onStart,
         )
     }
@@ -226,7 +271,9 @@ private fun ActiveRoundScreen(
     onBackTemplates: () -> Unit,
 ) {
     val round = state.round ?: return
-    val tpl = GuardPatrolFixtures.template(round.templateId) ?: return
+    val tpl = state.templates.find { it.id == round.templateId }
+        ?: GuardPatrolFixtures.template(round.templateId)
+        ?: return
     val scanned = GuardPatrolEngine.uniqueScannedIds(round)
     val nextId = GuardPatrolEngine.nextExpectedId(round, tpl)
     val count = scanned.size
@@ -241,7 +288,11 @@ private fun ActiveRoundScreen(
             subtitle = "${tpl.checkpointIds.size} CPs · ${tpl.expectedDurationMin} min",
         )
         Spacer(Modifier.height(8.dp))
-        RoleChip(extra = if (tpl.ordered) "Ordered" else "Any order", ordered = tpl.ordered)
+        RoleChip(
+            guardLabel = state.guardLabel,
+            extra = if (tpl.ordered) "Ordered" else "Any order",
+            ordered = tpl.ordered,
+        )
         if (state.showOffCampusBanner) {
             Spacer(Modifier.height(8.dp))
             OffCampusBanner()
@@ -273,7 +324,7 @@ private fun ActiveRoundScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             tpl.checkpointIds.forEachIndexed { idx, cpId ->
-                val cp = GuardPatrolFixtures.checkpoint(cpId) ?: return@forEachIndexed
+                val cp = state.checkpoints[cpId] ?: GuardPatrolFixtures.checkpoint(cpId) ?: return@forEachIndexed
                 val last = round.scans.lastOrNull { it.checkpointId == cpId }
                 val done = cpId in scanned
                 CheckpointRow(
@@ -343,7 +394,9 @@ private fun EndResultScreen(
     onAnother: () -> Unit,
 ) {
     val round = state.round ?: return
-    val tpl = GuardPatrolFixtures.template(round.templateId) ?: return
+    val tpl = state.templates.find { it.id == round.templateId }
+        ?: GuardPatrolFixtures.template(round.templateId)
+        ?: return
     val n = GuardPatrolEngine.uniqueScannedCount(round)
     val total = tpl.checkpointIds.size
     val (bg, fg, title, sub) = when (round.status) {
@@ -408,6 +461,7 @@ private data class Quad(val a: Color, val b: Color, val c: String, val d: String
 private fun CheckpointPickerDialog(
     mode: String,
     checkpointIds: List<String>,
+    checkpoints: Map<String, com.satcop.smartvisitor.kiosk.guardpatrol.data.Checkpoint>,
     onPick: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -431,7 +485,7 @@ private fun CheckpointPickerDialog(
                     fontFamily = KioskFont,
                 )
                 checkpointIds.forEach { id ->
-                    val cp = GuardPatrolFixtures.checkpoint(id) ?: return@forEach
+                    val cp = checkpoints[id] ?: GuardPatrolFixtures.checkpoint(id) ?: return@forEach
                     TextButton(
                         onClick = { onPick(id) },
                         modifier = Modifier.fillMaxWidth(),
@@ -475,7 +529,7 @@ private fun HeaderBlock(title: String, subtitle: String) {
 }
 
 @Composable
-private fun RoleChip(extra: String? = null, ordered: Boolean = true) {
+private fun RoleChip(guardLabel: String = "Guard G1", extra: String? = null, ordered: Boolean = true) {
     Row(
         modifier = Modifier
             .clip(ChipShape)
@@ -495,7 +549,8 @@ private fun RoleChip(extra: String? = null, ordered: Boolean = true) {
         }
         Text(
             text = buildString {
-                append("Guard G1 · guard_id set")
+                append(guardLabel)
+                append(" · guard_id set")
                 if (extra != null) append(" · ")
             },
             color = KioskColors.cyanBright,
