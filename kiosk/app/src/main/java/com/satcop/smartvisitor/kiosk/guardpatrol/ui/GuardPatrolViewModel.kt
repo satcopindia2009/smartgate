@@ -572,14 +572,16 @@ class GuardPatrolViewModel(
         dutyDate: String,
         guardId: String,
     ): Pair<List<PatrolAssignment>, Boolean> {
+        // Living seed filters on staffId (G1), not "me" / U-GUARD — empty live list is still live.
+        val queryGuardId = guardId.ifBlank { GuardPatrolFixtures.DEFAULT_GUARD_ID }
         val live = runCatching {
             withContext(Dispatchers.IO) {
-                api.listAssignments(dutyDate = dutyDate, guardId = "me")
+                api.listAssignments(dutyDate = dutyDate, guardId = queryGuardId)
                     .map(GuardPatrolMapper::toDomain)
             }
         }.getOrNull()
         if (live != null) return live to true
-        return GuardPatrolFixtures.assignmentsForToday(guardId) to false
+        return GuardPatrolFixtures.assignmentsForToday(queryGuardId) to false
     }
 
     private fun applyFixtures(status: String) {

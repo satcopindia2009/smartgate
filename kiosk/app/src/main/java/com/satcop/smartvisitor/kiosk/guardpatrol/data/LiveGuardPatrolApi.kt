@@ -59,9 +59,9 @@ class LiveGuardPatrolApi(
 
     /**
      * GET /patrol-assignments?dutyDate=&guardId=
-     * Living may still 404 — callers should fixture-fallback until endpoint returns 200.
+     * Prefer staffId (G1). Fixture-fallback only on transport/HTTP failure.
      */
-    fun listAssignments(dutyDate: String, guardId: String = "me"): List<PatrolAssignmentDto> {
+    fun listAssignments(dutyDate: String, guardId: String = GuardPatrolFixtures.DEFAULT_GUARD_ID): List<PatrolAssignmentDto> {
         val path = "/patrol-assignments?dutyDate=$dutyDate&guardId=$guardId"
         return get<PatrolAssignmentListResponse>(path).data
     }
