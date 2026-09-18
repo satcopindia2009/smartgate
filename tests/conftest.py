@@ -1,6 +1,10 @@
 """Shared fixtures for MVP contract tests."""
 from __future__ import annotations
 
+import os
+
+os.environ.setdefault("SATCOP_PERSIST", "0")
+
 import pytest
 from fastapi.testclient import TestClient
 

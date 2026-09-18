@@ -10,3 +10,6 @@ dist/
 admin/dist/
 *.local
 .vite/
+data/state.json
+data/media/*
+!data/media/.gitkeep

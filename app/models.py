@@ -198,6 +198,37 @@ class MediaUploadResponse(BaseModel):
     meta: Optional[dict] = None
 
 
+class RetentionPurgeBody(BaseModel):
+    dryRun: bool = False
+    schoolId: Optional[str] = None
+    asOf: Optional[str] = None  # ISO date YYYY-MM-DD; default today
+
+
+class DsrRequestCreate(BaseModel):
+    type: Literal["access", "correction", "erasure"]
+    subjectMobile: Optional[str] = None
+    visitId: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class DsrRequestOut(BaseModel):
+    id: str
+    schoolId: str
+    type: str
+    subjectMobile: Optional[str] = None
+    visitId: Optional[str] = None
+    notes: Optional[str] = None
+    status: str
+    exceptionCode: Optional[str] = None
+    exceptionDetail: Optional[str] = None
+    createdAt: str
+    createdByUserId: str
+    fulfilledAt: Optional[str] = None
+    fulfilledByUserId: Optional[str] = None
+    meta: Optional[dict] = None
+
+
+
 # --- Visits ---
 
 
@@ -206,7 +237,7 @@ class VisitCreate(BaseModel):
     mobile: str = Field(min_length=1)
     visitorType: VisitorType
     purpose: str = Field(min_length=1)
-    hostId: str = Field(min_length=1)
+    hostId: Optional[str] = None  # school defaultHostStaffId if blank (Pranay → PS-H03)
     livePhotoKey: str = Field(min_length=1)
     idType: IdType
     idNumber: Optional[str] = None
@@ -217,6 +248,8 @@ class VisitCreate(BaseModel):
     signatureKey: Optional[str] = None
     gateId: str = Field(min_length=1)
     blacklistOverride: bool = False
+    consentAt: Optional[str] = None  # ISO date or datetime; optional — photo notify gated
+    consentVersion: Optional[str] = None
 
     @field_validator("visitorType", mode="before")
     @classmethod
@@ -231,6 +264,16 @@ class VisitCreate(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("must not be empty")
+        return v
+
+    @field_validator("hostId")
+    @classmethod
+    def host_id_blank_ok(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            v = v.strip()
+            return v or None
         return v
 
 
@@ -270,6 +313,22 @@ class CheckInBody(BaseModel):
 
 class ForceCheckoutBody(ReasonBody):
     pass
+
+
+class LegalHoldBody(BaseModel):
+    """Enable/disable visit legal hold (Admin | Security Head)."""
+
+    enabled: bool
+    reason: str = Field(min_length=1)
+
+    @field_validator("reason")
+    @classmethod
+    def reason_required(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("reason is required")
+        return v
+
 
 
 class VisitOut(BaseModel):
@@ -319,6 +378,15 @@ class VisitOut(BaseModel):
     escortWaiveReason: Optional[str] = None
     escortClearedAt: Optional[str] = None
     escortName: Optional[str] = None
+    consentAt: Optional[str] = None
+    consentVersion: Optional[str] = None
+    livePhotoUrl: Optional[str] = None
+    idImageUrl: Optional[str] = None
+    signatureUrl: Optional[str] = None
+    legalHold: bool = False
+    legalHoldReason: Optional[str] = None
+    legalHoldAt: Optional[str] = None
+    legalHoldByUserId: Optional[str] = None
     createdAt: str
     updatedAt: str
     meta: Optional[dict] = None
@@ -432,6 +500,7 @@ class ExportRequest(BaseModel):
     ]
     filters: dict[str, Any] = Field(default_factory=dict)
     purpose: Optional[str] = None
+    unmask: bool = False
 
 
 # --- Pickup & Custody (P2 §1) ---
@@ -584,6 +653,8 @@ class PickupCreate(BaseModel):
     idNumber: Optional[str] = None
     idLast4: Optional[str] = None
     linkVisit: bool = False
+    pickupConsentAt: Optional[str] = None
+    pickupConsentVersion: Optional[str] = None
 
     @model_validator(mode="after")
     def claim_or_match_key(self) -> "PickupCreate":
@@ -945,3 +1016,28 @@ class BlastConfigPatch(BaseModel):
     blastStaffLaneEnabled: Optional[bool] = None
     blastChannelsVisitor: Optional[list[str]] = None
     blastChannelsStaff: Optional[list[str]] = None
+
+
+# --- Schools bootstrap (ops / admin) ---
+
+
+class SchoolCreate(BaseModel):
+    """POST /v1/schools — mint tenant + admin bootstrap."""
+
+    name: str = Field(min_length=1)
+    schoolCode: Optional[str] = None  # slug; used in SCH-<SLUG>-01
+    schoolId: Optional[str] = None  # override mint
+    timezone: str = "Asia/Kolkata"
+    adminUsername: Optional[str] = None
+    adminDisplayName: Optional[str] = None
+    adminPassword: Optional[str] = None  # else temp password minted
+
+
+class SchoolOut(BaseModel):
+    id: str
+    schoolCode: Optional[str] = None
+    name: str
+    timezone: str
+    overdueHoursDefault: int = 4
+    emergencyBlastEnabled: bool = False
+    blastStaffLaneEnabled: bool = False

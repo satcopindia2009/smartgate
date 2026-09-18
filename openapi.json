@@ -778,6 +778,62 @@
         }
       }
     },
+    "/v1/visits/{visit_id}/legal-hold": {
+      "post": {
+        "tags": [
+          "visits"
+        ],
+        "summary": "Set Legal Hold",
+        "description": "Freeze/unfreeze media deletion for a visit (Compliance legal hold).",
+        "operationId": "set_legal_hold_v1_visits__visit_id__legal_hold_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "visit_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Visit Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LegalHoldBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/visits/{visit_id}/approve": {
       "post": {
         "tags": [
@@ -1661,7 +1717,7 @@
     "/v1/internal/notify-outbox": {
       "get": {
         "tags": [
-          "internal"
+          "notifications"
         ],
         "summary": "Notify Outbox",
         "operationId": "notify_outbox_v1_internal_notify_outbox_get",
@@ -1686,6 +1742,80 @@
               ],
               "default": "pending",
               "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/internal/notify-outbox/process": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Process Outbox",
+        "description": "Durable consumer tick: pending \u2192 sent/failed (in_app). SMS/WA remain stub/HOLD.",
+        "operationId": "process_outbox_v1_internal_notify_outbox_process_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/notifications": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "List Host Notifications",
+        "description": "Host-visible in-app notifications (visit.pending and other outbox events).",
+        "operationId": "list_host_notifications_v1_notifications_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
             }
           }
         ],
@@ -2232,6 +2362,139 @@
             }
           }
         }
+      }
+    },
+    "/v1/students/import/validate": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Import Validate",
+        "operationId": "import_validate_v1_students_import_validate_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_validate_v1_students_import_validate_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/students/import/commit": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Import Commit",
+        "operationId": "import_commit_v1_students_import_commit_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_commit_v1_students_import_commit_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/students/import": {
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Import Commit Alias",
+        "description": "Commit alias for Admin UI.",
+        "operationId": "import_commit_alias_v1_students_import_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_import_commit_alias_v1_students_import_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/pickups": {
@@ -3589,6 +3852,142 @@
         }
       }
     },
+    "/v1/schools/": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "List Schools Admin",
+        "description": "List all schools \u2014 admin of any school (ops bootstrap helper).",
+        "operationId": "list_schools_admin_v1_schools__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Create School",
+        "description": "Create a school tenant + admin bootstrap.\n\nPrefer admin of any school (role check only). Mints SCH-<SLUG>-01,\ndefault 4 gates, Mon\u2013Fri 08\u201318 hours, escort/zone defaults.\nNever overwrites SCH-DEMO-01.",
+        "operationId": "create_school_v1_schools__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/schools": {
+      "get": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "List Schools Admin",
+        "description": "List all schools \u2014 admin of any school (ops bootstrap helper).",
+        "operationId": "list_schools_admin_v1_schools_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "schools"
+        ],
+        "summary": "Create School",
+        "description": "Create a school tenant + admin bootstrap.\n\nPrefer admin of any school (role check only). Mints SCH-<SLUG>-01,\ndefault 4 gates, Mon\u2013Fri 08\u201318 hours, escort/zone defaults.\nNever overwrites SCH-DEMO-01.",
+        "operationId": "create_school_v1_schools_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/schools/me/blast-config": {
       "get": {
         "tags": [
@@ -3695,6 +4094,218 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/v1/internal/retention/status": {
+      "get": {
+        "tags": [
+          "retention"
+        ],
+        "summary": "Retention Status",
+        "operationId": "retention_status_v1_internal_retention_status_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "asOf",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ISO date YYYY-MM-DD",
+              "title": "Asof"
+            },
+            "description": "ISO date YYYY-MM-DD"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/internal/retention/purge": {
+      "post": {
+        "tags": [
+          "retention"
+        ],
+        "summary": "Retention Purge",
+        "operationId": "retention_purge_v1_internal_retention_purge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionPurgeBody",
+                "default": {
+                  "dryRun": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/internal/dsr/requests": {
+      "get": {
+        "tags": [
+          "dsr"
+        ],
+        "summary": "List Dsr Requests",
+        "operationId": "list_dsr_requests_v1_internal_dsr_requests_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "dsr"
+        ],
+        "summary": "Create Dsr",
+        "operationId": "create_dsr_v1_internal_dsr_requests_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DsrRequestCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/internal/dsr/requests/{dsr_id}/fulfil": {
+      "post": {
+        "tags": [
+          "dsr"
+        ],
+        "summary": "Fulfil Dsr",
+        "description": "Honour DSR; refuse erasure when legal hold or active blacklist match.",
+        "operationId": "fulfil_dsr_v1_internal_dsr_requests__dsr_id__fulfil_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dsr_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dsr Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/health": {
@@ -4471,6 +5082,48 @@
         "type": "object",
         "title": "BlastTemplatePatch"
       },
+      "Body_import_commit_alias_v1_students_import_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_commit_alias_v1_students_import_post"
+      },
+      "Body_import_commit_v1_students_import_commit_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_commit_v1_students_import_commit_post"
+      },
+      "Body_import_validate_v1_students_import_validate_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_import_validate_v1_students_import_validate_post"
+      },
       "Body_upload_media_v1_media_upload_post": {
         "properties": {
           "file": {
@@ -4665,6 +5318,57 @@
         ],
         "title": "CustodyFlagPut"
       },
+      "DsrRequestCreate": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "access",
+              "correction",
+              "erasure"
+            ],
+            "title": "Type"
+          },
+          "subjectMobile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectmobile"
+          },
+          "visitId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visitid"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "DsrRequestCreate"
+      },
       "EscortZoneRuleIn": {
         "properties": {
           "visitorType": {
@@ -4718,6 +5422,11 @@
               }
             ],
             "title": "Purpose"
+          },
+          "unmask": {
+            "type": "boolean",
+            "title": "Unmask",
+            "default": false
           }
         },
         "type": "object",
@@ -4788,6 +5497,26 @@
           "Other"
         ],
         "title": "IdType"
+      },
+      "LegalHoldBody": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled",
+          "reason"
+        ],
+        "title": "LegalHoldBody",
+        "description": "Enable/disable visit legal hold (Admin | Security Head)."
       },
       "LoginRequest": {
         "properties": {
@@ -5309,6 +6038,28 @@
             "type": "boolean",
             "title": "Linkvisit",
             "default": false
+          },
+          "pickupConsentAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupconsentat"
+          },
+          "pickupConsentVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pickupconsentversion"
           }
         },
         "type": "object",
@@ -5615,6 +6366,39 @@
         ],
         "title": "RejectBody"
       },
+      "RetentionPurgeBody": {
+        "properties": {
+          "dryRun": {
+            "type": "boolean",
+            "title": "Dryrun",
+            "default": false
+          },
+          "schoolId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schoolid"
+          },
+          "asOf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asof"
+          }
+        },
+        "type": "object",
+        "title": "RetentionPurgeBody"
+      },
       "Role": {
         "type": "string",
         "enum": [
@@ -5624,6 +6408,81 @@
           "security_head"
         ],
         "title": "Role"
+      },
+      "SchoolCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "schoolCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schoolcode"
+          },
+          "schoolId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schoolid"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "Asia/Kolkata"
+          },
+          "adminUsername": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adminusername"
+          },
+          "adminDisplayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admindisplayname"
+          },
+          "adminPassword": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adminpassword"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SchoolCreate",
+        "description": "POST /v1/schools \u2014 mint tenant + admin bootstrap."
       },
       "Severity": {
         "type": "string",
@@ -6015,8 +6874,14 @@
             "title": "Purpose"
           },
           "hostId": {
-            "type": "string",
-            "minLength": 1,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Hostid"
           },
           "livePhotoKey": {
@@ -6103,6 +6968,28 @@
             "type": "boolean",
             "title": "Blacklistoverride",
             "default": false
+          },
+          "consentAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consentat"
+          },
+          "consentVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consentversion"
           }
         },
         "type": "object",
@@ -6111,7 +6998,6 @@
           "mobile",
           "visitorType",
           "purpose",
-          "hostId",
           "livePhotoKey",
           "idType",
           "gateId"
