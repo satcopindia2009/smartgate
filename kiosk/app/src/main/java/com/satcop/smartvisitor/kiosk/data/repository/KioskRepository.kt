@@ -41,6 +41,10 @@ interface KioskRepository : DirectoryRepository {
 
     suspend fun rejectVisit(id: String, reason: String): VisitOut
 
+    suspend fun meetingDone(id: String): VisitOut
+
+    suspend fun listHostActiveVisits(hostId: String?): List<VisitOut>
+
     suspend fun listNotifications(limit: Int = 50): List<HostNotification>
 
     suspend fun listHours(): List<CampusHoursRow>

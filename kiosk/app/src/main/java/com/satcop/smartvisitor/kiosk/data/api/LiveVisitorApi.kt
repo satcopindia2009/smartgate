@@ -106,6 +106,17 @@ class LiveVisitorApi(
     fun rejectVisit(id: String, reason: String): VisitOut =
         post("/visits/$id/reject", json.encodeToString(RejectBody(reason = reason)))
 
+    fun meetingDone(id: String): VisitOut =
+        post("/visits/$id/meeting-done", "{}")
+
+    fun listVisits(status: String, hostId: String? = null): VisitListResponse {
+        val path = buildString {
+            append("/visits?status=").append(status)
+            if (!hostId.isNullOrBlank()) append("&hostId=").append(hostId)
+        }
+        return get(path)
+    }
+
     fun listNotifications(limit: Int = 50): NotificationListResponse =
         get("/notifications?limit=$limit")
 

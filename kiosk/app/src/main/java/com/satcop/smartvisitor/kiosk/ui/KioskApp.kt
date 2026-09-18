@@ -180,6 +180,7 @@ fun KioskApp(
                                 schoolId = state.schoolId,
                                 staffId = state.meStaffId,
                                 pending = state.pendingVisits,
+                                active = state.hostActiveVisits,
                                 photos = state.pendingPhotos,
                                 afterHours = state.afterHours,
                                 busy = state.hostBusy,
@@ -192,6 +193,7 @@ fun KioskApp(
                                 onPickRejectReason = viewModel::pickRejectReason,
                                 onCancelReject = viewModel::cancelReject,
                                 onConfirmReject = viewModel::confirmReject,
+                                onMeetingDone = viewModel::meetingDone,
                                 onShowAfterHours = viewModel::toggleAfterHoursPanel,
                                 showingAfterHours = state.showingAfterHours,
                             )

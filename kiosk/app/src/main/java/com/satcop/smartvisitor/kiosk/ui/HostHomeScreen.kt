@@ -43,6 +43,7 @@ fun HostHomeScreen(
     schoolId: String,
     staffId: String,
     pending: List<VisitOut>,
+    active: List<VisitOut>,
     photos: Map<String, Bitmap>,
     afterHours: Boolean,
     busy: Boolean,
@@ -55,6 +56,7 @@ fun HostHomeScreen(
     onPickRejectReason: (String) -> Unit,
     onCancelReject: () -> Unit,
     onConfirmReject: () -> Unit,
+    onMeetingDone: (String) -> Unit,
     onShowAfterHours: () -> Unit,
     showingAfterHours: Boolean,
 ) {
@@ -136,6 +138,75 @@ fun HostHomeScreen(
                 )
             }
         }
+        Text(
+            text = "Inside / approved (C3)",
+            color = KioskColors.text,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = KioskFont,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Text(
+            text = "Mark Meeting done for your visits. Force checkout stays on Admin.",
+            color = KioskColors.textMuted,
+            fontSize = 13.sp,
+            fontFamily = KioskFont,
+        )
+        if (active.isEmpty()) {
+            Text(
+                text = "No active visits needing Meeting done",
+                color = KioskColors.textMuted,
+                fontSize = 14.sp,
+                fontFamily = KioskFont,
+            )
+        } else {
+            active.forEach { visit ->
+                ActiveVisitCard(
+                    visit = visit,
+                    busy = busy,
+                    onMeetingDone = { onMeetingDone(visit.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActiveVisitCard(
+    visit: VisitOut,
+    busy: Boolean,
+    onMeetingDone: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(RadiusLg))
+            .background(KioskColors.bg)
+            .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusLg))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = visit.visitorName.orEmpty().ifBlank { visit.id },
+            color = KioskColors.text,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = KioskFont,
+        )
+        Text(
+            text = listOfNotNull(visit.status, visit.id, visit.purpose).joinToString(" · "),
+            color = KioskColors.textMuted,
+            fontSize = 12.sp,
+            fontFamily = KioskFont,
+        )
+        KioskPrimaryButton(
+            text = if (busy) "Saving…" else "Meeting done",
+            onClick = onMeetingDone,
+            enabled = !busy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+        )
     }
 }
 

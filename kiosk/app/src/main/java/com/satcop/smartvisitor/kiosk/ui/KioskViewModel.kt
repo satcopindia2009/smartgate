@@ -81,6 +81,7 @@ data class KioskUiState(
     val screen: KioskScreen = KioskScreen.HOME,
     val hideDemoStory: Boolean = false,
     val pendingVisits: List<VisitOut> = emptyList(),
+    val hostActiveVisits: List<VisitOut> = emptyList(),
     val pendingPhotos: Map<String, Bitmap> = emptyMap(),
     val hostBusy: Boolean = false,
     val rejectingVisitId: String? = null,
@@ -290,6 +291,30 @@ class KioskViewModel(
 
     fun refreshHostPending() {
         viewModelScope.launch { loadHostHome(showToast = true) }
+    }
+
+    fun meetingDone(visitId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(hostBusy = true, toast = null) }
+            try {
+                repository.meetingDone(visitId)
+                loadHostHome(showToast = false)
+                _state.update {
+                    it.copy(
+                        toast = "Meeting done · $visitId",
+                        toastKind = ToastKind.SUCCESS,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        hostBusy = false,
+                        toast = e.message ?: "Meeting-done failed",
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
     }
 
     fun toggleAfterHoursPanel() {
@@ -552,12 +577,14 @@ class KioskViewModel(
                 val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
                 visit.id to bmp
             }.filterValues { it != null }.mapValues { it.value as Bitmap }
+            val active = repository.listHostActiveVisits(hostId)
             val notes = repository.listNotifications()
             val pendingNote = notes.firstOrNull { it.event == "visit.pending" }
             _state.update {
                 it.copy(
                     hostBusy = false,
                     pendingVisits = pending,
+                    hostActiveVisits = active,
                     pendingPhotos = photos,
                     afterHours = after,
                     rejectingVisitId = it.rejectingVisitId?.takeIf { id -> pending.any { row -> row.id == id } },

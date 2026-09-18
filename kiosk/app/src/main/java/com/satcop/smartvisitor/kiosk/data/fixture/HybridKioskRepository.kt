@@ -263,6 +263,29 @@ class HybridKioskRepository(
             }
         }
 
+    override suspend fun meetingDone(id: String): VisitOut = withContext(Dispatchers.IO) {
+        try {
+            live.meetingDone(id).also { local.put(it) }
+        } catch (e: Exception) {
+            throw asApi(e, "Meeting-done failed")
+        }
+    }
+
+    override suspend fun listHostActiveVisits(hostId: String?): List<VisitOut> =
+        withContext(Dispatchers.IO) {
+            if (dataSource != DataSource.LIVE) return@withContext emptyList()
+            try {
+                val approved = live.listVisits("approved", hostId).data
+                val inside = live.listVisits("inside", hostId).data
+                (approved + inside)
+                    .filter { it.meetingDoneAt.isNullOrBlank() }
+                    .distinctBy { it.id }
+            } catch (e: Exception) {
+                if (shouldFallback(e)) markFixtures()
+                emptyList()
+            }
+        }
+
     override suspend fun listNotifications(limit: Int): List<HostNotification> =
         withContext(Dispatchers.IO) {
             if (dataSource != DataSource.LIVE) return@withContext emptyList()

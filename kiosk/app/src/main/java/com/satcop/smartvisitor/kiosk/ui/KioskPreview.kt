@@ -86,6 +86,7 @@ fun KioskPhoneHostHomePreview() {
                 schoolId = "SCH-PRANAY-01",
                 staffId = "PS-H03",
                 pending = emptyList(),
+                active = emptyList(),
                 photos = emptyMap(),
                 afterHours = false,
                 busy = false,
@@ -98,6 +99,7 @@ fun KioskPhoneHostHomePreview() {
                 onPickRejectReason = {},
                 onCancelReject = {},
                 onConfirmReject = {},
+                onMeetingDone = {},
                 onShowAfterHours = {},
                 showingAfterHours = false,
             )
