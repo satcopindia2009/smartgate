@@ -13,11 +13,13 @@ from app.errors import (
     unhandled_error_handler,
     validation_error_handler,
 )
-from app.seed import seed
+from app.persist import load_state, persist_enabled, save_state
+from app.seed import ensure_essentials, seed
 from app.routers import (
     access_rules,
     auth,
     blacklist,
+    dsr,
     emergency,
     exports,
     gates,
@@ -31,13 +33,32 @@ from app.routers import (
     students,
     visits,
     zones,
+    retention,
 )
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    seed()
-    yield
+    if persist_enabled():
+        loaded = load_state()
+        if loaded:
+            ensure_essentials()
+        else:
+            seed()
+        try:
+            save_state()
+        except OSError:
+            pass
+    else:
+        seed()
+    try:
+        yield
+    finally:
+        if persist_enabled():
+            try:
+                save_state()
+            except OSError:
+                pass
 
 
 app = FastAPI(
@@ -60,6 +81,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def _persist_after_mutating_request(request, call_next):
+    response = await call_next(request)
+    if (
+        persist_enabled()
+        and request.method in ("POST", "PUT", "PATCH", "DELETE")
+        and response.status_code < 500
+    ):
+        try:
+            save_state()
+        except OSError:
+            pass
+    return response
+
+
 app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(RequestValidationError, validation_error_handler)
 app.add_exception_handler(Exception, unhandled_error_handler)
@@ -80,6 +116,8 @@ app.include_router(access_rules.router, prefix="/v1")
 app.include_router(zones.router, prefix="/v1")
 app.include_router(emergency.router, prefix="/v1")
 app.include_router(schools.router, prefix="/v1")
+app.include_router(retention.router, prefix="/v1")
+app.include_router(dsr.router, prefix="/v1")
 
 
 @app.get("/health")

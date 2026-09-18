@@ -1,7 +1,7 @@
-# Satcop Smart Visitor — MVP API Stub + P2 Pickup + After-hours + Escort / Zones + Emergency Blast
+# Satcop Smart Visitor — MVP API Stub + P2 Pickup + After-hours + Escort / Zones + Emergency Blast + Living
 
-In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**), **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**), **escort / zones** (Hub **B4**), and **Emergency visitor blast** (Hub **B1–B6 / E3**).  
-For Mobile / Admin **showable demos**. **Not for live school deploy** (V4 HOLD). No live SMS / WhatsApp providers.
+In-memory FastAPI mock implementing `mvp-api-contract-2026-09-16.md` §§0–5 under `/v1`, plus **Priority P2 Pickup & Custody** (Hub **P1–P6+H1**), **after-hours / holiday Access Rules** (Hub **A1–A6 / C4**), **escort / zones** (Hub **B4**), **Emergency visitor blast** (Hub **B1–B6 / E3**), and the **living** consent / retention / DSR / persist slice.  
+For Mobile / Admin **showable demos**. **Not for live school deploy** (V4 HOLD). No live SMS / WhatsApp providers. **No Fly / production deploy in this PR.**
 
 Day-1 routes are hardened for visit state machine, host-scoped approve, pass scan errors, blacklist §5 match, media keys, and the contract error envelope. Pickup is a **separate `PickupEvent`** — not a Visit subtype. After-hours Approve is Admin|Security Head (Host stays no-op). Blast is **confirm-only** (not L8 dual-control) and does **not** auto-checkout.
 Admin web dashboard: `admin/` (Vite + React 18 + TypeScript + React Router).
@@ -40,7 +40,7 @@ Mobile kiosk lives under `kiosk/` when present — Admin Day-1 does not own, ove
 
 - Python 3.12+
 - FastAPI + Pydantic v2 + PyJWT + uvicorn
-- In-memory store (re-seeded on process start)
+- In-memory store, optionally persisted to `data/state.json` (`SATCOP_PERSIST`, default on; tests set `0`)
 - CORS `*`
 - JWT Bearer auth (`userId`, `schoolId`, `role`, `staffId?`, `gateIds?`)
 - Error envelope: `{ "error": { "code", "message", "details?" } }` (including request validation)
@@ -167,14 +167,14 @@ Out of this slice: geo-fence, face match, MSR, live school (V4), Patrol, live SM
 
 ## After-hours / holiday (Priority P2 · Hub A1–A6 / C4)
 
-Per-school weekday hours + holiday date calendar. Evaluation is **sticky on `POST /v1/visits` only** (A3 / AC-C4e). Dual-approve is **rejected**. After-hours Approve is unchanged in this slice; Vendor after-hours still gets B4 escort stamps.
+Per-school weekday hours + holiday date calendar. Evaluation is **sticky on `POST /v1/visits` only** (A3 / AC-C4e). Dual-approve is **rejected**. After-hours Approve/Reject is **Admin or Security Head** (A4); Vendor after-hours still gets B4 escort stamps.
 
 ```
 afterHours=false → normal MVP Host Approve
-afterHours=true  → Pending (SH gate)
+afterHours=true  → Pending (Admin|SH gate — A4)
   ├─ Host notified (FYI outbox) — Host Approve is NO-OP (does not → Approved)
-  ├─ Security Head Approve ({ "reason" } required — A6) → Approved
-  └─ Security Head Reject ({ "reason" } required) → Rejected
+  ├─ Admin or Security Head Approve ({ "reason" } required — A6) → Approved
+  └─ Admin or Security Head Reject ({ "reason" } required) → Rejected
 ```
 
 | Action | Role | Notes |
@@ -206,10 +206,10 @@ curl -s "$BASE/visits/V-AH-HOLIDAY" -H "Authorization: Bearer $SH" | python3 -m 
 curl -s "$BASE/passes/P-7K88" -H "Authorization: Bearer $ADMIN" | python3 -m json.tool
 
 # Host Approve on after-hours is a no-op (403 AFTER_HOURS_SH_REQUIRED)
-# SH Approve with reason:
+# Admin or SH Approve with reason (A4):
 curl -s -X POST "$BASE/visits/V-AH-VENDOR/approve" \
-  -H "Authorization: Bearer $SH" -H 'Content-Type: application/json' \
-  -d '{"reason":"Verified night vendor call"}' | python3 -m json.tool
+  -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' \
+  -d '{"reason":"Office Admin night clearance"}' | python3 -m json.tool
 ```
 
 ## Escort / zones (Priority P2 · Hub B4)
@@ -432,16 +432,42 @@ bash scripts/smoke.sh
 - `tests/test_escort_acceptance.py` — AC-B4a / AC-B4b / AC-B4c / AC-B4d / AC-B4e / AC-B4f
 - `tests/test_blast.py` — B1–B6: preview=inside, confirm required, Gate/Host 403, WA `skipped_hold`, visit status unchanged, retry failed, disabled 404
 - `tests/test_blast_acceptance.py` — AC-E3a / AC-E3b / AC-E3c / AC-E3d / AC-E3e / AC-E3f / AC-E3g
+- `tests/test_living.py` — visit consent + L4 photo gate, retention 90/30/14 + signature 90d, `/v1/internal/retention`, visit legalHold, DSR internals, export mask, A4 Admin|SH, outbox + `GET /v1/notifications`, media disk+URLs, `POST/GET /v1/schools`, pickupConsent on create, `app/persist.py` (`SATCOP_PERSIST`)
+
+## Living slice (consent / retention / DSR / persist)
+
+Demo-only additions for the living FastAPI stub. **No Fly / production / live-school deploy.**
+
+| Area | Behavior |
+|------|----------|
+| Visit consent | `POST /visits` accepts optional `consentAt` + `consentVersion`. VisitOut always echoes them plus `livePhotoUrl` / `idImageUrl` / `signatureUrl`. |
+| L4 photo gate | Host notify / outbox attach `livePhotoUrl` only when `consentAt` is set; otherwise `photoSuppressed=true`. |
+| Retention | live photo **90d**, signature **90d**, ID image **30d**, rejected visit media **14d**, collector live photo **90d**. |
+| `/v1/internal/retention` | Admin\|SH `GET /status` and `POST /purge` (`dryRun`, `asOf`). Tenant-scoped. |
+| Visit legal hold | Admin\|SH `POST /visits/{id}/legal-hold` `{ enabled, reason }`. Purge and DSR erasure skip / refuse held visits. |
+| DSR | Admin\|SH `/v1/internal/dsr/requests` create / list / fulfil. Erasure refuses `LEGAL_HOLD` or `ACTIVE_BLACKLIST` (409). |
+| Export mask | History CSV masks `idNumber` (last4). `unmask=true` is **SH + purpose**. History window **>30 days** requires `purpose`. |
+| A4 | After-hours Approve/Reject is **Admin or Security Head** with reason. Host remains no-op (`AFTER_HOURS_SH_REQUIRED`). |
+| Outbox + notifications | `GET /v1/internal/notify-outbox`, `POST /v1/internal/notify-outbox/process`, host-visible `GET /v1/notifications`. SMS/WA stay stub/HOLD. |
+| Media | Upload writes `data/media/`; `GET /v1/media/{key}` returns disk bytes (or in-memory / `DEMO_MEDIA_STUB`). |
+| Schools | Admin `GET /v1/schools` and `POST /v1/schools` mint `SCH-<SLUG>-01` + admin + 4 gates + hours. Never overwrites `SCH-DEMO-01`. |
+| Pickup consent | `POST /pickups` may stamp `pickupConsentVersion` / `pickupConsentAt` (still required before collector photo / release if omitted). |
+| Persist | `app/persist.py` snapshots the in-memory store to `data/state.json`. Default **on** (`SATCOP_PERSIST` ≠ `0`). Tests set `SATCOP_PERSIST=0`. Media bytes stay on disk. |
+
+```bash
+# Persist off (same as pytest):
+SATCOP_PERSIST=0 uvicorn app.main:app --host 0.0.0.0 --port 8080
+```
 
 ## Remaining thin stubs / out of scope
 
 OK to stay thin (not blocking Mobile/Admin demos):
 
 - Reports (`/v1/reports/*`) — simple in-memory aggregates; `medianApprovalSec` is null
-- Exports (`POST /v1/exports`) — sync CSV ≤ current store; audit row kept in memory
-- Notify outbox (`GET /v1/internal/notify-outbox`) — events emitted on transitions; no real send
-- Media GET returns bytes (or `DEMO_MEDIA_STUB`); not S3 signed URLs
-- No Postgres / real object storage
+- Exports (`POST /v1/exports`) — sync CSV ≤ current store; history idNumbers masked unless SH `unmask` + purpose; audit row kept in memory
+- Notify outbox (`GET /v1/internal/notify-outbox`) — events emitted on transitions; in-app consumer tick only (SMS/WA HOLD)
+- Media GET returns disk or in-memory bytes (or `DEMO_MEDIA_STUB`); not S3 signed URLs
+- Persist is local JSON (`data/state.json`), not Postgres / object storage
 - Optional `cancelled` before check-in is in the §2 diagram but **no REST cancel** in §4 (not implemented)
 - Priority P2 geo-fence / new zone keys / dual-approve / face match / MSR / live SMS·WhatsApp providers — **not implemented**
 - Production / live-school deploy — **HOLD**

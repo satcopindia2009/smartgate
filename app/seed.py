@@ -25,7 +25,7 @@ def seed() -> None:
             "name": "Demo International School",
             "timezone": SCHOOL_TZ,
             "overdueHoursDefault": 4,
-            "config": {"hostNotifyChannels": ["in_app"]},
+            "config": {"hostNotifyChannels": ["in_app"], "defaultHostStaffId": "PS-H03"},
             # Demo/SCH-DEMO-01 only — new schools default OFF (AC-E3e)
             "emergencyBlastEnabled": True,
             "blastStaffLaneEnabled": False,
@@ -643,7 +643,317 @@ def seed() -> None:
     _seed_after_hours(ts)
     _seed_pickup(ts)
     _seed_emergency_blast(ts)
+    _seed_pranay_school(ts)
 
+
+def _seed_pranay_school(ts: str) -> None:
+    """Real school tenant — Pranay School Pune. Does NOT replace SCH-DEMO-01."""
+    from app.config import CAMPUS_TZ
+    from app.escort import seed_school_defaults
+
+    school_id = "SCH-PRANAY-01"
+    school_code = "PRANAY"
+    # Keep demo as store.school(); Pranay lives alongside via schoolId scoping.
+    # Also register in schools map if present.
+    school_row = {
+        "id": school_id,
+        "schoolCode": school_code,
+        "name": "Pranay School Pune",
+        "timezone": SCHOOL_TZ,
+        "overdueHoursDefault": 4,
+        "config": {"hostNotifyChannels": ["in_app"], "defaultHostStaffId": "PS-H03"},
+        "emergencyBlastEnabled": False,
+        "blastStaffLaneEnabled": False,
+        "blastChannelsVisitor": ["sms"],
+        "blastChannelsStaff": ["in_app", "push"],
+    }
+    if hasattr(store, "put_school"):
+        store.put_school(school_row)
+    else:
+        # multi-school map without clobbering demo primary
+        schools = store._state.setdefault("schools", {})
+        schools[school_id] = school_row
+
+    gates = [
+        ("PS-G-MAIN", "Main Gate"),
+        ("PS-G-PED", "Pedestrian Gate"),
+        ("PS-G-STAFF", "Staff Gate"),
+        ("PS-G-BUS", "Bus Bay"),
+    ]
+    for gid, name in gates:
+        store.put_gate({"id": gid, "schoolId": school_id, "name": name, "active": True})
+
+    staff_rows = [
+        ("PS-H01", "Pranay Security Head", "Security Head", "9111222333", "U-PRANAY-SH"),
+        ("PS-H02", "Pranay Admin", "Office Admin", "9111222334", "U-PRANAY-ADMIN"),
+        ("PS-H03", "Pranay Host", "Class Teacher", "9111222337", "U-PRANAY-HOST"),
+        ("PS-G01", "Pranay Gate", "Guard", "9111222335", "U-PRANAY-GATE"),
+        ("PS-E01", "Pranay Escort", "Escort staff", "9111222336", None),
+    ]
+    for sid, name, role_title, mobile, user_id in staff_rows:
+        store.put_staff(
+            {
+                "id": sid,
+                "schoolId": school_id,
+                "name": name,
+                "roleTitle": role_title,
+                "mobile": mobile,
+                "userId": user_id,
+                "active": True,
+            }
+        )
+
+    users = [
+        {
+            "id": "U-PRANAY-ADMIN",
+            "username": "pranay.admin",
+            "password": "PranayAdmin@2026",
+            "schoolId": school_id,
+            "role": "admin",
+            "staffId": "PS-H02",
+            "gateIds": None,
+            "displayName": "Pranay School Admin",
+            "phone": "9111222334",
+            "email": "admin@pranay.school",
+            "active": True,
+        },
+        {
+            "id": "U-PRANAY-SH",
+            "username": "pranay.sh",
+            "password": "PranaySH@2026",
+            "schoolId": school_id,
+            "role": "security_head",
+            "staffId": "PS-H01",
+            "gateIds": None,
+            "displayName": "Pranay Security Head",
+            "phone": "9111222333",
+            "email": "security@pranay.school",
+            "active": True,
+        },
+        {
+            "id": "U-PRANAY-HOST",
+            "username": "pranay.host",
+            "password": "PranayHost@2026",
+            "schoolId": school_id,
+            "role": "host",
+            "staffId": "PS-H03",
+            "gateIds": None,
+            "displayName": "Pranay Host",
+            "phone": "9111222337",
+            "email": "host@pranay.school",
+            "active": True,
+        },
+        {
+            "id": "U-PRANAY",
+            "username": "pranay",
+            "password": "pranay123",
+            "schoolId": school_id,
+            "role": "host",
+            "staffId": "PS-H03",
+            "gateIds": None,
+            "displayName": "Pranay Host",
+            "phone": "9111222337",
+            "email": "pranay@pranay.school",
+            "active": True,
+        },
+        {
+            "id": "U-PRANAY-GATE",
+            "username": "pranay.gate",
+            "password": "PranayGate@2026",
+            "schoolId": school_id,
+            "role": "gate",
+            "staffId": "PS-G01",
+            "gateIds": ["PS-G-MAIN", "PS-G-PED", "PS-G-STAFF", "PS-G-BUS"],
+            "displayName": "Pranay Gate",
+            "phone": "9111222335",
+            "email": "gate@pranay.school",
+            "active": True,
+        },
+    ]
+    for u in users:
+        store.put_user(u)
+
+    seed_school_defaults(school_id, updated_by="U-PRANAY-ADMIN")
+
+    week = [
+        ("mon", "08:00", "18:00", False, False),
+        ("tue", "08:00", "18:00", False, False),
+        ("wed", "08:00", "18:00", False, False),
+        ("thu", "08:00", "18:00", False, False),
+        ("fri", "08:00", "18:00", False, False),
+        ("sat", None, None, True, False),
+        ("sun", None, None, True, False),
+    ]
+    for weekday, open_t, close_t, closed, overnight in week:
+        store.put_hours_row(
+            {
+                "schoolId": school_id,
+                "timezone": CAMPUS_TZ,
+                "weekday": weekday,
+                "openTime": open_t,
+                "closeTime": close_t,
+                "closed": closed,
+                "overnight": overnight,
+                "updatedByUserId": "U-PRANAY-ADMIN",
+                "updatedAt": "2026-09-17T14:00:00+05:30",
+            }
+        )
+
+
+    # First-load roster sample (survives process restart) — school_code PRANAY
+    ts_pranay = "2026-09-17T14:15:00+05:30"
+    for ext, name, klass, section, legal in (
+        ("PS-S-001", "Asha Patil", "5", "B", False),
+        ("PS-S-002", "Rohan Shah", "3", "A", False),
+    ):
+        sid = f"STU-{ext}"
+        store.put_student(
+            {
+                "id": sid,
+                "schoolId": school_id,
+                "studentId": ext,
+                "name": name,
+                "class": klass,
+                "section": section,
+                "active": True,
+                "enrollmentEndedAt": None,
+                "legalHold": legal,
+                "createdAt": ts_pranay,
+                "updatedAt": ts_pranay,
+                "importedByUserId": "U-PRANAY-ADMIN",
+            }
+        )
+        from app.pickup_match import default_custody_flag
+        if not store.get_custody_flag(sid):
+            store.put_custody_flag(default_custody_flag(sid, school_id))
+
+    people = [
+        ("AP-PS-001-1", "STU-PS-S-001", "Ramesh Patil", "parent", "9876500101", "Aadhaar", "1234"),
+        ("AP-PS-001-2", "STU-PS-S-001", "Smita Patil", "guardian", "9876500102", None, None),
+        ("AP-PS-002-1", "STU-PS-S-002", "Kavita Shah", "parent", "9876500201", None, None),
+    ]
+    for pid, stuid, pname, rel, mobile, id_type, id_last4 in people:
+        store.put_authorized_person(
+            {
+                "id": pid,
+                "studentId": stuid,
+                "schoolId": school_id,
+                "name": pname,
+                "relation": rel,
+                "mobile": mobile,
+                "idType": id_type,
+                "idNumber": None,
+                "idLast4": id_last4,
+                "photoRef": None,
+                "active": True,
+                "effectiveFrom": None,
+                "effectiveTo": None,
+                "pickupConsentVersion": "pickup_notice_en_hi_v1",
+                "pickupConsentAt": "2026-06-01",
+                "createdAt": ts_pranay,
+                "updatedAt": ts_pranay,
+            }
+        )
+
+
+    # Viren / Pranay host-approve demos — hostId must be PS-H03 (pranay.host)
+    def _pranay_visit(**kwargs):
+        base = {
+            "schoolId": school_id,
+            "registeredByUserId": "U-PRANAY-GATE",
+            "status": "pending",
+            "rejectReason": None,
+            "decidedAt": None,
+            "decidedByUserId": None,
+            "passId": None,
+            "qrToken": None,
+            "timeIn": None,
+            "timeOut": None,
+            "gateInId": None,
+            "gateOutId": None,
+            "checkoutType": None,
+            "forceCheckoutReason": None,
+            "forceCheckoutByUserId": None,
+            "blacklistHit": False,
+            "blacklistId": None,
+            "blacklistOverrideByUserId": None,
+            "meetingDoneAt": None,
+            "afterHours": False,
+            "policyTrigger": None,
+            "afterHoursEvaluatedAt": kwargs.get("createdAt") or "2026-09-17T15:20:35+05:30",
+            "afterHoursApproveReason": None,
+            "escortRequired": False,
+            "allowedZones": ["reception"],
+            "escortStaffId": None,
+            "escortSuggestedByHost": None,
+            "escortWaived": False,
+            "escortWaiveReason": None,
+            "escortClearedAt": None,
+            "escortName": None,
+            "hostId": "PS-H03",
+            "gateId": "PS-G-PED",
+        }
+        base.update(kwargs)
+        store.put_visit(base)
+
+    _pranay_visit(
+        id="V-20260917-041",
+        visitorName="Riya Sharma",
+        mobile="9890754643",
+        visitorType="Parent",
+        purpose="PTM",
+        livePhotoKey="media/live_photo/7246f3a45a9ba81d",
+        idType="Aadhaar",
+        idNumber="47747828848",
+        idImageKey="media/id_image/9056638dffff6386",
+        vehicleNumber=None,
+        accompanyingCount=0,
+        notes="Host approve demo — PS-H03",
+        signatureKey="media/signature/c29ae3d5f7b5807d",
+        createdAt="2026-09-17T15:20:35+05:30",
+        updatedAt="2026-09-17T15:36:00+05:30",
+    )
+    _pranay_visit(
+        id="V-20260917-042",
+        visitorName="CHANDAN",
+        mobile="9890422225",
+        visitorType="Guest",
+        purpose="Guest",
+        livePhotoKey="media/live_photo/08dfbc81a7f65e63",
+        idType="Aadhaar",
+        idNumber="XXXX",
+        idImageKey="media/id_image/d1e5be85e1578e67",
+        vehicleNumber=None,
+        accompanyingCount=0,
+        notes="Pending for pranay.host — host PS-H03",
+        signatureKey="media/signature/205ef4e3fa3482ec",
+        createdAt="2026-09-17T15:30:00+05:30",
+        updatedAt="2026-09-17T15:36:00+05:30",
+    )
+
+
+    # Persist Pranay visit photo keys across restarts (disk + store)
+    from app.routers.media import _load_media_bytes, _media_path
+    for key in (
+        "media/live_photo/7246f3a45a9ba81d",
+        "media/id_image/9056638dffff6386",
+        "media/signature/c29ae3d5f7b5807d",
+        "media/live_photo/08dfbc81a7f65e63",
+        "media/id_image/d1e5be85e1578e67",
+        "media/signature/205ef4e3fa3482ec",
+    ):
+        blob = _load_media_bytes(key) or b"DEMO_MEDIA_STUB"
+        store.put_media(
+            {
+                "key": key,
+                "schoolId": school_id,
+                "kind": "live_photo" if "live_photo" in key else ("id_image" if "id_image" in key else "signature"),
+                "contentType": "image/jpeg",
+                "bytes": blob,
+                "uploadedByUserId": "U-PRANAY-GATE",
+                "uploadedAt": "2026-09-17T15:20:35+05:30",
+            }
+        )
 
 def _seed_after_hours(ts: str) -> None:
     """A1–A2 + P6-style after-hours demos — separate from Priya MVP walkthrough."""
@@ -1302,3 +1612,123 @@ def _seed_emergency_blast(ts: str) -> None:
             "createdAt": confirm_at,
         }
     )
+
+
+def ensure_essentials() -> None:
+    """After loading persisted state, fill missing demo + Pranay bootstrap only.
+
+    Does NOT call reset() — preserves visits, outbox, notifications, media meta,
+    schools created at runtime, pickups, etc.
+    """
+    ts = now_iso()
+    primary = store.school()
+    demo = store.get_school(SCHOOL_ID) if hasattr(store, "get_school") else None
+    if primary is None and demo is None:
+        seed()
+        return
+
+    # Ensure primary pointer
+    if primary is None and demo is not None:
+        store.set_school(demo)
+
+    # Critical demo users (login must work after restart)
+    demo_users = [
+        {
+            "id": "U-GATE",
+            "username": "gate",
+            "password": DEMO_PASSWORDS["gate"],
+            "schoolId": SCHOOL_ID,
+            "role": "gate",
+            "staffId": "G01",
+            "gateIds": ["G-MAIN", "G-PED", "G-STAFF", "G-BUS"],
+            "displayName": "Gate — Ramesh",
+            "phone": "9000000010",
+            "email": "gate@demo.school",
+            "active": True,
+        },
+        {
+            "id": "U-HOST",
+            "username": "host",
+            "password": DEMO_PASSWORDS["host"],
+            "schoolId": SCHOOL_ID,
+            "role": "host",
+            "staffId": "H03",
+            "gateIds": None,
+            "displayName": "Anita Joshi",
+            "phone": "9000000003",
+            "email": "anita.joshi@demo.school",
+            "active": True,
+        },
+        {
+            "id": "U-ADMIN",
+            "username": "admin",
+            "password": DEMO_PASSWORDS["admin"],
+            "schoolId": SCHOOL_ID,
+            "role": "admin",
+            "staffId": "H02",
+            "gateIds": None,
+            "displayName": "Office Admin",
+            "phone": "9000000099",
+            "email": "admin@demo.school",
+            "active": True,
+        },
+        {
+            "id": "U-SH",
+            "username": "security",
+            "password": DEMO_PASSWORDS["security"],
+            "schoolId": SCHOOL_ID,
+            "role": "security_head",
+            "staffId": "H01",
+            "gateIds": None,
+            "displayName": "Meera Kulkarni",
+            "phone": "9000000098",
+            "email": "security@demo.school",
+            "active": True,
+        },
+    ]
+    for u in demo_users:
+        if not store.get_user_by_username(u["username"]):
+            store.put_user(u)
+
+    # Demo gates / staff if wiped somehow
+    if not store.get_gate("G-MAIN"):
+        for gid, name in (
+            ("G-MAIN", "Main Gate"),
+            ("G-PED", "Pedestrian Gate"),
+            ("G-STAFF", "Staff Gate"),
+            ("G-BUS", "Bus Bay"),
+        ):
+            if not store.get_gate(gid):
+                store.put_gate(
+                    {"id": gid, "schoolId": SCHOOL_ID, "name": name, "active": True}
+                )
+    if not store.get_staff("H03"):
+        for sid, name, role_title, mobile, user_id in (
+            ("H01", "Meera Kulkarni", "Principal", "9000000001", None),
+            ("H02", "Rahul Deshpande", "Admin Officer", "9000000002", "U-HOST-H02"),
+            ("H03", "Anita Joshi", "Primary Coordinator", "9000000003", "U-HOST"),
+            ("H04", "Sanjay Patil", "Accounts", "9000000004", None),
+            ("G01", "Gate — Ramesh", "Guard", "9000000010", "U-GATE"),
+            ("E01", "Vikram More", "Escort staff", "9000000015", None),
+        ):
+            if not store.get_staff(sid):
+                store.put_staff(
+                    {
+                        "id": sid,
+                        "schoolId": SCHOOL_ID,
+                        "name": name,
+                        "roleTitle": role_title,
+                        "mobile": mobile,
+                        "userId": user_id,
+                        "active": True,
+                    }
+                )
+
+    # Pranay tenant essentials
+    if not store.get_school("SCH-PRANAY-01"):
+        _seed_pranay_school(ts)
+    else:
+        for uname in ("pranay.admin", "pranay.sh", "pranay.host", "pranay", "pranay.gate"):
+            if not store.get_user_by_username(uname):
+                _seed_pranay_school(ts)
+                break

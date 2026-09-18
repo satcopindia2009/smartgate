@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 
 from app.auth import require_roles
 from app.config import WATERMARK
@@ -23,6 +23,7 @@ from app.pickup_match import (
 )
 from app.util import last4, normalize_mobile, now_iso
 from app import store
+from app.roster_sot_import import run_import as run_sot_import
 
 router = APIRouter(tags=["students"])
 
@@ -340,3 +341,52 @@ def put_custody_flag(
     store.put_custody_flag(row)
     denormalize_blocked_by_custody(student["id"], user["schoolId"])
     return _meta(_custody_for_role(row, user["role"]))
+
+
+@router.post("/students/import/validate")
+async def import_validate(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(Role.admin, Role.security_head)),
+):
+    data = await file.read()
+    return run_sot_import(
+        data,
+        school_id=user["schoolId"],
+        user_id=user["id"],
+        filename=file.filename,
+        content_type=file.content_type,
+        dry_run=True,
+    )
+
+
+@router.post("/students/import/commit")
+async def import_commit(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(Role.admin, Role.security_head)),
+):
+    data = await file.read()
+    return run_sot_import(
+        data,
+        school_id=user["schoolId"],
+        user_id=user["id"],
+        filename=file.filename,
+        content_type=file.content_type,
+        dry_run=False,
+    )
+
+
+@router.post("/students/import")
+async def import_commit_alias(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_roles(Role.admin, Role.security_head)),
+):
+    """Commit alias for Admin UI."""
+    data = await file.read()
+    return run_sot_import(
+        data,
+        school_id=user["schoolId"],
+        user_id=user["id"],
+        filename=file.filename,
+        content_type=file.content_type,
+        dry_run=False,
+    )

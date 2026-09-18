@@ -1,3 +1,7 @@
+import os
+
+os.environ.setdefault("SATCOP_PERSIST", "0")
+
 """Shared fixtures for MVP contract tests."""
 from __future__ import annotations
 
