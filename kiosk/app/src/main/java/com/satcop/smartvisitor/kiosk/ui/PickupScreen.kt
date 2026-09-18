@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.data.model.AuthorizedPickup
 import com.satcop.smartvisitor.kiosk.data.model.PickupOut
+import com.satcop.smartvisitor.kiosk.data.model.PickupConsent
 import com.satcop.smartvisitor.kiosk.data.model.PickupReasons
 import com.satcop.smartvisitor.kiosk.data.model.StudentOut
 import com.satcop.smartvisitor.kiosk.ui.components.KioskField
@@ -199,8 +204,52 @@ fun PickupScreen(
                     fontFamily = KioskFont,
                 )
                 if (pickup.pickupConsentAt.isNullOrBlank()) {
-                    KioskGhostButton(
-                        text = if (busy) "Recording…" else "Record pickup consent",
+                    var langHi by remember { mutableStateOf(false) }
+                    Text(
+                        text = if (langHi) PickupConsent.TITLE_HI else PickupConsent.TITLE_EN,
+                        color = KioskColors.text,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = KioskFont,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "English",
+                            color = if (!langHi) KioskColors.cyanBright else KioskColors.textMuted,
+                            fontSize = 12.sp,
+                            fontFamily = KioskFont,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(if (!langHi) KioskColors.cyanDim else KioskColors.card)
+                                .clickable { langHi = false }
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                        Text(
+                            text = "हिन्दी",
+                            color = if (langHi) KioskColors.cyanBright else KioskColors.textMuted,
+                            fontSize = 12.sp,
+                            fontFamily = KioskFont,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(if (langHi) KioskColors.cyanDim else KioskColors.card)
+                                .clickable { langHi = true }
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                    Text(
+                        text = if (langHi) PickupConsent.BODY_HI else PickupConsent.BODY_EN,
+                        color = KioskColors.textMuted,
+                        fontSize = 12.sp,
+                        fontFamily = KioskFont,
+                    )
+                    Text(
+                        text = "No pre-tick · photo unlocks after agree · ${PickupConsent.VERSION}",
+                        color = KioskColors.textDim,
+                        fontSize = 11.sp,
+                        fontFamily = KioskFont,
+                    )
+                    KioskPrimaryButton(
+                        text = if (busy) "Recording…" else if (langHi) PickupConsent.AGREE_HI else PickupConsent.AGREE_EN,
                         onClick = onConsent,
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),

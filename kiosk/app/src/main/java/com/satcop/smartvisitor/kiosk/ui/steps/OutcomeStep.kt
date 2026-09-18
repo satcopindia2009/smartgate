@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.satcop.smartvisitor.kiosk.data.model.AfterHoursCopy
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistEntry
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.data.model.Gate
@@ -34,6 +35,7 @@ import com.satcop.smartvisitor.kiosk.ui.components.KioskCyanButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
+import com.satcop.smartvisitor.kiosk.ui.theme.RadiusSm
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -46,6 +48,7 @@ fun OutcomeStep(
     blacklistHit: BlacklistEntry?,
     dataSource: DataSource,
     busy: Boolean,
+    afterHoursHint: Boolean = false,
     onRefresh: () -> Unit,
     onDemoApprove: () -> Unit,
     onCheckIn: () -> Unit,
@@ -96,6 +99,36 @@ fun OutcomeStep(
                 modifier = Modifier.padding(bottom = 16.dp),
                 textAlign = TextAlign.Center,
             )
+        }
+        val afterHours = afterHoursHint || visit?.afterHours == true
+        if (afterHours && status == "pending") {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .clip(RoundedCornerShape(RadiusSm))
+                    .background(KioskColors.orangeDim)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                Text(
+                    text = "After hours / holiday — Admin or Security Head approval required",
+                    color = KioskColors.peakAmber,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = KioskFont,
+                )
+                Text(
+                    text = listOfNotNull(
+                        visit?.policyTrigger?.let { "Trigger · $it" },
+                        AfterHoursCopy.HOST_NO_OP,
+                        AfterHoursCopy.CODE,
+                    ).joinToString(" · "),
+                    color = KioskColors.textMuted,
+                    fontSize = 12.sp,
+                    fontFamily = KioskFont,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
         if (showQr) {
             PassQrBox(passId = visit?.passId, token = visit?.qrToken)

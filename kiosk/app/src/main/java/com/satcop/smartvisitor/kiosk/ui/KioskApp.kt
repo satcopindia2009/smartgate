@@ -288,6 +288,7 @@ private fun KioskStep(
             blacklistHit = state.blacklistHit,
             dataSource = state.dataSource,
             busy = state.outcomeBusy,
+            afterHoursHint = state.afterHours,
             onRefresh = { viewModel.refreshVisit() },
             onDemoApprove = viewModel::demoApprove,
             onCheckIn = viewModel::scanCheckIn,

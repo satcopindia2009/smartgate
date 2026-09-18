@@ -113,3 +113,17 @@ object PickupReasons {
     )
     const val CONSENT_VERSION = "pickup_notice_en_hi_v1"
 }
+
+object PickupConsent {
+    const val VERSION = PickupReasons.CONSENT_VERSION
+    const val TITLE_EN = "Collector notice"
+    const val TITLE_HI = "संग्राहक सूचना"
+    const val BODY_EN =
+        "This school will record your name, mobile number, and a live photo for this student pickup. Data is used for student safety and pickup audit. Live photos are retained up to 90 days (then deleted); pickup event metadata follows school audit retention. You may ask the school office about access, correction, or deletion.\n\nBy tapping I agree & continue, you consent to this processing for today’s pickup."
+    const val BODY_HI =
+        "यह स्कूल इस छात्र पिकअप के लिए आपका नाम, मोबाइल नंबर और लाइव फोटो दर्ज करेगा। डेटा छात्र सुरक्षा और पिकअप ऑडिट के लिए उपयोग होगा। लाइव फोटो अधिकतम 90 दिन रखी जाएगी (फिर हटा दी जाएगी); पिकअप इवेंट मेटाडेटा स्कूल की ऑडिट नीति के अनुसार रहेगा। पहुँच, सुधार या हटाने के लिए स्कूल कार्यालय से संपर्क करें।\n\nसहमत हूँ और आगे बढ़ें पर टैप करके आप आज के पिकअप के लिए सहमति देते हैं।"
+    const val AGREE_EN = "I agree & continue"
+    const val AGREE_HI = "सहमत हूँ और आगे बढ़ें"
+    const val DECLINE = "Decline / Back · अस्वीकार / वापस"
+}
+

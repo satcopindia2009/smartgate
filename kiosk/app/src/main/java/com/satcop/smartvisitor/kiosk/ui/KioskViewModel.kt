@@ -37,6 +37,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -111,6 +112,7 @@ class KioskViewModel(
         "EEE, d MMM, hh:mm:ss a",
         Locale.ENGLISH,
     )
+    private var hostPollJob: Job? = null
 
     init {
         viewModelScope.launch { tickClock() }
@@ -153,6 +155,8 @@ class KioskViewModel(
 
     fun logout() {
         viewModelScope.launch {
+            hostPollJob?.cancel()
+            hostPollJob = null
             runCatching { repository.logout() }
             val clock = _state.value.clockLabel
             _state.value = KioskUiState(clockLabel = clock)
@@ -167,6 +171,7 @@ class KioskViewModel(
             KioskRole.HOST -> {
                 applyIdentityHome(me)
                 loadHostHome()
+                startHostPendingPoll()
             }
             KioskRole.UNSUPPORTED -> applyIdentityHome(me)
         }
@@ -512,6 +517,18 @@ class KioskViewModel(
                         toastKind = ToastKind.ERROR,
                     )
                 }
+            }
+        }
+    }
+
+    private fun startHostPendingPoll() {
+        hostPollJob?.cancel()
+        hostPollJob = viewModelScope.launch {
+            while (true) {
+                delay(15_000)
+                val snap = _state.value
+                if (!snap.signedIn || snap.homeRole() != KioskRole.HOST) return@launch
+                loadHostHome(showToast = false)
             }
         }
     }
@@ -880,10 +897,16 @@ class KioskViewModel(
             )
             val visit = repository.createVisit(body)
             val source = repository.dataSource
+            val hours = runCatching { repository.listHours() }.getOrDefault(emptyList())
+            val zone = runCatching { ZoneId.of(_state.value.timezone) }
+                .getOrDefault(ZoneId.of("Asia/Kolkata"))
+            val localAfter = CampusHours.isAfterHours(hours, ZonedDateTime.now(zone))
+            val after = visit.afterHours || localAfter
             _state.update {
                 it.copy(
                     submitting = false,
                     createdVisit = visit,
+                    afterHours = after,
                     blacklistHit = hit,
                     blocked = false,
                     dataSource = source,
@@ -891,10 +914,15 @@ class KioskViewModel(
                     step = 4,
                     toast = when {
                         hit?.severity == "Alert" -> "Alert hit · visit pending · host notified"
+                        after -> "After hours · ${AfterHoursCopy.HOST_NO_OP}"
                         source == DataSource.FIXTURES -> "FIXTURES · host notified · Demo approve to issue QR"
                         else -> "Host notified · waiting for approval"
                     },
-                    toastKind = if (hit?.severity == "Alert") ToastKind.WARNING else ToastKind.SUCCESS,
+                    toastKind = when {
+                        hit?.severity == "Alert" -> ToastKind.WARNING
+                        after -> ToastKind.WARNING
+                        else -> ToastKind.SUCCESS
+                    },
                 )
             }
             if (visit.status == "pending") {
