@@ -32,5 +32,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Phase 2 Guard Patrol demo — isolated from Phase 1 gate/host/visitor (AC-GP6) -->
+        <activity
+            android:name=".guardpatrol.GuardPatrolActivity"
+            android:exported="true"
+            android:label="@string/guard_patrol_launcher"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.SatcopGateKiosk"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

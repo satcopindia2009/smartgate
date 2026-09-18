@@ -919,8 +919,12 @@ class KioskViewModel(
                 signatureKey = sigKey,
                 gateId = draft.gateId,
                 blacklistOverride = false,
-                consentVersion = draft.consentVersion,
-                consentAt = draft.consentAt,
+                // E4-G3: always send SoT version + consentAt (client-enforce until Backend hardens)
+                consentVersion = GateConsent.VERSION,
+                consentAt = draft.consentAt!!.ifBlank {
+                    java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Kolkata"))
+                        .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                },
             )
             val visit = repository.createVisit(body)
             val source = repository.dataSource
