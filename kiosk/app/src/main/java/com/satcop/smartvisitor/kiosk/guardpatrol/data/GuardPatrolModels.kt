@@ -58,6 +58,8 @@ data class RoundInstance(
     val completedAtEpochMs: Long? = null,
     val status: RoundStatus = RoundStatus.IN_PROGRESS,
     val scans: List<Scan> = emptyList(),
+    /** Linked when Guard starts from an Assigned-today row (POST /rounds assignmentId). */
+    val assignmentId: String? = null,
 )
 
 data class Guard(
@@ -83,3 +85,40 @@ sealed class ScanResult {
         val message: String,
     ) : ScanResult()
 }
+
+enum class AssignmentStatus {
+    ASSIGNED,
+    STARTED,
+    COMPLETED,
+    MISSED,
+    CANCELLED;
+
+    fun display(): String = when (this) {
+        ASSIGNED -> "Assigned"
+        STARTED -> "Started"
+        COMPLETED -> "Completed"
+        MISSED -> "Missed"
+        CANCELLED -> "Cancelled"
+    }
+
+    fun apiValue(): String = name.lowercase()
+}
+
+/**
+ * Admin-assigned patrol duty for a guard on a duty date (school TZ Asia/Kolkata).
+ * AC-AP1–7 — Mobile consume of GET /patrol-assignments.
+ */
+data class PatrolAssignment(
+    val id: String,
+    val schoolId: String,
+    val templateId: String,
+    val guardId: String,
+    val dutyDate: String,
+    val shiftStart: String? = null,
+    val shiftEnd: String? = null,
+    val status: AssignmentStatus = AssignmentStatus.ASSIGNED,
+    val roundId: String? = null,
+    val assignedBy: String? = null,
+    val assignedAtEpochMs: Long? = null,
+    val notes: String? = null,
+)

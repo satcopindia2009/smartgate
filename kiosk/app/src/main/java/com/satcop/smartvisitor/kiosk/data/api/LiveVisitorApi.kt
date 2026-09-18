@@ -47,7 +47,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 class LiveVisitorApi(
     private val baseUrl: String = ApiConfig.BASE_URL,
-    private val session: AuthSession = AuthSession(),
+    private val session: AuthSession = AppAuth.session,
 ) {
     private val json = Json {
         ignoreUnknownKeys = true

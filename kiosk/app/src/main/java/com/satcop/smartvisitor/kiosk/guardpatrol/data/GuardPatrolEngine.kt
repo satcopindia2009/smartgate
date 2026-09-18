@@ -10,6 +10,7 @@ object GuardPatrolEngine {
         template: RoundTemplate,
         guardId: String = GuardPatrolFixtures.DEFAULT_GUARD_ID,
         nowMs: Long = System.currentTimeMillis(),
+        assignmentId: String? = null,
     ): RoundInstance {
         require(template.active) { "Template inactive" }
         return RoundInstance(
@@ -20,6 +21,7 @@ object GuardPatrolEngine {
             startedAtEpochMs = nowMs,
             status = RoundStatus.IN_PROGRESS,
             scans = emptyList(),
+            assignmentId = assignmentId,
         )
     }
 

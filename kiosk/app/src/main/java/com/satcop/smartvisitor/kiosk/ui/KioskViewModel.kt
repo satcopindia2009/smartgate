@@ -208,6 +208,7 @@ class KioskViewModel(
                 loadHostHome()
                 startHostPendingPoll()
             }
+            KioskRole.GUARD -> applyIdentityHome(me)
             KioskRole.UNSUPPORTED -> applyIdentityHome(me)
         }
     }
@@ -1451,7 +1452,7 @@ class KioskViewModel(
                 s.step > 1 -> { back(); true }
                 else -> false
             }
-            else -> false
+            KioskRole.GUARD, KioskRole.HOST, KioskRole.UNSUPPORTED -> false
         }
     }
 

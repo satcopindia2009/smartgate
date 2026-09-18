@@ -65,7 +65,7 @@ fun LoginScreen(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Gate or Host · sign in to continue",
+                    text = "Gate · Host · Guard · sign in to continue",
                     color = KioskColors.textMuted,
                     fontSize = if (compact) 11.sp else 12.sp,
                     fontFamily = KioskFont,
@@ -91,7 +91,7 @@ fun LoginScreen(
             fontFamily = KioskFont,
         )
         Text(
-            text = "Default demo login is pranay.gate. Host: pranay.host. After sign-in the home matches your role.",
+            text = "Demos: pranay.gate · pranay.host · guard/guard123 (or gate/gate123). Role from JWT routes Gate | Host | Guard.",
             color = KioskColors.textMuted,
             fontSize = 14.sp,
             fontFamily = KioskFont,

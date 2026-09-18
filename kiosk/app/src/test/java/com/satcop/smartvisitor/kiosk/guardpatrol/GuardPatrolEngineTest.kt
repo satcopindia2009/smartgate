@@ -105,4 +105,26 @@ class GuardPatrolEngineTest {
         val (_, res) = GuardPatrolEngine.simulateScan(round, evening, "cp-not-real", nowMs = 50_100L)
         assertTrue(res is ScanResult.Rejected)
     }
+
+    @Test
+    fun assignmentsForToday_g1HasEveningAndSpot() {
+        val list = GuardPatrolFixtures.assignmentsForToday("G1")
+        assertEquals(2, list.size)
+        assertEquals("tpl-evening", list[0].templateId)
+        assertEquals("tpl-spot", list[1].templateId)
+        assertEquals(GuardPatrolFixtures.todayDutyDateIst(), list[0].dutyDate)
+        assertEquals("assigned", list[0].status.apiValue())
+        assertTrue(GuardPatrolFixtures.assignmentsForToday("G2").isEmpty())
+    }
+
+    @Test
+    fun startRound_linksAssignmentId() {
+        val round = GuardPatrolEngine.startRound(
+            evening,
+            assignmentId = "asg-demo-evening-x",
+            nowMs = 99L,
+        )
+        assertEquals("asg-demo-evening-x", round.assignmentId)
+    }
+
 }

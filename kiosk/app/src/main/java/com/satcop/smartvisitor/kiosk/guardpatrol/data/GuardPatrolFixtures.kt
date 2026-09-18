@@ -5,7 +5,7 @@ package com.satcop.smartvisitor.kiosk.guardpatrol.data
  * School: Demo Public School — Campus A; 6 checkpoints; 3 active templates.
  */
 object GuardPatrolFixtures {
-    const val SCHOOL_ID = "sch-demo-a"
+    const val SCHOOL_ID = "SCH-DEMO-01"
     const val DEVICE_ID = "guard-phone-G1"
     const val DEFAULT_GUARD_ID = "G1"
 
@@ -65,4 +65,50 @@ object GuardPatrolFixtures {
     fun activeTemplates(): List<RoundTemplate> = templates.filter { it.active }
 
     fun guard(id: String): Guard? = guards.find { it.id == id }
+
+    /** School flag — when true, hide/disable self-start template picker (AC-AP7). Default false. */
+    const val REQUIRE_ASSIGNMENT_DEFAULT = false
+
+    fun todayDutyDateIst(): String =
+        java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).toString()
+
+    /**
+     * Demo assignments for G1 today (fixture-first until GET /patrol-assignments returns 200).
+     * Seed: tpl-evening + tpl-spot · SCH-DEMO-01 · status assigned.
+     */
+    fun assignmentsForToday(guardId: String = DEFAULT_GUARD_ID): List<PatrolAssignment> {
+        val today = todayDutyDateIst()
+        if (guardId != DEFAULT_GUARD_ID) return emptyList()
+        return listOf(
+            PatrolAssignment(
+                id = "asg-demo-evening-$today",
+                schoolId = SCHOOL_ID,
+                templateId = "tpl-evening",
+                guardId = DEFAULT_GUARD_ID,
+                dutyDate = today,
+                shiftStart = "17:00",
+                shiftEnd = "19:00",
+                status = AssignmentStatus.ASSIGNED,
+                assignedBy = "SH1",
+                assignedAtEpochMs = System.currentTimeMillis() - 3_600_000L,
+                notes = "Evening perimeter — demo seed",
+            ),
+            PatrolAssignment(
+                id = "asg-demo-spot-$today",
+                schoolId = SCHOOL_ID,
+                templateId = "tpl-spot",
+                guardId = DEFAULT_GUARD_ID,
+                dutyDate = today,
+                shiftStart = "14:00",
+                shiftEnd = "15:00",
+                status = AssignmentStatus.ASSIGNED,
+                assignedBy = "SH1",
+                assignedAtEpochMs = System.currentTimeMillis() - 7_200_000L,
+                notes = "Spot check — demo seed",
+            ),
+        )
+    }
+
+    fun assignment(id: String): PatrolAssignment? =
+        assignmentsForToday().find { it.id == id }
 }

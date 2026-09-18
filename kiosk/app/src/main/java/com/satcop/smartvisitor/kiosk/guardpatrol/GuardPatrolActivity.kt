@@ -12,8 +12,8 @@ import com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolApp
 import com.satcop.smartvisitor.kiosk.ui.theme.SatcopKioskTheme
 
 /**
- * Isolated Phase 2 Guard Patrol demo entry.
- * Separate LAUNCHER — does not open Phase 1 kiosk/host/visitor flows (AC-GP6).
+ * Guard Patrol shell (SCH-DEMO-01 · guard/guard123).
+ * Not exported as a product launcher — reached via JWT role from MainActivity (1-role APK).
  */
 class GuardPatrolActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
+import com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolApp
 import com.satcop.smartvisitor.kiosk.ui.components.DemoWatermark
 import com.satcop.smartvisitor.kiosk.ui.components.GatePill
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
@@ -132,6 +133,9 @@ fun KioskApp(
                     }
                 } else {
                     val role = state.homeRole()
+                    if (role == KioskRole.GUARD) {
+                        GuardPatrolApp(onExit = viewModel::logout)
+                    } else {
                     KioskHeader(
                         schoolName = state.schoolName,
                         schoolId = state.schoolId,
@@ -312,6 +316,7 @@ fun KioskApp(
                             )
                         }
                     }
+                    } // end non-guard
                 }
             }
             DemoWatermark(

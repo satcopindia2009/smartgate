@@ -33,18 +33,13 @@
             </intent-filter>
         </activity>
 
-        <!-- Phase 2 Guard Patrol demo — isolated from Phase 1 gate/host/visitor (AC-GP6) -->
+        <!-- Guard Patrol shell — JWT role after MainActivity login; not a product launcher. -->
         <activity
             android:name=".guardpatrol.GuardPatrolActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/guard_patrol_launcher"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.SatcopGateKiosk"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>
