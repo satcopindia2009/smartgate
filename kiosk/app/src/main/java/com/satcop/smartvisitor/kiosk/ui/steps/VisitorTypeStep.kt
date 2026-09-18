@@ -49,8 +49,10 @@ fun VisitorTypeStep(
     clockLabel: String,
     recent: List<InsideVisit>,
     gates: List<Gate>,
+    showPrefill: Boolean = true,
     onSelectType: (String) -> Unit,
     onPrefill: () -> Unit,
+    onPickup: () -> Unit,
     onContinue: () -> Unit,
 ) {
     val compact = LocalKioskCompact.current
@@ -72,13 +74,22 @@ fun VisitorTypeStep(
                     modifier = Modifier.padding(top = 4.dp),
                 )
                 KioskGhostButton(
-                    text = "Prefill sample",
-                    onClick = onPrefill,
+                    text = "Student pickup",
+                    onClick = onPickup,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 12.dp)
                         .heightIn(min = 48.dp),
                 )
+                if (showPrefill) {
+                    KioskGhostButton(
+                        text = "Prefill sample",
+                        onClick = onPrefill,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                    )
+                }
             }
             Column(
                 modifier = Modifier
@@ -134,7 +145,12 @@ fun VisitorTypeStep(
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
-                KioskGhostButton(text = "Prefill sample", onClick = onPrefill)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KioskGhostButton(text = "Student pickup", onClick = onPickup)
+                    if (showPrefill) {
+                        KioskGhostButton(text = "Prefill sample", onClick = onPrefill)
+                    }
+                }
             }
 
             Row(

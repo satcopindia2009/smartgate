@@ -68,7 +68,7 @@ fun VisitorDetailsStep(
                 label = "Full name",
                 value = draft.visitorName,
                 onValueChange = onName,
-                placeholder = "e.g. Priya Sharma",
+                placeholder = "Visitor full name",
                 error = errors[FieldKeys.VISITOR_NAME],
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -93,7 +93,7 @@ fun VisitorDetailsStep(
                     label = "Full name",
                     value = draft.visitorName,
                     onValueChange = onName,
-                    placeholder = "e.g. Priya Sharma",
+                    placeholder = "Visitor full name",
                     error = errors[FieldKeys.VISITOR_NAME],
                     modifier = Modifier.weight(1f),
                 )

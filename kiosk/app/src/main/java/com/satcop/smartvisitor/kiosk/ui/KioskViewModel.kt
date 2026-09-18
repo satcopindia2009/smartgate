@@ -1,20 +1,30 @@
 package com.satcop.smartvisitor.kiosk.ui
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.satcop.smartvisitor.kiosk.data.api.LoginErrors
 import com.satcop.smartvisitor.kiosk.data.fixture.DemoFixtures
 import com.satcop.smartvisitor.kiosk.data.fixture.HybridKioskRepository
+import com.satcop.smartvisitor.kiosk.data.model.AfterHoursCopy
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
+import com.satcop.smartvisitor.kiosk.data.model.AuthorizedPickup
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistEntry
+import com.satcop.smartvisitor.kiosk.data.model.CampusHours
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.data.model.DemoStory
 import com.satcop.smartvisitor.kiosk.data.model.Gate
 import com.satcop.smartvisitor.kiosk.data.model.InsideVisit
 import com.satcop.smartvisitor.kiosk.data.model.MeResponse
+import com.satcop.smartvisitor.kiosk.data.model.PickupCreate
+import com.satcop.smartvisitor.kiosk.data.model.PickupOut
+import com.satcop.smartvisitor.kiosk.data.model.PickupReasons
+import com.satcop.smartvisitor.kiosk.data.model.GateConsent
+import com.satcop.smartvisitor.kiosk.data.model.SchoolIds
 import com.satcop.smartvisitor.kiosk.data.model.Staff
+import com.satcop.smartvisitor.kiosk.data.model.StudentOut
 import com.satcop.smartvisitor.kiosk.data.model.VisitCreate
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import com.satcop.smartvisitor.kiosk.data.registration.MobileIndia
@@ -27,6 +37,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,8 +47,8 @@ import kotlinx.coroutines.launch
 
 data class KioskUiState(
     val signedIn: Boolean = false,
-    val loginUsername: String = "",
-    val loginPassword: String = "",
+    val loginUsername: String = "pranay.gate",
+    val loginPassword: String = "PranayGate@2026",
     val loginError: String? = null,
     val loginBusy: Boolean = false,
     val step: Int = 1,
@@ -67,6 +78,25 @@ data class KioskUiState(
     val blocked: Boolean = false,
     val createdVisit: VisitOut? = null,
     val outcomeBusy: Boolean = false,
+    val screen: KioskScreen = KioskScreen.HOME,
+    val hideDemoStory: Boolean = false,
+    val pendingVisits: List<VisitOut> = emptyList(),
+    val hostActiveVisits: List<VisitOut> = emptyList(),
+    val pendingPhotos: Map<String, Bitmap> = emptyMap(),
+    val hostBusy: Boolean = false,
+    val rejectingVisitId: String? = null,
+    val rejectReason: String? = null,
+    val afterHours: Boolean = false,
+    val showingAfterHours: Boolean = false,
+    val pickupQuery: String = "",
+    val students: List<StudentOut> = emptyList(),
+    val authorizedPickup: List<AuthorizedPickup> = emptyList(),
+    val selectedStudent: StudentOut? = null,
+    val selectedCollector: AuthorizedPickup? = null,
+    val pickupReason: String = "early",
+    val pickupReasonOther: String = "",
+    val activePickup: PickupOut? = null,
+    val pickupBusy: Boolean = false,
 ) {
     val selectedGate: Gate?
         get() = gates.firstOrNull { it.id == draft.gateId } ?: gates.firstOrNull()
@@ -83,6 +113,7 @@ class KioskViewModel(
         "EEE, d MMM, hh:mm:ss a",
         Locale.ENGLISH,
     )
+    private var hostPollJob: Job? = null
 
     init {
         viewModelScope.launch { tickClock() }
@@ -125,6 +156,8 @@ class KioskViewModel(
 
     fun logout() {
         viewModelScope.launch {
+            hostPollJob?.cancel()
+            hostPollJob = null
             runCatching { repository.logout() }
             val clock = _state.value.clockLabel
             _state.value = KioskUiState(clockLabel = clock)
@@ -136,7 +169,12 @@ class KioskViewModel(
         val me = runCatching { repository.me() }.getOrNull() ?: loginUser
         when (KioskRole.fromJwt(me.role)) {
             KioskRole.GATE -> loadGateHome(me)
-            KioskRole.HOST, KioskRole.UNSUPPORTED -> applyIdentityHome(me)
+            KioskRole.HOST -> {
+                applyIdentityHome(me)
+                loadHostHome()
+                startHostPendingPoll()
+            }
+            KioskRole.UNSUPPORTED -> applyIdentityHome(me)
         }
     }
 
@@ -151,10 +189,13 @@ class KioskViewModel(
             val matchedGates = gates.data.filter { allowedGateIds == null || it.id in allowedGateIds }
             val visibleGates = matchedGates.ifEmpty { gates.data }
             val hosts = staff.data.filter { row -> row.roleTitle != "Guard" }
-            val defaultGateId = story.gateId.takeIf { id -> visibleGates.any { it.id == id } }
+            val hideStory = SchoolIds.hidesDemoStory(me.schoolId)
+            val defaultGateId = story.gateId
+                .takeIf { id -> !hideStory && visibleGates.any { it.id == id } }
                 ?: visibleGates.firstOrNull()?.id
                 ?: DemoFixtures.GATE_MAIN_ID
-            val defaultHostId = story.hostId.takeIf { id -> hosts.any { it.id == id } }
+            val defaultHostId = story.hostId
+                .takeIf { id -> !hideStory && hosts.any { it.id == id } }
                 ?: hosts.firstOrNull()?.id
             val watermark = me.meta?.watermark
                 ?: staff.meta?.watermark
@@ -176,8 +217,14 @@ class KioskViewModel(
                     meStaffId = me.staffId.orEmpty(),
                     gates = visibleGates,
                     hosts = hosts,
-                    recent = inside.data.take(4),
+                    recent = if (hideStory) {
+                        inside.data.filter { !isPriyaDemoRow(it.visitorName, it.id) }.take(4)
+                    } else {
+                        inside.data.take(4)
+                    },
                     story = story,
+                    hideDemoStory = hideStory,
+                    screen = KioskScreen.HOME,
                     draft = it.draft.copy(
                         hostId = defaultHostId,
                         gateId = defaultGateId,
@@ -218,6 +265,8 @@ class KioskViewModel(
                 hosts = emptyList(),
                 recent = emptyList(),
                 loaded = true,
+                hideDemoStory = SchoolIds.hidesDemoStory(me.schoolId),
+                screen = KioskScreen.HOME,
                 toast = if (warning) {
                     "Signed in · ${me.displayName} · directory unavailable"
                 } else {
@@ -225,6 +274,366 @@ class KioskViewModel(
                 },
                 toastKind = if (warning) ToastKind.WARNING else ToastKind.SUCCESS,
             )
+        }
+    }
+
+    fun openPickup() {
+        if (_state.value.homeRole() != KioskRole.GATE) return
+        viewModelScope.launch {
+            _state.update { it.copy(screen = KioskScreen.PICKUP, toast = null) }
+            refreshStudents()
+        }
+    }
+
+    fun closePickup() {
+        _state.update { it.copy(screen = KioskScreen.HOME, toast = null) }
+    }
+
+    fun refreshHostPending() {
+        viewModelScope.launch { loadHostHome(showToast = true) }
+    }
+
+    fun meetingDone(visitId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(hostBusy = true, toast = null) }
+            try {
+                repository.meetingDone(visitId)
+                loadHostHome(showToast = false)
+                _state.update {
+                    it.copy(
+                        toast = "Meeting done · $visitId",
+                        toastKind = ToastKind.SUCCESS,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        hostBusy = false,
+                        toast = e.message ?: "Meeting-done failed",
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    fun toggleAfterHoursPanel() {
+        _state.update { it.copy(showingAfterHours = !it.showingAfterHours) }
+    }
+
+    fun approvePending(visitId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(hostBusy = true, toast = null) }
+            try {
+                repository.approveVisit(visitId)
+                loadHostHome(showToast = false)
+                _state.update {
+                    it.copy(
+                        toast = "Approved · card removed",
+                        toastKind = ToastKind.SUCCESS,
+                        hostBusy = false,
+                    )
+                }
+            } catch (e: ApiException) {
+                if (e.code == AfterHoursCopy.CODE) {
+                    _state.update {
+                        it.copy(
+                            hostBusy = false,
+                            afterHours = true,
+                            toast = AfterHoursCopy.HOST_NO_OP,
+                            toastKind = ToastKind.WARNING,
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(
+                            hostBusy = false,
+                            toast = e.message,
+                            toastKind = ToastKind.ERROR,
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        hostBusy = false,
+                        toast = e.message ?: "Approve failed",
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    fun startReject(visitId: String) {
+        _state.update { it.copy(rejectingVisitId = visitId, rejectReason = null) }
+    }
+
+    fun pickRejectReason(reason: String) {
+        _state.update { it.copy(rejectReason = reason) }
+    }
+
+    fun cancelReject() {
+        _state.update { it.copy(rejectingVisitId = null, rejectReason = null) }
+    }
+
+    fun confirmReject() {
+        val id = _state.value.rejectingVisitId ?: return
+        val reason = _state.value.rejectReason?.trim().orEmpty()
+        if (reason.isEmpty()) {
+            _state.update { it.copy(toast = "Pick a reject reason", toastKind = ToastKind.WARNING) }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(hostBusy = true, toast = null) }
+            try {
+                repository.rejectVisit(id, reason)
+                loadHostHome(showToast = false)
+                _state.update {
+                    it.copy(
+                        toast = "Rejected · $reason",
+                        toastKind = ToastKind.WARNING,
+                        hostBusy = false,
+                        rejectingVisitId = null,
+                        rejectReason = null,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        hostBusy = false,
+                        toast = e.message ?: "Reject failed",
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    fun updatePickupQuery(value: String) {
+        _state.update { it.copy(pickupQuery = value) }
+        viewModelScope.launch { refreshStudents() }
+    }
+
+    fun selectPickupStudent(student: StudentOut) {
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    selectedStudent = student,
+                    selectedCollector = null,
+                    authorizedPickup = emptyList(),
+                    activePickup = null,
+                )
+            }
+            val people = repository.listAuthorizedPickup(student.id)
+            _state.update { it.copy(authorizedPickup = people.filter { row -> row.active }) }
+        }
+    }
+
+    fun selectPickupCollector(person: AuthorizedPickup) {
+        _state.update { it.copy(selectedCollector = person) }
+    }
+
+    fun selectPickupReason(reason: String) {
+        _state.update { it.copy(pickupReason = reason) }
+    }
+
+    fun updatePickupReasonOther(value: String) {
+        _state.update { it.copy(pickupReasonOther = value) }
+    }
+
+    fun startPickup() {
+        val snap = _state.value
+        val student = snap.selectedStudent ?: return
+        val collector = snap.selectedCollector ?: return
+        val gateId = snap.selectedGate?.id ?: snap.draft.gateId
+        if (gateId.isBlank()) {
+            _state.update { it.copy(toast = "Select a gate", toastKind = ToastKind.WARNING) }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(pickupBusy = true, toast = null) }
+            try {
+                val pickup = repository.startPickup(
+                    PickupCreate(
+                        studentId = student.id,
+                        gateId = gateId,
+                        pickupReason = snap.pickupReason,
+                        reasonOther = snap.pickupReasonOther.trim().ifEmpty { null },
+                        collectorPickupPersonId = collector.id,
+                        collectorName = collector.name,
+                        collectorMobile = collector.mobile,
+                    ),
+                )
+                _state.update {
+                    it.copy(
+                        pickupBusy = false,
+                        activePickup = pickup,
+                        dataSource = repository.dataSource,
+                        toast = "Pickup ${pickup.status} · ${collector.name}",
+                        toastKind = ToastKind.SUCCESS,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        pickupBusy = false,
+                        dataSource = repository.dataSource,
+                        toast = e.message ?: "Pickup failed",
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    fun consentPickup() {
+        val id = _state.value.activePickup?.id ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(pickupBusy = true) }
+            try {
+                val pickup = repository.consentPickup(id, PickupReasons.CONSENT_VERSION)
+                _state.update {
+                    it.copy(
+                        pickupBusy = false,
+                        activePickup = pickup,
+                        toast = "Consent recorded",
+                        toastKind = ToastKind.SUCCESS,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        pickupBusy = false,
+                        toast = e.message ?: "Consent failed",
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    fun releasePickup() {
+        val current = _state.value.activePickup ?: return
+        val name = current.collectorName ?: _state.value.selectedCollector?.name ?: "Collector"
+        viewModelScope.launch {
+            _state.update { it.copy(pickupBusy = true) }
+            try {
+                val photo = repository.uploadMedia(
+                    PlaceholderBitmap.toJpeg(PlaceholderBitmap.livePhoto(name)),
+                    "collector-live.jpg",
+                    "image/jpeg",
+                    "collector_live_photo",
+                )
+                val pickup = repository.releasePickup(current.id, photo.key)
+                _state.update {
+                    it.copy(
+                        pickupBusy = false,
+                        activePickup = pickup,
+                        toast = "Released · ${pickup.collectorName ?: name}",
+                        toastKind = ToastKind.SUCCESS,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        pickupBusy = false,
+                        toast = e.message ?: "Release failed",
+                        toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun startHostPendingPoll() {
+        hostPollJob?.cancel()
+        hostPollJob = viewModelScope.launch {
+            while (true) {
+                delay(15_000)
+                val snap = _state.value
+                if (!snap.signedIn || snap.homeRole() != KioskRole.HOST) return@launch
+                loadHostHome(showToast = false)
+            }
+        }
+    }
+
+    private suspend fun loadHostHome(showToast: Boolean = false) {
+        val hostId = _state.value.meStaffId.ifBlank { null }
+        _state.update { it.copy(hostBusy = true) }
+        try {
+            val pending = repository.listPendingVisits(hostId)
+                .filter { it.status == "pending" }
+                .filter { !SchoolIds.hidesDemoStory(_state.value.schoolId) || !isPriyaDemoRow(it.visitorName, it.id) }
+            val hours = repository.listHours()
+            val zone = runCatching { ZoneId.of(_state.value.timezone) }
+                .getOrDefault(ZoneId.of("Asia/Kolkata"))
+            val after = CampusHours.isAfterHours(hours, ZonedDateTime.now(zone)) ||
+                pending.any { it.afterHours }
+            val photos = pending.associate { visit ->
+                val key = visit.livePhotoKey
+                val allowed = !visit.consentAt.isNullOrBlank()
+                val bytes = if (allowed && !key.isNullOrBlank()) repository.loadMediaBytes(key) else null
+                val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                visit.id to bmp
+            }.filterValues { it != null }.mapValues { it.value as Bitmap }
+            val active = repository.listHostActiveVisits(hostId)
+            val notes = repository.listNotifications()
+            val pendingNote = notes.firstOrNull { it.event == "visit.pending" }
+            _state.update {
+                it.copy(
+                    hostBusy = false,
+                    pendingVisits = pending,
+                    hostActiveVisits = active,
+                    pendingPhotos = photos,
+                    afterHours = after,
+                    rejectingVisitId = it.rejectingVisitId?.takeIf { id -> pending.any { row -> row.id == id } },
+                    dataSource = repository.dataSource,
+                    toast = when {
+                        pendingNote != null -> pendingNote.body ?: "New visit pending"
+                        showToast && pending.isEmpty() -> "No pending visits"
+                        showToast -> "Pending · ${pending.size}"
+                        else -> it.toast
+                    },
+                    toastKind = when {
+                        pendingNote != null -> ToastKind.INFO
+                        showToast -> ToastKind.INFO
+                        else -> it.toastKind
+                    },
+                )
+            }
+        } catch (e: Exception) {
+            _state.update {
+                it.copy(
+                    hostBusy = false,
+                    pendingVisits = emptyList(),
+                    toast = e.message ?: "Could not load pending",
+                    toastKind = ToastKind.ERROR,
+                    dataSource = repository.dataSource,
+                )
+            }
+        }
+    }
+
+    private suspend fun refreshStudents() {
+        val q = _state.value.pickupQuery
+        try {
+            val rows = repository.listStudents(q.ifBlank { null })
+                .filter { it.active }
+                .filter {
+                    !SchoolIds.hidesDemoStory(_state.value.schoolId) ||
+                        !isPriyaDemoRow(it.name, it.id)
+                }
+            _state.update { it.copy(students = rows, dataSource = repository.dataSource) }
+        } catch (e: Exception) {
+            _state.update {
+                it.copy(
+                    students = emptyList(),
+                    toast = e.message ?: "Student search failed",
+                    toastKind = ToastKind.ERROR,
+                    dataSource = repository.dataSource,
+                )
+            }
         }
     }
 
@@ -272,6 +681,12 @@ class KioskViewModel(
     fun updateIdNumber(value: String) = patchDraft { copy(idNumber = value) }
 
     fun setLivePhoto(bitmap: Bitmap?) {
+        if (!_state.value.draft.consentAgreed) {
+            _state.update {
+                it.copy(toast = "Agree to visitor notice before photo", toastKind = ToastKind.WARNING)
+            }
+            return
+        }
         val bmp = bitmap ?: PlaceholderBitmap.livePhoto(_state.value.draft.visitorName)
         _state.update {
             it.copy(
@@ -285,6 +700,12 @@ class KioskViewModel(
     }
 
     fun setIdImage(bitmap: Bitmap?) {
+        if (!_state.value.draft.consentAgreed) {
+            _state.update {
+                it.copy(toast = "Agree to visitor notice before ID capture", toastKind = ToastKind.WARNING)
+            }
+            return
+        }
         val bmp = bitmap ?: PlaceholderBitmap.idCard(_state.value.draft)
         _state.update {
             it.copy(
@@ -317,6 +738,12 @@ class KioskViewModel(
     }
 
     fun prefillSample() {
+        if (_state.value.hideDemoStory) {
+            _state.update {
+                it.copy(toast = "Sample chips are off for this school", toastKind = ToastKind.INFO)
+            }
+            return
+        }
         applyDraft(RegistrationDraft.fromStory(_state.value.story), "Sample parent visit loaded (fixture)")
     }
 
@@ -373,6 +800,36 @@ class KioskViewModel(
         }
     }
 
+
+    fun agreeGateConsent() {
+        val at = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Kolkata"))
+            .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        _state.update {
+            it.copy(
+                draft = it.draft.copy(
+                    consentAgreed = true,
+                    consentVersion = GateConsent.VERSION,
+                    consentAt = at,
+                ),
+                toast = "Consent recorded · ${GateConsent.VERSION}",
+                toastKind = ToastKind.SUCCESS,
+            )
+        }
+    }
+
+    fun declineGateConsent() {
+        _state.update {
+            it.copy(
+                step = 2,
+                draft = it.draft.copy(consentAgreed = false, consentVersion = null, consentAt = null),
+                livePhoto = null,
+                idImage = null,
+                toast = "Consent declined · capture locked",
+                toastKind = ToastKind.WARNING,
+            )
+        }
+    }
+
     fun submitRegistration() {
         val current = _state.value
         val errors = RegistrationValidator.validateStep3(current.draft)
@@ -393,6 +850,16 @@ class KioskViewModel(
         _state.update { it.copy(submitting = true, toast = null, blocked = false) }
         val snap = _state.value
         val draft = snap.draft
+        if (!draft.consentAgreed || draft.consentVersion.isNullOrBlank() || draft.consentAt.isNullOrBlank()) {
+            _state.update {
+                it.copy(
+                    submitting = false,
+                    toast = "Visitor notice consent required",
+                    toastKind = ToastKind.WARNING,
+                )
+            }
+            return
+        }
         try {
             val liveBmp = snap.livePhoto ?: PlaceholderBitmap.livePhoto(draft.visitorName)
             val photo = repository.uploadMedia(
@@ -452,13 +919,21 @@ class KioskViewModel(
                 signatureKey = sigKey,
                 gateId = draft.gateId,
                 blacklistOverride = false,
+                consentVersion = draft.consentVersion,
+                consentAt = draft.consentAt,
             )
             val visit = repository.createVisit(body)
             val source = repository.dataSource
+            val hours = runCatching { repository.listHours() }.getOrDefault(emptyList())
+            val zone = runCatching { ZoneId.of(_state.value.timezone) }
+                .getOrDefault(ZoneId.of("Asia/Kolkata"))
+            val localAfter = CampusHours.isAfterHours(hours, ZonedDateTime.now(zone))
+            val after = visit.afterHours || localAfter
             _state.update {
                 it.copy(
                     submitting = false,
                     createdVisit = visit,
+                    afterHours = after,
                     blacklistHit = hit,
                     blocked = false,
                     dataSource = source,
@@ -466,10 +941,15 @@ class KioskViewModel(
                     step = 4,
                     toast = when {
                         hit?.severity == "Alert" -> "Alert hit · visit pending · host notified"
+                        after -> "After hours · ${AfterHoursCopy.HOST_NO_OP}"
                         source == DataSource.FIXTURES -> "FIXTURES · host notified · Demo approve to issue QR"
                         else -> "Host notified · waiting for approval"
                     },
-                    toastKind = if (hit?.severity == "Alert") ToastKind.WARNING else ToastKind.SUCCESS,
+                    toastKind = when {
+                        hit?.severity == "Alert" -> ToastKind.WARNING
+                        after -> ToastKind.WARNING
+                        else -> ToastKind.SUCCESS
+                    },
                 )
             }
             if (visit.status == "pending") {
@@ -596,6 +1076,12 @@ class KioskViewModel(
     }
 
     fun loadStoryPass() {
+        if (_state.value.hideDemoStory) {
+            _state.update {
+                it.copy(toast = "Demo story is off for this school", toastKind = ToastKind.INFO)
+            }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(outcomeBusy = true) }
             try {
@@ -654,9 +1140,11 @@ class KioskViewModel(
 
     fun registerAnother() {
         val snap = _state.value
-        val hostId = snap.story.hostId.takeIf { id -> snap.hosts.any { it.id == id } }
+        val hostId = snap.story.hostId
+            .takeIf { id -> !snap.hideDemoStory && snap.hosts.any { it.id == id } }
             ?: snap.hosts.firstOrNull()?.id
-        val gateId = snap.story.gateId.takeIf { id -> snap.gates.any { it.id == id } }
+        val gateId = snap.story.gateId
+            .takeIf { id -> !snap.hideDemoStory && snap.gates.any { it.id == id } }
             ?: snap.draft.gateId.takeIf { id -> snap.gates.any { it.id == id } }
             ?: snap.gates.firstOrNull()?.id
             ?: DemoFixtures.GATE_MAIN_ID
@@ -680,6 +1168,14 @@ class KioskViewModel(
 
     fun dismissToast() {
         _state.update { it.copy(toast = null) }
+    }
+
+    private fun isPriyaDemoRow(name: String?, id: String?): Boolean {
+        val n = name.orEmpty()
+        val ident = id.orEmpty()
+        return n.contains("Priya Sharma", ignoreCase = true) ||
+            ident.contains("P-4F21", ignoreCase = true) ||
+            ident.contains("V-20260916-014", ignoreCase = true)
     }
 
     companion object {

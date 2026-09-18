@@ -68,6 +68,8 @@ data class VisitCreate(
     val signatureKey: String? = null,
     val gateId: String,
     val blacklistOverride: Boolean = false,
+    val consentVersion: String? = null,
+    val consentAt: String? = null,
 )
 
 @Serializable
@@ -98,6 +100,12 @@ data class VisitOut(
     val timeOut: String? = null,
     val meetingDoneAt: String? = null,
     val rejectReason: String? = null,
+    val afterHours: Boolean = false,
+    val policyTrigger: String? = null,
+    val livePhotoUrl: String? = null,
+    val consentVersion: String? = null,
+    val consentAt: String? = null,
+    val decidedAt: String? = null,
     val meta: Meta? = null,
 )
 

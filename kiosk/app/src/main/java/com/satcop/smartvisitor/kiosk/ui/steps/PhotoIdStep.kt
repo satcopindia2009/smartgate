@@ -77,6 +77,8 @@ fun PhotoIdStep(
     onClearSignature: () -> Unit,
     onBlockSample: () -> Unit,
     onAlertSample: () -> Unit,
+    onAgreeConsent: () -> Unit,
+    onDeclineConsent: () -> Unit,
     onBack: () -> Unit,
     onSubmit: () -> Unit,
 ) {
@@ -103,6 +105,29 @@ fun PhotoIdStep(
             context.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it) }
         }.getOrNull()
         onIdImage(decoded)
+    }
+    if (!draft.consentAgreed) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
+        ) {
+            Text(
+                text = "Visitor notice (required)",
+                color = KioskColors.text,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = KioskFont,
+            )
+            Text(
+                text = "Please read and agree before we take a live photo or ID image.",
+                color = KioskColors.textMuted,
+                fontSize = 14.sp,
+                fontFamily = KioskFont,
+            )
+            GateConsentPanel(onAgree = onAgreeConsent, onDecline = onDeclineConsent)
+            KioskGhostButton(text = "Back", onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp))
+        }
+        return
     }
 
     Column(Modifier.fillMaxWidth()) {

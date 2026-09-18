@@ -1,7 +1,5 @@
 package com.satcop.smartvisitor.kiosk.ui
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -37,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -101,7 +98,6 @@ fun KioskApp(
                     )
                 } else {
                     val role = state.homeRole()
-                    val context = LocalContext.current
                     KioskHeader(
                         schoolName = state.schoolName,
                         schoolId = state.schoolId,
@@ -112,9 +108,12 @@ fun KioskApp(
                         displayName = state.meDisplayName,
                         compact = compact,
                         showGateMenu = role == KioskRole.GATE,
-                        showDemoHub = role == KioskRole.GATE,
+                        showPickup = role == KioskRole.GATE && state.screen == KioskScreen.HOME,
+                        pickupOpen = state.screen == KioskScreen.PICKUP,
                         onSelectGate = viewModel::selectGate,
                         onLogout = viewModel::logout,
+                        onPickup = viewModel::openPickup,
+                        onClosePickup = viewModel::closePickup,
                     )
                     Box(
                         modifier = Modifier
@@ -126,8 +125,32 @@ fun KioskApp(
                             .border(1.dp, KioskColors.border, CardShape)
                             .padding(horizontal = cardHPad, vertical = cardVPad),
                     ) {
-                        when (role) {
-                            KioskRole.GATE -> {
+                        when {
+                            role == KioskRole.GATE && state.screen == KioskScreen.PICKUP -> {
+                                PickupScreen(
+                                    query = state.pickupQuery,
+                                    students = state.students,
+                                    selectedStudent = state.selectedStudent,
+                                    authorized = state.authorizedPickup,
+                                    selectedCollector = state.selectedCollector,
+                                    pickupReason = state.pickupReason,
+                                    reasonOther = state.pickupReasonOther,
+                                    pickup = state.activePickup,
+                                    busy = state.pickupBusy,
+                                    compact = compact,
+                                    gateName = state.selectedGate?.name ?: "Main Gate",
+                                    onQuery = viewModel::updatePickupQuery,
+                                    onSelectStudent = viewModel::selectPickupStudent,
+                                    onSelectCollector = viewModel::selectPickupCollector,
+                                    onReason = viewModel::selectPickupReason,
+                                    onReasonOther = viewModel::updatePickupReasonOther,
+                                    onStart = viewModel::startPickup,
+                                    onConsent = viewModel::consentPickup,
+                                    onRelease = viewModel::releasePickup,
+                                    onBack = viewModel::closePickup,
+                                )
+                            }
+                            role == KioskRole.GATE -> {
                                 Column(
                                     modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
                                 ) {
@@ -152,14 +175,29 @@ fun KioskApp(
                                     }
                                 }
                             }
-                            KioskRole.HOST -> HostHomeScreen(
+                            role == KioskRole.HOST -> HostHomeScreen(
                                 displayName = state.meDisplayName,
                                 schoolId = state.schoolId,
                                 staffId = state.meStaffId,
+                                pending = state.pendingVisits,
+                                active = state.hostActiveVisits,
+                                photos = state.pendingPhotos,
+                                afterHours = state.afterHours,
+                                busy = state.hostBusy,
+                                rejectingVisitId = state.rejectingVisitId,
+                                rejectReason = state.rejectReason,
                                 compact = compact,
-                                onOpenUrl = { url -> openExternalUrl(context, url) },
+                                onRefresh = viewModel::refreshHostPending,
+                                onApprove = viewModel::approvePending,
+                                onStartReject = viewModel::startReject,
+                                onPickRejectReason = viewModel::pickRejectReason,
+                                onCancelReject = viewModel::cancelReject,
+                                onConfirmReject = viewModel::confirmReject,
+                                onMeetingDone = viewModel::meetingDone,
+                                onShowAfterHours = viewModel::toggleAfterHoursPanel,
+                                showingAfterHours = state.showingAfterHours,
                             )
-                            KioskRole.UNSUPPORTED -> UnsupportedRoleScreen(
+                            else -> UnsupportedRoleScreen(
                                 role = state.meRole,
                                 compact = compact,
                                 onLogout = viewModel::logout,
@@ -203,8 +241,10 @@ private fun KioskStep(
             clockLabel = state.clockLabel,
             recent = state.recent,
             gates = state.gates,
+            showPrefill = !state.hideDemoStory,
             onSelectType = viewModel::selectVisitorType,
             onPrefill = viewModel::prefillSample,
+            onPickup = viewModel::openPickup,
             onContinue = viewModel::continueFromStep1,
         )
         2 -> VisitorDetailsStep(
@@ -237,6 +277,8 @@ private fun KioskStep(
             onClearSignature = viewModel::clearSignature,
             onBlockSample = viewModel::applyBlockSample,
             onAlertSample = viewModel::applyAlertSample,
+            onAgreeConsent = viewModel::agreeGateConsent,
+            onDeclineConsent = viewModel::declineGateConsent,
             onBack = viewModel::back,
             onSubmit = viewModel::submitRegistration,
         )
@@ -248,12 +290,14 @@ private fun KioskStep(
             blacklistHit = state.blacklistHit,
             dataSource = state.dataSource,
             busy = state.outcomeBusy,
+            afterHoursHint = state.afterHours,
             onRefresh = { viewModel.refreshVisit() },
             onDemoApprove = viewModel::demoApprove,
             onCheckIn = viewModel::scanCheckIn,
             onCheckOut = viewModel::scanCheckOut,
             onLoadStory = viewModel::loadStoryPass,
             onNewVisitor = viewModel::registerAnother,
+            showStory = !state.hideDemoStory,
         )
     }
 }
@@ -269,9 +313,12 @@ private fun KioskHeader(
     displayName: String,
     compact: Boolean,
     showGateMenu: Boolean,
-    showDemoHub: Boolean,
+    showPickup: Boolean,
+    pickupOpen: Boolean,
     onSelectGate: (String) -> Unit,
     onLogout: () -> Unit,
+    onPickup: () -> Unit,
+    onClosePickup: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val identity = listOf(displayName, schoolId).filter { it.isNotBlank() }.joinToString(" · ")
@@ -334,8 +381,19 @@ private fun KioskHeader(
                     onClick = onLogout,
                     modifier = Modifier.heightIn(min = 48.dp),
                 )
-                if (showDemoHub) {
-                    DemoHubButton(onLogout = onLogout)
+                if (showPickup) {
+                    KioskGhostButton(
+                        text = "Pickup",
+                        onClick = onPickup,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
+                }
+                if (pickupOpen) {
+                    KioskGhostButton(
+                        text = "Register",
+                        onClick = onClosePickup,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
                 }
             }
         }
@@ -395,8 +453,19 @@ private fun KioskHeader(
                     onClick = onLogout,
                     modifier = Modifier.heightIn(min = 48.dp),
                 )
-                if (showDemoHub) {
-                    DemoHubButton(onLogout = onLogout)
+                if (showPickup) {
+                    KioskGhostButton(
+                        text = "Pickup",
+                        onClick = onPickup,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
+                }
+                if (pickupOpen) {
+                    KioskGhostButton(
+                        text = "Register",
+                        onClick = onClosePickup,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
                 }
             }
         }
@@ -431,47 +500,3 @@ private fun GateMenu(
     }
 }
 
-@Composable
-private fun DemoHubButton(onLogout: () -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    Box {
-        KioskGhostButton(
-            text = "Demo",
-            onClick = { open = true },
-            modifier = Modifier.heightIn(min = 48.dp),
-        )
-        DropdownMenu(
-            expanded = open,
-            onDismissRequest = { open = false },
-            modifier = Modifier.background(KioskColors.card),
-        ) {
-            DemoHubLinks.all.forEach { link ->
-                DropdownMenuItem(
-                    text = {
-                        Text(link.label, color = KioskColors.text, fontFamily = KioskFont)
-                    },
-                    onClick = {
-                        open = false
-                        openExternalUrl(context, link.url)
-                    },
-                )
-            }
-            DropdownMenuItem(
-                text = {
-                    Text("Log out", color = KioskColors.text, fontFamily = KioskFont)
-                },
-                onClick = {
-                    open = false
-                    onLogout()
-                },
-            )
-        }
-    }
-}
-
-internal fun openExternalUrl(context: android.content.Context, url: String) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    runCatching { context.startActivity(intent) }
-}
