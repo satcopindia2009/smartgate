@@ -126,7 +126,7 @@ fun LoginScreen(
                 .heightIn(min = 52.dp),
         )
         KioskGhostButton(
-            text = "Face login (scaffold)",
+            text = "Face login",
             onClick = onFaceLogin,
             modifier = Modifier
                 .fillMaxWidth()

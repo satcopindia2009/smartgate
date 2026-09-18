@@ -108,8 +108,8 @@ fun FaceLoginScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        if (enrolled) "Template: enrolled (local demo · live when valley 200)"
-                        else "Template: not enrolled",
+                        if (enrolled) "Template: enrolled"
+                        else "Template: not enrolled · password needed for live enroll",
                         color = if (enrolled) KioskColors.greenBright else KioskColors.orange,
                         fontFamily = KioskFont,
                         fontWeight = FontWeight.Medium,

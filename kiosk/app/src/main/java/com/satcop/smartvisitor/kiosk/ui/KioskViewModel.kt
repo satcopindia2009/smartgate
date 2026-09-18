@@ -1578,6 +1578,14 @@ class KioskViewModel(
             store.enroll(user, jpegBytes, s.faceConsentVersion!!, s.faceConsentAt!!)
             val b64 = LocalFaceTemplateStore.jpegToBase64(jpegBytes)
             val liveMsg = runCatching {
+                // Valley enroll requires Bearer — bootstrap session via password if needed.
+                if (liveApi.accessToken.isNullOrBlank()) {
+                    val pw = s.loginPassword
+                    if (pw.isBlank()) {
+                        error("Enter password on Sign-in first — enroll needs Bearer session")
+                    }
+                    liveApi.login(user, pw)
+                }
                 liveApi.faceEnroll(
                     FaceEnrollRequest(
                         username = user,
@@ -1588,9 +1596,9 @@ class KioskViewModel(
                         consentAt = s.faceConsentAt,
                     ),
                 )
-                "Live enroll OK"
+                "Live enroll OK (Bearer)"
             }.getOrElse { e ->
-                "Local demo enroll OK · live pending (${e.message?.take(80) ?: "error"})"
+                "Local demo enroll OK · live pending (${e.message?.take(100) ?: "error"})"
             }
             _state.update {
                 it.copy(

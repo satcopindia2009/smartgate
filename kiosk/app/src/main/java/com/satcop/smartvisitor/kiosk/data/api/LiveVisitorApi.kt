@@ -252,20 +252,19 @@ class LiveVisitorApi(
 
 
     // --- Staff face login (Gate|Host|Guard) — valley POST /auth/face/* ---
-    // Unauthenticated like password login; local demo until Backend returns 200.
+    // Enroll + DELETE require Bearer (password login first). Verify is public unlock.
 
     fun faceEnroll(body: FaceEnrollRequest): FaceEnrollResponse {
-        val payload = json.encodeToString(
-            body.copy(
-                consentVersion = body.consentVersion ?: body.faceConsentVersion,
-                consentAt = body.consentAt ?: body.faceConsentAt,
-            ),
+        val consentVersion = body.consentVersion ?: body.faceConsentVersion
+        val consentAt = body.consentAt ?: body.faceConsentAt
+        val primary = body.copy(
+            consentVersion = consentVersion,
+            consentAt = consentAt,
+            faceConsentVersion = (consentVersion ?: body.faceConsentVersion),
+            faceConsentAt = (consentAt ?: body.faceConsentAt),
         )
-        val req = Request.Builder()
-            .url("$baseUrl/auth/face/enroll")
-            .post(payload.toRequestBody(JSON))
-            .build()
-        return json.decodeFromString(execute(req))
+        val payload = json.encodeToString(primary)
+        return post("/auth/face/enroll", payload)
     }
 
     fun faceVerify(body: FaceVerifyRequest): FaceVerifyResponse {
@@ -279,6 +278,14 @@ class LiveVisitorApi(
             session.accept(parsed.accessToken, parsed.user)
         }
         return parsed
+    }
+
+    fun faceDeleteTemplate(): FaceEnrollResponse {
+        val req = authorized(Request.Builder().url("$baseUrl/auth/face/template").delete())
+        val text = execute(req)
+        return runCatching { json.decodeFromString<FaceEnrollResponse>(text) }.getOrElse {
+            FaceEnrollResponse(ok = true, message = text.take(120))
+        }
     }
 
     // --- Guard ASAP living endpoints ---
