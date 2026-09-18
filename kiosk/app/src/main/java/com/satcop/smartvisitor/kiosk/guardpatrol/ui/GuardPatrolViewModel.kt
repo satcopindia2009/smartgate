@@ -88,7 +88,8 @@ class GuardPatrolViewModel(
                 _state.update { it.copy(busy = true) }
                 runCatching {
                     withContext(Dispatchers.IO) {
-                        val guardId = api.signedInUser?.id ?: LiveGuardPatrolApi.DEMO_USERNAME
+                        val guardId = api.signedInUser?.staffId
+                            ?: GuardPatrolFixtures.DEFAULT_GUARD_ID
                         api.startRound(templateId = id, guardId = guardId)
                     }
                 }.onSuccess { dto ->
@@ -421,7 +422,7 @@ class GuardPatrolViewModel(
                     },
                     schoolId = user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID,
                     schoolName = "Demo Public School — Campus A",
-                    guardId = user?.id ?: "U-GUARD",
+                    guardId = user?.staffId ?: GuardPatrolFixtures.DEFAULT_GUARD_ID,
                     guardLabel = user?.displayName ?: "Guard G1",
                     statusLine = "LIVE · ${user?.displayName ?: "guard"} · ${user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID}",
                     toast = ToastEvent(
