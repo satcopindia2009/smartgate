@@ -198,9 +198,9 @@ fun LostFoundCreateScreen(
         Spacer(Modifier.height(8.dp))
         KioskField(label = "Finder mobile (optional)", value = finderMobile, onValueChange = onFinderMobile, keyboardType = KeyboardType.Phone, capitalization = KeyboardCapitalization.None, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        Text("Photo: demo placeholder on save (fixture until LF API).", color = KioskColors.textDim, fontSize = 12.sp, fontFamily = KioskFont)
+        Text("Photo: media/lost_found/placeholder (camera upload later · required on wire).", color = KioskColors.textDim, fontSize = 12.sp, fontFamily = KioskFont)
         Spacer(Modifier.height(12.dp))
-        KioskPrimaryButton(text = if (busy) "Saving…" else "Create Open", onClick = onSubmit, enabled = !busy && description.isNotBlank() && location.isNotBlank() && finder.isNotBlank(), modifier = Modifier.fillMaxWidth())
+        KioskPrimaryButton(text = if (busy) "Saving…" else "Create Open", onClick = onSubmit, enabled = !busy && description.isNotBlank() && location.isNotBlank(), modifier = Modifier.fillMaxWidth())
     }
 }
 

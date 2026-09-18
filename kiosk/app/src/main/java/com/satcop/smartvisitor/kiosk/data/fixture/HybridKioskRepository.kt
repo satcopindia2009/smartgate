@@ -500,11 +500,28 @@ class HybridKioskRepository(
 
     override suspend fun createLostFound(body: LostFoundCreate): LostFoundItem =
         withContext(Dispatchers.IO) {
-            if (body.description.isBlank() || body.locationFound.isBlank() || body.finderName.isBlank()) {
-                throw ApiException("VALIDATION", "Description, location, and finder are required", 400)
+            if (body.description.isBlank() || body.locationFound.isBlank()) {
+                throw ApiException("VALIDATION", "Description and found location are required", 400)
             }
-            // Living LF create may not exist yet — fixture OK
-            GuardAsapFixtures.createLostFound(body, body.gateId)
+            val normalized = body.copy(
+                photoKey = body.photoKey?.takeIf { it.isNotBlank() } ?: "media/lost_found/placeholder",
+            )
+            if (dataSource == DataSource.LIVE) {
+                try {
+                    return@withContext live.createLostFound(normalized)
+                } catch (e: ApiException) {
+                    if (e.httpStatus in setOf(400, 401, 403, 422)) throw e
+                    if (!shouldFallback(e)) throw e
+                    markFixtures()
+                } catch (e: Exception) {
+                    if (!shouldFallback(e)) throw asApi(e, "Lost & Found create failed")
+                    markFixtures()
+                }
+            }
+            if (normalized.finderName.isBlank()) {
+                throw ApiException("VALIDATION", "Finder name required offline", 400)
+            }
+            GuardAsapFixtures.createLostFound(normalized, normalized.gateId)
         }
 
     override suspend fun checkoutInsideVisit(visitId: String, gateId: String?): VisitOut =

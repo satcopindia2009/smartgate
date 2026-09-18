@@ -29,6 +29,10 @@ import com.satcop.smartvisitor.kiosk.data.model.VisitListResponse
 import com.satcop.smartvisitor.kiosk.data.model.CourierCreate
 import com.satcop.smartvisitor.kiosk.data.model.CourierEvent
 import com.satcop.smartvisitor.kiosk.data.model.CourierListResponse
+import com.satcop.smartvisitor.kiosk.data.model.LostFoundCreate
+import com.satcop.smartvisitor.kiosk.data.model.LostFoundItem
+import com.satcop.smartvisitor.kiosk.data.model.LostFoundItemCreate
+import com.satcop.smartvisitor.kiosk.data.model.LostFoundListResponse
 import com.satcop.smartvisitor.kiosk.data.model.GateHistoryListResponse
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import com.satcop.smartvisitor.kiosk.data.model.VisitorLookupResponse
@@ -282,6 +286,25 @@ class LiveVisitorApi(
     fun checkoutVisit(visitId: String, gateId: String? = null): VisitOut {
         val payload = if (gateId.isNullOrBlank()) "{}" else """{"gateId":"$gateId"}"""
         return post("/visits/$visitId/check-out", payload)
+    }
+
+    fun listLostFound(status: String? = null): LostFoundListResponse {
+        val path = if (status.isNullOrBlank()) "/lost-found/items" else "/lost-found/items?status=$status"
+        return get(path)
+    }
+
+    fun createLostFound(body: LostFoundCreate): LostFoundItem {
+        val photo = body.photoKey?.takeIf { it.isNotBlank() } ?: "media/lost_found/placeholder"
+        val payload = LostFoundItemCreate(
+            description = body.description.trim(),
+            photoKey = photo,
+            foundLocation = body.locationFound.trim(),
+            foundGateId = body.gateId?.takeIf { it.isNotBlank() },
+            foundZone = body.foundZone?.takeIf { it.isNotBlank() },
+            foundAt = body.foundAt.takeIf { it.isNotBlank() },
+            status = "Open",
+        )
+        return post("/lost-found/items", json.encodeToString(payload))
     }
 
     companion object {

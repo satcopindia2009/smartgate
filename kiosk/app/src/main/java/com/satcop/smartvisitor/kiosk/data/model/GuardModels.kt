@@ -176,23 +176,37 @@ object CourierStatus {
     const val RETURNED = "Returned"
 }
 
+/** Living GET/POST /v1/lost-found/items item. */
 @Serializable
 data class LostFoundItem(
     val id: String,
     val schoolId: String? = null,
-    val gateId: String? = null,
+    val campusId: String? = null,
     val description: String,
-    val locationFound: String,
-    val foundAt: String,
-    val finderName: String,
-    val finderMobile: String? = null,
-    val status: String = "Open",
-    val notes: String? = null,
     val photoKey: String? = null,
+    val foundLocation: String,
+    val foundGateId: String? = null,
+    val foundZone: String? = null,
+    val foundAt: String? = null,
+    val foundByUserId: String? = null,
+    val status: String = "Open",
+    val disposedReason: String? = null,
+    val closedAt: String? = null,
+    val claimId: String? = null,
     val createdAt: String? = null,
+    val photoUrl: String? = null,
     val meta: Meta? = null,
-)
+    /** Fixture-only extras (not on living wire). */
+    val finderName: String? = null,
+    val finderMobile: String? = null,
+    val notes: String? = null,
+) {
+    /** App alias — living field is foundLocation. */
+    val locationFound: String get() = foundLocation
+    val gateId: String? get() = foundGateId
+}
 
+/** App-facing create; mapped to LostFoundItemCreate for living POST. */
 @Serializable
 data class LostFoundCreate(
     val description: String,
@@ -203,6 +217,25 @@ data class LostFoundCreate(
     val gateId: String? = null,
     val notes: String? = null,
     val photoKey: String? = null,
+    val foundZone: String? = null,
+)
+
+/** Living POST /v1/lost-found/items body (OpenAPI LostFoundItemCreate). */
+@Serializable
+data class LostFoundItemCreate(
+    val description: String,
+    val photoKey: String,
+    val foundLocation: String,
+    val foundGateId: String? = null,
+    val foundZone: String? = null,
+    val foundAt: String? = null,
+    val status: String? = "Open",
+)
+
+@Serializable
+data class LostFoundListResponse(
+    val data: List<LostFoundItem> = emptyList(),
+    val meta: Meta? = null,
 )
 
 object HistoryKind {

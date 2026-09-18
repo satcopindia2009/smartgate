@@ -141,11 +141,29 @@ object GuardAsapFixtures {
     fun createLostFound(body: LostFoundCreate, gateId: String?): LostFoundItem {
         val id = "LF-${seq.incrementAndGet()}"
         val ts = LocalVisitStore.nowIst()
-        val item = LostFoundItem(id, DemoFixtures.SCHOOL_ID, gateId ?: body.gateId, body.description.trim(), body.locationFound.trim(), body.foundAt.ifBlank { ts }, body.finderName.trim(), body.finderMobile, "Open", body.notes, body.photoKey ?: "media/lost_found/placeholder", ts, DemoFixtures.meta)
+        val item = LostFoundItem(
+            id = id,
+            schoolId = DemoFixtures.SCHOOL_ID,
+            description = body.description.trim(),
+            photoKey = body.photoKey?.takeIf { it.isNotBlank() } ?: "media/lost_found/placeholder",
+            foundLocation = body.locationFound.trim(),
+            foundGateId = gateId ?: body.gateId,
+            foundZone = body.foundZone,
+            foundAt = body.foundAt.ifBlank { ts },
+            foundByUserId = null,
+            status = "Open",
+            createdAt = ts,
+            meta = DemoFixtures.meta,
+            finderName = body.finderName.trim(),
+            finderMobile = body.finderMobile,
+            notes = body.notes,
+        )
         lostFound.add(0, item)
-        history.add(0, GuardHistoryEvent("GH-${seq.incrementAndGet()}", HistoryKind.LOST_FOUND, "LF · ${item.description.take(36)}", "Open · ${item.locationFound}", "Open", item.gateId, null, null, null, ts, item.id))
+        history.add(0, GuardHistoryEvent("GH-${seq.incrementAndGet()}", HistoryKind.LOST_FOUND, "LF · ${item.description.take(36)}", "Open · ${item.foundLocation}", "Open", item.foundGateId, null, null, null, ts, item.id))
         return item
     }
+
+    fun listLostFound() = lostFound.toList()
 
     fun recordCheckout(visitId: String, visitorName: String, gateId: String?, mobile: String?) {
         val ts = LocalVisitStore.nowIst()

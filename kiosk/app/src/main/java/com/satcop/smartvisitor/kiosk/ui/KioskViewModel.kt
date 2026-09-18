@@ -1389,11 +1389,35 @@ class KioskViewModel(
     fun updateLfFoundAt(v: String) = _state.update { it.copy(lfFoundAt = v) }
     fun submitLostFound() {
         val s = _state.value
+        if (s.lfDescription.isBlank() || s.lfLocation.isBlank()) {
+            _state.update { it.copy(toast = "Description and location required", toastKind = ToastKind.ERROR) }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(lfBusy = true) }
             try {
-                repository.createLostFound(LostFoundCreate(description = s.lfDescription, locationFound = s.lfLocation, foundAt = s.lfFoundAt.ifBlank { LocalVisitStore.nowIst() }, finderName = s.lfFinder, finderMobile = s.lfFinderMobile.ifBlank { null }, gateId = s.selectedGate?.id ?: s.draft.gateId, photoKey = "media/lost_found/placeholder"))
-                _state.update { it.copy(lfBusy = false, lfDescription = "", lfLocation = "", lfFinderMobile = "", toast = "Lost & Found Open created", toastKind = ToastKind.SUCCESS, screen = KioskScreen.HOME) }
+                val created = repository.createLostFound(
+                    LostFoundCreate(
+                        description = s.lfDescription,
+                        locationFound = s.lfLocation,
+                        foundAt = s.lfFoundAt.ifBlank { LocalVisitStore.nowIst() },
+                        finderName = s.lfFinder.ifBlank { s.meDisplayName.ifBlank { "Gate guard" } },
+                        finderMobile = s.lfFinderMobile.ifBlank { null },
+                        gateId = s.selectedGate?.id ?: s.draft.gateId,
+                        photoKey = "media/lost_found/placeholder",
+                    ),
+                )
+                _state.update {
+                    it.copy(
+                        lfBusy = false,
+                        lfDescription = "",
+                        lfLocation = "",
+                        lfFinderMobile = "",
+                        toast = "LF Open · ${created.id}",
+                        toastKind = ToastKind.SUCCESS,
+                        screen = KioskScreen.HOME,
+                    )
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(lfBusy = false, toast = e.message ?: "LF create failed", toastKind = ToastKind.ERROR) }
             }
