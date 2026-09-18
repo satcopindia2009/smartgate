@@ -6,6 +6,12 @@ import com.satcop.smartvisitor.kiosk.data.model.AuthorizedPickup
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistEntry
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistMatchRequest
 import com.satcop.smartvisitor.kiosk.data.model.CampusHoursRow
+import com.satcop.smartvisitor.kiosk.data.model.CourierCreate
+import com.satcop.smartvisitor.kiosk.data.model.CourierEvent
+import com.satcop.smartvisitor.kiosk.data.model.GuardHistoryEvent
+import com.satcop.smartvisitor.kiosk.data.model.LostFoundCreate
+import com.satcop.smartvisitor.kiosk.data.model.LostFoundItem
+import com.satcop.smartvisitor.kiosk.data.model.VisitorPrefill
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.data.model.DemoStory
 import com.satcop.smartvisitor.kiosk.data.model.GateListResponse
@@ -391,6 +397,140 @@ class HybridKioskRepository(
                 }
             }
             throw ApiException("UNAVAILABLE", "Release requires live pickup", 0)
+        }
+
+
+    override suspend fun lookupVisitorByMobile(mobile: String): VisitorPrefill? =
+        withContext(Dispatchers.IO) {
+            if (dataSource == DataSource.LIVE) {
+                try {
+                    val resp = live.lookupVisitorByMobile(mobile)
+                    return@withContext resp.toPrefill(mobile)
+                } catch (e: Exception) {
+                    if (e is ApiException && e.httpStatus in setOf(401, 403)) throw e
+                    if (shouldFallback(e)) markFixtures()
+                }
+            }
+            GuardAsapFixtures.lookupByMobile(mobile)
+        }
+
+    override suspend fun listGuardHistory(
+        todayOnly: Boolean,
+        datePrefix: String?,
+        kind: String?,
+        status: String?,
+        gateId: String?,
+    ): List<GuardHistoryEvent> = withContext(Dispatchers.IO) {
+        if (dataSource == DataSource.LIVE) {
+            try {
+                val day = datePrefix ?: if (todayOnly) {
+                    java.time.LocalDate.now(java.time.ZoneId.of("Asia/Calcutta")).toString()
+                } else null
+                return@withContext live.listGateHistory(
+                    dateFrom = day,
+                    dateTo = day,
+                    kind = kind,
+                    status = status,
+                    gateId = gateId,
+                ).data.map { it.asEvent() }
+            } catch (e: Exception) {
+                if (shouldFallback(e)) markFixtures()
+            }
+        }
+        GuardAsapFixtures.listHistory(todayOnly, datePrefix, kind, status, gateId)
+    }
+
+    override suspend fun getGuardHistory(id: String): GuardHistoryEvent? =
+        withContext(Dispatchers.IO) {
+            listGuardHistory(todayOnly = false).firstOrNull { it.id == id }
+                ?: GuardAsapFixtures.getHistory(id)
+        }
+
+    override suspend fun receiveCourier(body: CourierCreate): CourierEvent =
+        withContext(Dispatchers.IO) {
+            if (body.courierCompany.isBlank() || body.recipientName.isBlank() || body.gateId.isBlank()) {
+                throw ApiException("VALIDATION", "Company, recipient, and gate are required", 400)
+            }
+            if (dataSource == DataSource.LIVE) {
+                try {
+                    return@withContext live.receiveCourier(body)
+                } catch (e: ApiException) {
+                    if (e.httpStatus in setOf(400, 401, 403, 422)) throw e
+                    if (!shouldFallback(e)) throw e
+                    markFixtures()
+                } catch (e: Exception) {
+                    if (!shouldFallback(e)) throw asApi(e, "Courier create failed")
+                    markFixtures()
+                }
+            }
+            GuardAsapFixtures.receiveCourier(body, signedIn?.id)
+        }
+
+    override suspend fun handOverCourier(id: String): CourierEvent =
+        withContext(Dispatchers.IO) {
+            if (dataSource == DataSource.LIVE) {
+                try {
+                    return@withContext live.handOverCourier(id)
+                } catch (e: ApiException) {
+                    if (e.httpStatus in setOf(400, 401, 403, 404, 409, 422)) throw e
+                    if (!shouldFallback(e)) throw e
+                    markFixtures()
+                } catch (e: Exception) {
+                    if (!shouldFallback(e)) throw asApi(e, "Handover failed")
+                    markFixtures()
+                }
+            }
+            try {
+                GuardAsapFixtures.handOverCourier(id)
+            } catch (e: IllegalArgumentException) {
+                throw ApiException("NOT_FOUND", e.message ?: "Courier not found", 404)
+            }
+        }
+
+    override suspend fun listCouriers(): List<CourierEvent> = withContext(Dispatchers.IO) {
+        if (dataSource == DataSource.LIVE) {
+            try {
+                return@withContext live.listCouriers().data
+            } catch (e: Exception) {
+                if (shouldFallback(e)) markFixtures()
+            }
+        }
+        GuardAsapFixtures.listCouriers()
+    }
+
+    override suspend fun createLostFound(body: LostFoundCreate): LostFoundItem =
+        withContext(Dispatchers.IO) {
+            if (body.description.isBlank() || body.locationFound.isBlank() || body.finderName.isBlank()) {
+                throw ApiException("VALIDATION", "Description, location, and finder are required", 400)
+            }
+            // Living LF create may not exist yet — fixture OK
+            GuardAsapFixtures.createLostFound(body, body.gateId)
+        }
+
+    override suspend fun checkoutInsideVisit(visitId: String, gateId: String?): VisitOut =
+        withContext(Dispatchers.IO) {
+            if (dataSource == DataSource.LIVE) {
+                try {
+                    val updated = live.checkoutVisit(visitId, gateId).also { local.put(it) }
+                    GuardAsapFixtures.recordCheckout(
+                        visitId = updated.id,
+                        visitorName = updated.visitorName ?: visitId,
+                        gateId = updated.gateId ?: gateId,
+                        mobile = updated.mobile,
+                    )
+                    return@withContext updated
+                } catch (e: ApiException) {
+                    if (e.httpStatus == 409 || e.code == "INVALID_STATE") throw e
+                    if (!shouldFallback(e)) throw e
+                    markFixtures()
+                } catch (e: Exception) {
+                    if (!shouldFallback(e)) throw asApi(e, "Checkout failed")
+                    markFixtures()
+                }
+            }
+            val updated = local.checkoutByVisitId(visitId, gateId)
+            GuardAsapFixtures.recordCheckout(updated.id, updated.visitorName ?: visitId, updated.gateId ?: gateId, updated.mobile)
+            updated
         }
 
     private fun markFixtures() {

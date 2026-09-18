@@ -26,7 +26,12 @@ import com.satcop.smartvisitor.kiosk.data.model.StaffListResponse
 import com.satcop.smartvisitor.kiosk.data.model.StudentListResponse
 import com.satcop.smartvisitor.kiosk.data.model.VisitCreate
 import com.satcop.smartvisitor.kiosk.data.model.VisitListResponse
+import com.satcop.smartvisitor.kiosk.data.model.CourierCreate
+import com.satcop.smartvisitor.kiosk.data.model.CourierEvent
+import com.satcop.smartvisitor.kiosk.data.model.CourierListResponse
+import com.satcop.smartvisitor.kiosk.data.model.GateHistoryListResponse
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
+import com.satcop.smartvisitor.kiosk.data.model.VisitorLookupResponse
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -234,6 +239,49 @@ class LiveVisitorApi(
             message = parsed?.error?.message ?: text.take(180).ifBlank { "HTTP $code" },
             httpStatus = code,
         )
+    }
+
+
+    // --- Guard ASAP living endpoints ---
+
+    fun lookupVisitorByMobile(mobile: String): VisitorLookupResponse {
+        val q = java.net.URLEncoder.encode(mobile, Charsets.UTF_8.name())
+        return get("/visitors/lookup-by-mobile?mobile=$q")
+    }
+
+    fun listGateHistory(
+        dateFrom: String? = null,
+        dateTo: String? = null,
+        kind: String? = null,
+        status: String? = null,
+        gateId: String? = null,
+    ): GateHistoryListResponse {
+        val parts = mutableListOf<String>()
+        if (!dateFrom.isNullOrBlank()) parts += "dateFrom=$dateFrom"
+        if (!dateTo.isNullOrBlank()) parts += "dateTo=$dateTo"
+        if (!kind.isNullOrBlank() && kind != "all") parts += "type=$kind"
+        if (!status.isNullOrBlank() && status != "all") parts += "status=$status"
+        if (!gateId.isNullOrBlank()) parts += "gateId=$gateId"
+        val qs = if (parts.isEmpty()) "" else "?" + parts.joinToString("&")
+        return get("/gate/history$qs")
+    }
+
+    fun listCouriers(): CourierListResponse = get("/couriers")
+
+    fun receiveCourier(body: CourierCreate): CourierEvent =
+        post("/couriers", json.encodeToString(body))
+
+    fun handOverCourier(id: String): CourierEvent =
+        post("/couriers/$id/handover", "{}")
+
+    fun returnCourier(id: String): CourierEvent =
+        post("/couriers/$id/return", "{}")
+
+    fun getCourier(id: String): CourierEvent = get("/couriers/$id")
+
+    fun checkoutVisit(visitId: String, gateId: String? = null): VisitOut {
+        val payload = if (gateId.isNullOrBlank()) "{}" else """{"gateId":"$gateId"}"""
+        return post("/visits/$visitId/check-out", payload)
     }
 
     companion object {

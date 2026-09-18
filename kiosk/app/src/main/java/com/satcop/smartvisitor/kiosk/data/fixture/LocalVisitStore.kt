@@ -31,6 +31,19 @@ class LocalVisitStore {
 
     fun get(id: String): VisitOut? = visits[id]
 
+    fun listInside(): List<VisitOut> = visits.values.filter { it.status == "inside" }
+
+    fun checkoutByVisitId(visitId: String, gateId: String?): VisitOut {
+        val visit = get(visitId) ?: throw ApiException("NOT_FOUND", "Visit $visitId not found", 404)
+        if (visit.status == "completed" || !visit.timeOut.isNullOrBlank()) {
+            throw ApiException("INVALID_STATE", "Already checked out", 409)
+        }
+        if (visit.status != "inside") {
+            throw ApiException("INVALID_STATE", "Visit must be inside to check out", 409)
+        }
+        return put(visit.copy(status = "completed", timeOut = nowIst(), gateId = gateId ?: visit.gateId))
+    }
+
     fun findByPass(passId: String?, token: String?): VisitOut? {
         val visitId = passId?.let { passToVisit[it] } ?: token?.let { tokenToVisit[it] }
         return visitId?.let { visits[it] }
