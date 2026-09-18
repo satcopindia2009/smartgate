@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.ui.components.KioskField
+import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.components.ShieldMark
 import com.satcop.smartvisitor.kiosk.ui.theme.CardShape
@@ -37,6 +38,7 @@ fun LoginScreen(
     onUsername: (String) -> Unit,
     onPassword: (String) -> Unit,
     onSubmit: () -> Unit,
+    onFaceLogin: () -> Unit = {},
 ) {
     val cardHPad = if (compact) 16.dp else 32.dp
     val cardVPad = if (compact) 20.dp else 28.dp
@@ -122,6 +124,13 @@ fun LoginScreen(
                 .fillMaxWidth()
                 .padding(top = 4.dp)
                 .heightIn(min = 52.dp),
+        )
+        KioskGhostButton(
+            text = "Face login (scaffold)",
+            onClick = onFaceLogin,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
         )
     }
 }

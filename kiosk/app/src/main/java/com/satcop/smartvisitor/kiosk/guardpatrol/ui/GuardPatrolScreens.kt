@@ -34,7 +34,10 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,6 +67,13 @@ fun GuardPatrolApp(vm: GuardPatrolViewModel = viewModel()) {
     val state by vm.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val lastToastKind = remember { mutableStateOf(ToastKind.INFO) }
+    val activity = LocalContext.current as? Activity
+    BackHandler {
+        when (state.screen) {
+            GuardPatrolScreen.ACTIVE, GuardPatrolScreen.RESULT -> vm.backToStart()
+            GuardPatrolScreen.START -> activity?.finishAffinity()
+        }
+    }
 
     LaunchedEffect(state.toast?.id) {
         val toast = state.toast ?: return@LaunchedEffect

@@ -12,6 +12,7 @@ data class RegistrationDraft(
     val visitorType: String = VisitorType.Parent.apiValue,
     val visitorName: String = "",
     val mobile: String = "",
+    val company: String = "",
     val purpose: String = "",
     val hostId: String? = DemoFixtures.HOST_ANITA_ID,
     val gateId: String = DemoFixtures.GATE_MAIN_ID,

@@ -16,6 +16,11 @@ import com.satcop.smartvisitor.kiosk.data.model.CampusHours
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.data.model.DemoStory
 import com.satcop.smartvisitor.kiosk.data.model.Gate
+import com.satcop.smartvisitor.kiosk.data.fixture.LocalVisitStore
+import com.satcop.smartvisitor.kiosk.data.model.LostFoundCreate
+import com.satcop.smartvisitor.kiosk.data.model.GuardHistoryEvent
+import com.satcop.smartvisitor.kiosk.data.model.CourierEvent
+import com.satcop.smartvisitor.kiosk.data.model.CourierCreate
 import com.satcop.smartvisitor.kiosk.data.model.InsideVisit
 import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.PickupCreate
@@ -97,6 +102,35 @@ data class KioskUiState(
     val pickupReasonOther: String = "",
     val activePickup: PickupOut? = null,
     val pickupBusy: Boolean = false,
+    val historyEvents: List<GuardHistoryEvent> = emptyList(),
+    val historyTodayOnly: Boolean = true,
+    val historyKindFilter: String = "all",
+    val historyStatusFilter: String = "all",
+    val historySelected: GuardHistoryEvent? = null,
+    val historyBusy: Boolean = false,
+    val autofetchBusy: Boolean = false,
+    val autofetchHint: String? = null,
+    val courierCompany: String = "",
+    val courierRecipient: String = "",
+    val courierPerson: String = "",
+    val courierMobile: String = "",
+    val courierNote: String = "",
+    val courierDept: String = "",
+    val courierRecent: List<CourierEvent> = emptyList(),
+    val courierBusy: Boolean = false,
+    val checkoutInside: List<InsideVisit> = emptyList(),
+    val checkoutSelectedId: String? = null,
+    val checkoutBusy: Boolean = false,
+    val lfDescription: String = "",
+    val lfLocation: String = "",
+    val lfFinder: String = "",
+    val lfFinderMobile: String = "",
+    val lfFoundAt: String = "",
+    val lfBusy: Boolean = false,
+    val faceEnrolled: Boolean = false,
+    val faceConsentAgreed: Boolean = false,
+    val faceBusy: Boolean = false,
+    val faceMessage: String? = null,
 ) {
     val selectedGate: Gate?
         get() = gates.firstOrNull { it.id == draft.gateId } ?: gates.firstOrNull()
@@ -666,7 +700,79 @@ class KioskViewModel(
 
     fun updateName(value: String) = patchDraft { copy(visitorName = value) }
 
-    fun updateMobile(value: String) = patchDraft { copy(mobile = value) }
+    fun updateMobile(value: String) {
+        patchDraft { copy(mobile = value) }
+        maybeAutofetch(value)
+    }
+
+    fun updateCompany(value: String) = patchDraft { copy(company = value) }
+
+    private var autofetchJob: Job? = null
+
+    private fun maybeAutofetch(raw: String) {
+        val ten = MobileIndia.tenDigit(raw)
+        if (ten == null) {
+            autofetchJob?.cancel()
+            _state.update { it.copy(autofetchBusy = false, autofetchHint = null) }
+            return
+        }
+        autofetchJob?.cancel()
+        autofetchJob = viewModelScope.launch {
+            delay(280)
+            if (MobileIndia.tenDigit(_state.value.draft.mobile) != ten) return@launch
+            _state.update { it.copy(autofetchBusy = true, autofetchHint = "Looking up…") }
+            try {
+                val bl = repository.matchBlacklist(mobile = ten, idType = null, idNumber = null)
+                if (bl?.severity == "Block") {
+                    _state.update {
+                        it.copy(
+                            autofetchBusy = false, blocked = true, blacklistHit = bl,
+                            autofetchHint = "BLACKLIST BLOCK · ${bl.name ?: ten}",
+                            toast = "Blacklist Block — entry denied", toastKind = ToastKind.ERROR,
+                            draft = it.draft.copy(visitorName = bl.name ?: it.draft.visitorName, mobile = MobileIndia.formatDisplay(ten)),
+                        )
+                    }
+                    return@launch
+                }
+                val prefill = repository.lookupVisitorByMobile(ten)
+                if (prefill == null) {
+                    _state.update { it.copy(autofetchBusy = false, autofetchHint = "No prior match", blocked = false) }
+                    return@launch
+                }
+                if (prefill.blacklisted && prefill.blacklistSeverity == "Block") {
+                    _state.update {
+                        it.copy(
+                            autofetchBusy = false, blocked = true,
+                            blacklistHit = BlacklistEntry(id = "BL-PREFILL", name = prefill.visitorName, mobile = ten, reason = prefill.blacklistReason, severity = "Block"),
+                            autofetchHint = "BLACKLIST BLOCK", toast = "Blacklist Block — entry denied", toastKind = ToastKind.ERROR,
+                            draft = it.draft.copy(visitorName = prefill.visitorName.orEmpty(), mobile = MobileIndia.formatDisplay(ten)),
+                        )
+                    }
+                    return@launch
+                }
+                _state.update {
+                    val d = it.draft
+                    it.copy(
+                        autofetchBusy = false,
+                        autofetchHint = "Prefill · ${prefill.visitorName ?: ten}",
+                        toast = "Details prefilled from prior visit", toastKind = ToastKind.SUCCESS,
+                        blacklistHit = if (prefill.blacklisted) BlacklistEntry(id = "BL-PREFILL", name = prefill.visitorName, mobile = ten, reason = prefill.blacklistReason, severity = prefill.blacklistSeverity ?: "Alert") else it.blacklistHit,
+                        blocked = false,
+                        draft = d.copy(
+                            visitorName = d.visitorName.ifBlank { prefill.visitorName.orEmpty() },
+                            mobile = MobileIndia.formatDisplay(ten),
+                            company = d.company.ifBlank { prefill.company.orEmpty() },
+                            purpose = d.purpose.ifBlank { prefill.lastPurpose.orEmpty() },
+                            visitorType = prefill.lastVisitorType ?: d.visitorType,
+                            hostId = prefill.lastHostId ?: d.hostId,
+                        ),
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(autofetchBusy = false, autofetchHint = e.message ?: "Lookup failed") }
+            }
+        }
+    }
 
     fun updatePurpose(value: String) = patchDraft { copy(purpose = value) }
 
@@ -1180,6 +1286,149 @@ class KioskViewModel(
         return n.contains("Priya Sharma", ignoreCase = true) ||
             ident.contains("P-4F21", ignoreCase = true) ||
             ident.contains("V-20260916-014", ignoreCase = true)
+    }
+
+
+    fun openHistory() {
+        viewModelScope.launch {
+            _state.update { it.copy(screen = KioskScreen.HISTORY, historyBusy = true, historySelected = null) }
+            refreshHistoryInternal()
+        }
+    }
+    fun closeGuardTool() { _state.update { it.copy(screen = KioskScreen.HOME, historySelected = null, checkoutSelectedId = null, toast = null) } }
+    fun toggleHistoryToday() { _state.update { it.copy(historyTodayOnly = !it.historyTodayOnly) }; viewModelScope.launch { refreshHistoryInternal() } }
+    fun setHistoryKind(kind: String) { _state.update { it.copy(historyKindFilter = kind) }; viewModelScope.launch { refreshHistoryInternal() } }
+    fun setHistoryStatus(status: String) { _state.update { it.copy(historyStatusFilter = status) }; viewModelScope.launch { refreshHistoryInternal() } }
+    fun selectHistory(event: GuardHistoryEvent) { _state.update { it.copy(historySelected = event, screen = KioskScreen.HISTORY_DETAIL) } }
+    fun clearHistoryDetail() { _state.update { it.copy(historySelected = null, screen = KioskScreen.HISTORY) } }
+    fun refreshHistory() { viewModelScope.launch { refreshHistoryInternal() } }
+    private suspend fun refreshHistoryInternal() {
+        val s = _state.value
+        try {
+            val rows = repository.listGuardHistory(todayOnly = s.historyTodayOnly, kind = s.historyKindFilter, status = s.historyStatusFilter, gateId = s.selectedGate?.id)
+            _state.update { it.copy(historyEvents = rows, historyBusy = false, dataSource = repository.dataSource) }
+        } catch (e: Exception) {
+            _state.update { it.copy(historyBusy = false, toast = e.message ?: "History failed", toastKind = ToastKind.ERROR) }
+        }
+    }
+    fun openCourier() {
+        viewModelScope.launch {
+            val list = runCatching { repository.listCouriers() }.getOrDefault(emptyList())
+            _state.update { it.copy(screen = KioskScreen.COURIER, courierRecent = list, courierBusy = false) }
+        }
+    }
+    fun updateCourierCompany(v: String) = _state.update { it.copy(courierCompany = v) }
+    fun updateCourierRecipient(v: String) = _state.update { it.copy(courierRecipient = v) }
+    fun updateCourierPerson(v: String) = _state.update { it.copy(courierPerson = v) }
+    fun updateCourierMobile(v: String) = _state.update { it.copy(courierMobile = v) }
+    fun updateCourierNote(v: String) = _state.update { it.copy(courierNote = v) }
+    fun updateCourierDept(v: String) = _state.update { it.copy(courierDept = v) }
+    fun receiveCourier() {
+        val s = _state.value
+        val gateId = s.selectedGate?.id ?: s.draft.gateId
+        viewModelScope.launch {
+            _state.update { it.copy(courierBusy = true) }
+            try {
+                repository.receiveCourier(CourierCreate(gateId = gateId, courierCompany = s.courierCompany, courierPersonName = s.courierPerson.ifBlank { null }, courierMobile = s.courierMobile.ifBlank { null }, recipientName = s.courierRecipient, recipientDeptOrHost = s.courierDept.ifBlank { null }, packageNote = s.courierNote.ifBlank { null }))
+                val list = repository.listCouriers()
+                _state.update { it.copy(courierBusy = false, courierRecent = list, courierCompany = "", courierRecipient = "", courierPerson = "", courierMobile = "", courierNote = "", courierDept = "", toast = "Courier Received · on History", toastKind = ToastKind.SUCCESS) }
+            } catch (e: Exception) {
+                _state.update { it.copy(courierBusy = false, toast = e.message ?: "Courier save failed", toastKind = ToastKind.ERROR) }
+            }
+        }
+    }
+    fun handOverCourier(id: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(courierBusy = true) }
+            try {
+                repository.handOverCourier(id)
+                _state.update { it.copy(courierBusy = false, courierRecent = repository.listCouriers(), toast = "Handed over", toastKind = ToastKind.SUCCESS) }
+            } catch (e: Exception) {
+                _state.update { it.copy(courierBusy = false, toast = e.message ?: "Handover failed", toastKind = ToastKind.ERROR) }
+            }
+        }
+    }
+    fun openCheckout() {
+        viewModelScope.launch {
+            _state.update { it.copy(screen = KioskScreen.CHECKOUT, checkoutBusy = true, checkoutSelectedId = null) }
+            refreshCheckoutInside()
+        }
+    }
+    fun refreshCheckoutInside() {
+        viewModelScope.launch {
+            try {
+                val inside = repository.listInside().data
+                _state.update { it.copy(checkoutInside = inside, checkoutBusy = false, recent = inside.take(4), dataSource = repository.dataSource) }
+            } catch (e: Exception) {
+                _state.update { it.copy(checkoutBusy = false, toast = e.message ?: "Inside list failed", toastKind = ToastKind.ERROR) }
+            }
+        }
+    }
+    fun selectCheckout(id: String) { _state.update { it.copy(checkoutSelectedId = id) } }
+    fun confirmCheckout() {
+        val id = _state.value.checkoutSelectedId ?: return
+        val gateId = _state.value.selectedGate?.id ?: _state.value.draft.gateId
+        viewModelScope.launch {
+            _state.update { it.copy(checkoutBusy = true) }
+            try {
+                val updated = repository.checkoutInsideVisit(id, gateId)
+                val inside = runCatching { repository.listInside().data }.getOrDefault(emptyList())
+                _state.update { it.copy(checkoutBusy = false, checkoutInside = inside, checkoutSelectedId = null, recent = inside.take(4), toast = "Checked out · ${updated.visitorName ?: id}", toastKind = ToastKind.SUCCESS) }
+            } catch (e: Exception) {
+                _state.update { it.copy(checkoutBusy = false, toast = e.message ?: "Checkout rejected", toastKind = ToastKind.ERROR) }
+            }
+        }
+    }
+    fun openLostFound() {
+        _state.update { it.copy(screen = KioskScreen.LOST_FOUND, lfFoundAt = LocalVisitStore.nowIst(), lfFinder = it.meDisplayName.ifBlank { "Gate guard" }) }
+    }
+    fun updateLfDescription(v: String) = _state.update { it.copy(lfDescription = v) }
+    fun updateLfLocation(v: String) = _state.update { it.copy(lfLocation = v) }
+    fun updateLfFinder(v: String) = _state.update { it.copy(lfFinder = v) }
+    fun updateLfFinderMobile(v: String) = _state.update { it.copy(lfFinderMobile = v) }
+    fun updateLfFoundAt(v: String) = _state.update { it.copy(lfFoundAt = v) }
+    fun submitLostFound() {
+        val s = _state.value
+        viewModelScope.launch {
+            _state.update { it.copy(lfBusy = true) }
+            try {
+                repository.createLostFound(LostFoundCreate(description = s.lfDescription, locationFound = s.lfLocation, foundAt = s.lfFoundAt.ifBlank { LocalVisitStore.nowIst() }, finderName = s.lfFinder, finderMobile = s.lfFinderMobile.ifBlank { null }, gateId = s.selectedGate?.id ?: s.draft.gateId, photoKey = "media/lost_found/placeholder"))
+                _state.update { it.copy(lfBusy = false, lfDescription = "", lfLocation = "", lfFinderMobile = "", toast = "Lost & Found Open created", toastKind = ToastKind.SUCCESS, screen = KioskScreen.HOME) }
+            } catch (e: Exception) {
+                _state.update { it.copy(lfBusy = false, toast = e.message ?: "LF create failed", toastKind = ToastKind.ERROR) }
+            }
+        }
+    }
+    fun openFaceLogin() { _state.update { it.copy(screen = KioskScreen.FACE_LOGIN, faceMessage = null) } }
+    fun closeFaceLogin() { _state.update { it.copy(screen = KioskScreen.HOME, faceMessage = null) } }
+    fun toggleFaceConsent() { _state.update { it.copy(faceConsentAgreed = !it.faceConsentAgreed) } }
+    fun enrollFaceStub() {
+        if (!_state.value.faceConsentAgreed) { _state.update { it.copy(faceMessage = "Agree consent first (EN+HI)") }; return }
+        _state.update { it.copy(faceEnrolled = true, faceMessage = "Enrolled (local stub · backend templates missing)", toast = "Face enrolled · stub", toastKind = ToastKind.SUCCESS) }
+    }
+    fun faceLoginStub() {
+        if (!_state.value.faceEnrolled) {
+            _state.update { it.copy(faceMessage = "No template — use password (AC-FL3)", toast = "Face match failed · use password", toastKind = ToastKind.WARNING) }
+            return
+        }
+        _state.update { it.copy(faceMessage = "Face match OK (stub) · password fallback available", loginUsername = if (it.loginUsername.isBlank()) "pranay.gate" else it.loginUsername, toast = "Face OK · enter password to continue", toastKind = ToastKind.INFO, screen = KioskScreen.HOME) }
+    }
+    /** true = nested pop consumed; false = finish app (AC-BP1/BP2). */
+    fun onSystemBack(): Boolean {
+        val s = _state.value
+        if (!s.signedIn) {
+            if (s.screen == KioskScreen.FACE_LOGIN) { closeFaceLogin(); return true }
+            return false
+        }
+        return when (s.homeRole()) {
+            KioskRole.GATE -> when {
+                s.screen == KioskScreen.HISTORY_DETAIL -> { clearHistoryDetail(); true }
+                s.screen != KioskScreen.HOME -> { closeGuardTool(); true }
+                s.step > 1 -> { back(); true }
+                else -> false
+            }
+            else -> false
+        }
     }
 
     companion object {

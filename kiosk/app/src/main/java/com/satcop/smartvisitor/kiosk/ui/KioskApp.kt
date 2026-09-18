@@ -1,5 +1,8 @@
 package com.satcop.smartvisitor.kiosk.ui
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -62,6 +65,13 @@ fun KioskApp(
     viewModel: KioskViewModel = viewModel(factory = KioskViewModel.factory()),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? Activity
+    BackHandler {
+        val consumed = viewModel.onSystemBack()
+        if (!consumed) {
+            activity?.finishAffinity()
+        }
+    }
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -86,16 +96,40 @@ fun KioskApp(
                     .padding(bottom = if (compact) 36.dp else 0.dp),
             ) {
                 if (!state.signedIn) {
-                    LoginScreen(
-                        username = state.loginUsername,
-                        password = state.loginPassword,
-                        error = state.loginError,
-                        busy = state.loginBusy,
-                        compact = compact,
-                        onUsername = viewModel::updateLoginUsername,
-                        onPassword = viewModel::updateLoginPassword,
-                        onSubmit = viewModel::login,
-                    )
+                    if (state.screen == KioskScreen.FACE_LOGIN) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(24.dp, CardShape, ambientColor = androidx.compose.ui.graphics.Color(0x59000000))
+                                .clip(CardShape)
+                                .background(KioskColors.card)
+                                .border(1.dp, KioskColors.border, CardShape)
+                                .padding(horizontal = if (compact) 16.dp else 32.dp, vertical = if (compact) 16.dp else 28.dp),
+                        ) {
+                            FaceLoginScaffoldScreen(
+                                enrolled = state.faceEnrolled,
+                                consentAgreed = state.faceConsentAgreed,
+                                busy = state.faceBusy,
+                                message = state.faceMessage,
+                                onToggleConsent = viewModel::toggleFaceConsent,
+                                onEnroll = viewModel::enrollFaceStub,
+                                onFaceLogin = viewModel::faceLoginStub,
+                                onUsePassword = viewModel::closeFaceLogin,
+                            )
+                        }
+                    } else {
+                        LoginScreen(
+                            username = state.loginUsername,
+                            password = state.loginPassword,
+                            error = state.loginError,
+                            busy = state.loginBusy,
+                            compact = compact,
+                            onUsername = viewModel::updateLoginUsername,
+                            onPassword = viewModel::updateLoginPassword,
+                            onSubmit = viewModel::login,
+                            onFaceLogin = viewModel::openFaceLogin,
+                        )
+                    }
                 } else {
                     val role = state.homeRole()
                     KioskHeader(
@@ -150,10 +184,84 @@ fun KioskApp(
                                     onBack = viewModel::closePickup,
                                 )
                             }
+                            role == KioskRole.GATE && state.screen in setOf(KioskScreen.HISTORY, KioskScreen.HISTORY_DETAIL) -> {
+                                HistoryScreen(
+                                    events = state.historyEvents,
+                                    filterToday = state.historyTodayOnly,
+                                    filterKind = state.historyKindFilter,
+                                    filterStatus = state.historyStatusFilter,
+                                    busy = state.historyBusy,
+                                    selected = state.historySelected,
+                                    onToggleToday = viewModel::toggleHistoryToday,
+                                    onKind = viewModel::setHistoryKind,
+                                    onStatus = viewModel::setHistoryStatus,
+                                    onSelect = viewModel::selectHistory,
+                                    onClearDetail = viewModel::clearHistoryDetail,
+                                    onRefresh = viewModel::refreshHistory,
+                                    onBack = viewModel::closeGuardTool,
+                                )
+                            }
+                            role == KioskRole.GATE && state.screen == KioskScreen.COURIER -> {
+                                CourierLogScreen(
+                                    company = state.courierCompany,
+                                    recipient = state.courierRecipient,
+                                    personName = state.courierPerson,
+                                    mobile = state.courierMobile,
+                                    note = state.courierNote,
+                                    dept = state.courierDept,
+                                    busy = state.courierBusy,
+                                    recent = state.courierRecent,
+                                    onCompany = viewModel::updateCourierCompany,
+                                    onRecipient = viewModel::updateCourierRecipient,
+                                    onPerson = viewModel::updateCourierPerson,
+                                    onMobile = viewModel::updateCourierMobile,
+                                    onNote = viewModel::updateCourierNote,
+                                    onDept = viewModel::updateCourierDept,
+                                    onReceive = viewModel::receiveCourier,
+                                    onHandOver = viewModel::handOverCourier,
+                                    onBack = viewModel::closeGuardTool,
+                                )
+                            }
+                            role == KioskRole.GATE && state.screen == KioskScreen.CHECKOUT -> {
+                                CheckoutVerifyScreen(
+                                    inside = state.checkoutInside,
+                                    selectedId = state.checkoutSelectedId,
+                                    busy = state.checkoutBusy,
+                                    onSelect = viewModel::selectCheckout,
+                                    onConfirm = viewModel::confirmCheckout,
+                                    onBack = viewModel::closeGuardTool,
+                                    onRefresh = viewModel::refreshCheckoutInside,
+                                )
+                            }
+                            role == KioskRole.GATE && state.screen == KioskScreen.LOST_FOUND -> {
+                                LostFoundCreateScreen(
+                                    description = state.lfDescription,
+                                    location = state.lfLocation,
+                                    finder = state.lfFinder,
+                                    finderMobile = state.lfFinderMobile,
+                                    foundAt = state.lfFoundAt,
+                                    busy = state.lfBusy,
+                                    onDescription = viewModel::updateLfDescription,
+                                    onLocation = viewModel::updateLfLocation,
+                                    onFinder = viewModel::updateLfFinder,
+                                    onFinderMobile = viewModel::updateLfFinderMobile,
+                                    onFoundAt = viewModel::updateLfFoundAt,
+                                    onSubmit = viewModel::submitLostFound,
+                                    onBack = viewModel::closeGuardTool,
+                                )
+                            }
                             role == KioskRole.GATE -> {
                                 Column(
                                     modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
                                 ) {
+                                    if (state.step == 1) {
+                                        GuardToolRow(
+                                            onHistory = viewModel::openHistory,
+                                            onCourier = viewModel::openCourier,
+                                            onCheckout = viewModel::openCheckout,
+                                            onLostFound = viewModel::openLostFound,
+                                        )
+                                    }
                                     StepDots(current = state.step)
                                     AnimatedContent(
                                         targetState = state.step,
@@ -251,8 +359,11 @@ private fun KioskStep(
             draft = state.draft,
             hosts = state.hosts,
             errors = state.fieldErrors,
+            autofetchHint = state.autofetchHint,
+            autofetchBusy = state.autofetchBusy,
             onName = viewModel::updateName,
             onMobile = viewModel::updateMobile,
+            onCompany = viewModel::updateCompany,
             onPurpose = viewModel::updatePurpose,
             onHost = viewModel::selectHost,
             onVehicle = viewModel::updateVehicle,

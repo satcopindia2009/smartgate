@@ -36,8 +36,11 @@ fun VisitorDetailsStep(
     draft: RegistrationDraft,
     hosts: List<Staff>,
     errors: Map<String, String>,
+    autofetchHint: String? = null,
+    autofetchBusy: Boolean = false,
     onName: (String) -> Unit,
     onMobile: (String) -> Unit,
+    onCompany: (String) -> Unit = {},
     onPurpose: (String) -> Unit,
     onHost: (String) -> Unit,
     onVehicle: (String) -> Unit,
@@ -110,6 +113,27 @@ fun VisitorDetailsStep(
             }
         }
 
+        if (autofetchBusy || !autofetchHint.isNullOrBlank()) {
+            Text(
+                text = when {
+                    autofetchBusy -> "Auto-fetch…"
+                    else -> autofetchHint.orEmpty()
+                },
+                color = KioskColors.cyanBright,
+                fontSize = 12.sp,
+                fontFamily = KioskFont,
+                modifier = Modifier.padding(top = 6.dp, bottom = 4.dp),
+            )
+        }
+        KioskField(
+            label = "Company (optional)",
+            value = draft.company,
+            onValueChange = onCompany,
+            placeholder = "Org / vendor company",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+        )
         KioskField(
             label = "Purpose of visit",
             value = draft.purpose,
