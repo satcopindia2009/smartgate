@@ -343,6 +343,20 @@ def test_a4_admin_or_sh_after_hours_host_blocked(client):
 def test_outbox_process_and_get_notifications(client):
     atoken = login(client, "admin", "admin123")
     htoken = login(client, "host", "host123")
+    gtoken = login(client, "gate", "gate123")
+    put_week_hours(client, atoken, open_time="00:00", close_time="23:59")
+    visit = _create_visit(
+        client,
+        gtoken,
+        mobile="9822088811",
+        visitorName="Notify Host",
+        consentAt="2026-09-16T10:00:00+05:30",
+        consentVersion=VISIT_CONSENT_VERSION_DEFAULT,
+    )
+    host_notes = client.get("/v1/notifications", headers=auth(htoken))
+    assert host_notes.status_code == 200
+    assert any(n.get("visitId") == visit["id"] for n in host_notes.json()["data"])
+
     created = client.post(
         "/v1/internal/dsr/requests",
         headers=auth(atoken),
@@ -354,10 +368,10 @@ def test_outbox_process_and_get_notifications(client):
     processed = client.post("/v1/internal/notify-outbox/process", headers=auth(atoken))
     assert processed.status_code == 200
     assert processed.json()["processed"] >= 1
-    notes = client.get("/v1/notifications", headers=auth(htoken))
-    assert notes.status_code == 200
+    after = client.get("/v1/internal/notify-outbox", headers=auth(atoken))
+    assert not any(o.get("event") == "dsr.created" for o in after.json()["data"])
     admin_notes = client.get("/v1/notifications", headers=auth(atoken))
-    assert any(n.get("event") == "dsr.created" for n in admin_notes.json()["data"])
+    assert any(n.get("visitId") == visit["id"] for n in admin_notes.json()["data"])
 
 
 def test_schools_list_and_create_protected_demo(client):
