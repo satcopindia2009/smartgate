@@ -6,6 +6,10 @@ import com.satcop.smartvisitor.kiosk.data.model.AuthorizedPickupListResponse
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistMatchRequest
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistMatchResponse
 import com.satcop.smartvisitor.kiosk.data.model.ErrorEnvelope
+import com.satcop.smartvisitor.kiosk.data.model.FaceEnrollRequest
+import com.satcop.smartvisitor.kiosk.data.model.FaceEnrollResponse
+import com.satcop.smartvisitor.kiosk.data.model.FaceVerifyRequest
+import com.satcop.smartvisitor.kiosk.data.model.FaceVerifyResponse
 import com.satcop.smartvisitor.kiosk.data.model.GateListResponse
 import com.satcop.smartvisitor.kiosk.data.model.HoursListResponse
 import com.satcop.smartvisitor.kiosk.data.model.InsideListResponse
@@ -245,6 +249,37 @@ class LiveVisitorApi(
         )
     }
 
+
+
+    // --- Staff face login (Gate|Host|Guard) — valley POST /auth/face/* ---
+    // Unauthenticated like password login; local demo until Backend returns 200.
+
+    fun faceEnroll(body: FaceEnrollRequest): FaceEnrollResponse {
+        val payload = json.encodeToString(
+            body.copy(
+                consentVersion = body.consentVersion ?: body.faceConsentVersion,
+                consentAt = body.consentAt ?: body.faceConsentAt,
+            ),
+        )
+        val req = Request.Builder()
+            .url("$baseUrl/auth/face/enroll")
+            .post(payload.toRequestBody(JSON))
+            .build()
+        return json.decodeFromString(execute(req))
+    }
+
+    fun faceVerify(body: FaceVerifyRequest): FaceVerifyResponse {
+        val req = Request.Builder()
+            .url("$baseUrl/auth/face/verify")
+            .post(json.encodeToString(body).toRequestBody(JSON))
+            .build()
+        val text = execute(req)
+        val parsed = json.decodeFromString<FaceVerifyResponse>(text)
+        if (!parsed.accessToken.isNullOrBlank() && parsed.user != null) {
+            session.accept(parsed.accessToken, parsed.user)
+        }
+        return parsed
+    }
 
     // --- Guard ASAP living endpoints ---
 

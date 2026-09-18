@@ -1,11 +1,14 @@
 package com.satcop.smartvisitor.kiosk.ui
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.satcop.smartvisitor.kiosk.data.api.LiveVisitorApi
 import com.satcop.smartvisitor.kiosk.data.api.LoginErrors
+import com.satcop.smartvisitor.kiosk.data.face.LocalFaceTemplateStore
 import com.satcop.smartvisitor.kiosk.data.fixture.DemoFixtures
 import com.satcop.smartvisitor.kiosk.data.fixture.HybridKioskRepository
 import com.satcop.smartvisitor.kiosk.data.model.AfterHoursCopy
@@ -26,7 +29,10 @@ import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.PickupCreate
 import com.satcop.smartvisitor.kiosk.data.model.PickupOut
 import com.satcop.smartvisitor.kiosk.data.model.PickupReasons
+import com.satcop.smartvisitor.kiosk.data.model.FaceEnrollRequest
+import com.satcop.smartvisitor.kiosk.data.model.FaceVerifyRequest
 import com.satcop.smartvisitor.kiosk.data.model.GateConsent
+import com.satcop.smartvisitor.kiosk.data.model.StaffFaceConsent
 import com.satcop.smartvisitor.kiosk.data.model.SchoolIds
 import com.satcop.smartvisitor.kiosk.data.model.Staff
 import com.satcop.smartvisitor.kiosk.data.model.StudentOut
@@ -36,6 +42,7 @@ import com.satcop.smartvisitor.kiosk.data.registration.MobileIndia
 import com.satcop.smartvisitor.kiosk.data.registration.RegistrationDraft
 import com.satcop.smartvisitor.kiosk.data.registration.RegistrationValidator
 import com.satcop.smartvisitor.kiosk.data.repository.KioskRepository
+import com.satcop.smartvisitor.kiosk.ui.face.FaceLoginPhase
 import com.satcop.smartvisitor.kiosk.ui.components.ToastKind
 import com.satcop.smartvisitor.kiosk.ui.media.PlaceholderBitmap
 import java.time.ZoneId
@@ -129,8 +136,11 @@ data class KioskUiState(
     val lfBusy: Boolean = false,
     val faceEnrolled: Boolean = false,
     val faceConsentAgreed: Boolean = false,
+    val faceConsentAt: String? = null,
+    val faceConsentVersion: String? = null,
     val faceBusy: Boolean = false,
     val faceMessage: String? = null,
+    val facePhase: FaceLoginPhase = FaceLoginPhase.HUB,
 ) {
     val selectedGate: Gate?
         get() = gates.firstOrNull { it.id == draft.gateId } ?: gates.firstOrNull()
@@ -138,7 +148,10 @@ data class KioskUiState(
 
 class KioskViewModel(
     private val repository: KioskRepository = HybridKioskRepository(),
+    private val liveApi: LiveVisitorApi = LiveVisitorApi(),
 ) : ViewModel() {
+
+    private var faceStore: LocalFaceTemplateStore? = null
 
     private val _state = MutableStateFlow(KioskUiState())
     val state: StateFlow<KioskUiState> = _state.asStateFlow()
@@ -1424,25 +1437,234 @@ class KioskViewModel(
             }
         }
     }
-    fun openFaceLogin() { _state.update { it.copy(screen = KioskScreen.FACE_LOGIN, faceMessage = null) } }
-    fun closeFaceLogin() { _state.update { it.copy(screen = KioskScreen.HOME, faceMessage = null) } }
-    fun toggleFaceConsent() { _state.update { it.copy(faceConsentAgreed = !it.faceConsentAgreed) } }
-    fun enrollFaceStub() {
-        if (!_state.value.faceConsentAgreed) { _state.update { it.copy(faceMessage = "Agree consent first (EN+HI)") }; return }
-        _state.update { it.copy(faceEnrolled = true, faceMessage = "Enrolled (local stub · backend templates missing)", toast = "Face enrolled · stub", toastKind = ToastKind.SUCCESS) }
+    fun bindFaceStore(context: Context) {
+        if (faceStore == null) faceStore = LocalFaceTemplateStore(context.applicationContext)
     }
-    fun faceLoginStub() {
-        if (!_state.value.faceEnrolled) {
-            _state.update { it.copy(faceMessage = "No template — use password (AC-FL3)", toast = "Face match failed · use password", toastKind = ToastKind.WARNING) }
+
+    fun openFaceLogin(context: Context? = null) {
+        context?.let { bindFaceStore(it) }
+        val store = faceStore
+        val user = _state.value.loginUsername.trim()
+        val enrolled = store?.isEnrolled(user) == true || store?.hasAny() == true
+        val enrolledUser = if (user.isNotBlank() && store?.isEnrolled(user) == true) user else store?.enrolledUsername().orEmpty()
+        _state.update {
+            it.copy(
+                screen = KioskScreen.FACE_LOGIN,
+                facePhase = FaceLoginPhase.HUB,
+                faceMessage = null,
+                faceEnrolled = enrolled,
+                faceConsentAgreed = enrolled && !store?.consentAt(enrolledUser).isNullOrBlank(),
+                faceConsentAt = store?.consentAt(enrolledUser),
+                faceConsentVersion = store?.consentVersion(enrolledUser),
+                loginUsername = it.loginUsername.ifBlank { enrolledUser },
+            )
+        }
+    }
+
+    fun closeFaceLogin() {
+        _state.update {
+            it.copy(
+                screen = KioskScreen.HOME,
+                facePhase = FaceLoginPhase.HUB,
+                faceMessage = null,
+                faceBusy = false,
+            )
+        }
+    }
+
+    fun updateFaceUsername(value: String) {
+        val store = faceStore
+        val enrolled = store?.isEnrolled(value) == true
+        _state.update {
+            it.copy(
+                loginUsername = value,
+                faceEnrolled = enrolled || (store?.hasAny() == true && value.isBlank()),
+                faceMessage = null,
+            )
+        }
+    }
+
+    fun startFaceEnroll() {
+        val user = _state.value.loginUsername.trim()
+        if (user.isBlank()) {
+            _state.update { it.copy(faceMessage = "Enter staff username before enroll") }
             return
         }
-        _state.update { it.copy(faceMessage = "Face match OK (stub) · password fallback available", loginUsername = if (it.loginUsername.isBlank()) "pranay.gate" else it.loginUsername, toast = "Face OK · enter password to continue", toastKind = ToastKind.INFO, screen = KioskScreen.HOME) }
+        // Consent required before CameraX (Compliance); no pre-tick.
+        _state.update {
+            it.copy(
+                facePhase = FaceLoginPhase.CONSENT_ENROLL,
+                faceConsentAgreed = false,
+                faceConsentAt = null,
+                faceConsentVersion = null,
+                faceMessage = null,
+            )
+        }
+    }
+
+    fun agreeFaceConsent() {
+        val at = java.time.Instant.now().toString()
+        _state.update {
+            it.copy(
+                faceConsentAgreed = true,
+                faceConsentAt = at,
+                faceConsentVersion = StaffFaceConsent.VERSION,
+                facePhase = FaceLoginPhase.CAPTURE_ENROLL,
+                faceMessage = "Consent recorded · capture face",
+            )
+        }
+    }
+
+    fun declineFaceConsent() {
+        // Decline = no capture, no template store
+        _state.update {
+            it.copy(
+                facePhase = FaceLoginPhase.HUB,
+                faceConsentAgreed = false,
+                faceConsentAt = null,
+                faceConsentVersion = null,
+                faceMessage = "Declined — no face capture (use password)",
+                toast = "Face enroll cancelled",
+                toastKind = ToastKind.INFO,
+            )
+        }
+    }
+
+    fun startFaceVerify() {
+        _state.update {
+            it.copy(facePhase = FaceLoginPhase.CAPTURE_VERIFY, faceMessage = null)
+        }
+    }
+
+    fun cancelFaceCapture() {
+        _state.update {
+            it.copy(facePhase = FaceLoginPhase.HUB, faceBusy = false, faceMessage = null)
+        }
+    }
+
+    fun onFaceCaptured(jpegBytes: ByteArray) {
+        when (_state.value.facePhase) {
+            FaceLoginPhase.CAPTURE_ENROLL -> enrollFace(jpegBytes)
+            FaceLoginPhase.CAPTURE_VERIFY -> verifyFace(jpegBytes)
+            else -> _state.update { it.copy(faceMessage = "Unexpected capture phase") }
+        }
+    }
+
+    private fun enrollFace(jpegBytes: ByteArray) {
+        val s = _state.value
+        val user = s.loginUsername.trim()
+        if (!s.faceConsentAgreed || s.faceConsentAt.isNullOrBlank() || s.faceConsentVersion != StaffFaceConsent.VERSION) {
+            _state.update {
+                it.copy(
+                    facePhase = FaceLoginPhase.CONSENT_ENROLL,
+                    faceMessage = "CONSENT_REQUIRED · agree ${StaffFaceConsent.VERSION} first",
+                    toast = "Consent required",
+                    toastKind = ToastKind.WARNING,
+                )
+            }
+            return
+        }
+        if (user.isBlank()) {
+            _state.update { it.copy(faceMessage = "Username required", facePhase = FaceLoginPhase.HUB) }
+            return
+        }
+        val store = faceStore
+        if (store == null) {
+            _state.update { it.copy(faceMessage = "Face store not ready", facePhase = FaceLoginPhase.HUB) }
+            return
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(faceBusy = true, faceMessage = "Enrolling…") }
+            store.enroll(user, jpegBytes, s.faceConsentVersion!!, s.faceConsentAt!!)
+            val b64 = LocalFaceTemplateStore.jpegToBase64(jpegBytes)
+            val liveMsg = runCatching {
+                liveApi.faceEnroll(
+                    FaceEnrollRequest(
+                        username = user,
+                        imageBase64 = b64,
+                        faceConsentVersion = StaffFaceConsent.VERSION,
+                        faceConsentAt = s.faceConsentAt!!,
+                        consentVersion = StaffFaceConsent.VERSION,
+                        consentAt = s.faceConsentAt,
+                    ),
+                )
+                "Live enroll OK"
+            }.getOrElse { e ->
+                "Local demo enroll OK · live pending (${e.message?.take(80) ?: "error"})"
+            }
+            _state.update {
+                it.copy(
+                    faceBusy = false,
+                    faceEnrolled = true,
+                    facePhase = FaceLoginPhase.HUB,
+                    faceMessage = liveMsg,
+                    toast = "Face enrolled · staff only",
+                    toastKind = ToastKind.SUCCESS,
+                )
+            }
+        }
+    }
+
+    private fun verifyFace(jpegBytes: ByteArray) {
+        val user = _state.value.loginUsername.trim().ifBlank { faceStore?.enrolledUsername().orEmpty() }
+        val store = faceStore
+        viewModelScope.launch {
+            _state.update { it.copy(faceBusy = true, faceMessage = "Verifying…") }
+            val b64 = LocalFaceTemplateStore.jpegToBase64(jpegBytes)
+            val live = runCatching {
+                liveApi.faceVerify(FaceVerifyRequest(imageBase64 = b64, username = user.ifBlank { null }))
+            }.getOrNull()
+            if (live != null && !live.accessToken.isNullOrBlank() && live.user != null) {
+                _state.update { it.copy(faceBusy = false, facePhase = FaceLoginPhase.HUB, faceMessage = "Live face verify OK") }
+                loadAfterLogin(live.user)
+                return@launch
+            }
+            if (live != null && live.matched && live.user != null && !live.accessToken.isNullOrBlank()) {
+                _state.update { it.copy(faceBusy = false) }
+                loadAfterLogin(live.user)
+                return@launch
+            }
+            val local = store?.localVerify(user, jpegBytes)
+            if (local?.matched == true) {
+                _state.update {
+                    it.copy(
+                        faceBusy = false,
+                        facePhase = FaceLoginPhase.HUB,
+                        screen = KioskScreen.HOME,
+                        loginUsername = local.username ?: it.loginUsername,
+                        faceMessage = local.message,
+                        toast = "Face OK (local demo) · enter password (AC-FL1)",
+                        toastKind = ToastKind.INFO,
+                    )
+                }
+            } else {
+                _state.update {
+                    it.copy(
+                        faceBusy = false,
+                        facePhase = FaceLoginPhase.HUB,
+                        faceMessage = local?.message
+                            ?: live?.message
+                            ?: "Face match failed — use password (AC-FL3)",
+                        toast = "Face failed · use password",
+                        toastKind = ToastKind.WARNING,
+                    )
+                }
+            }
+        }
     }
     /** true = nested pop consumed; false = finish app (AC-BP1/BP2). */
     fun onSystemBack(): Boolean {
         val s = _state.value
         if (!s.signedIn) {
-            if (s.screen == KioskScreen.FACE_LOGIN) { closeFaceLogin(); return true }
+            if (s.screen == KioskScreen.FACE_LOGIN) {
+                when (s.facePhase) {
+                    FaceLoginPhase.HUB -> { closeFaceLogin(); return true }
+                    FaceLoginPhase.CONSENT_ENROLL -> { declineFaceConsent(); return true }
+                    FaceLoginPhase.CAPTURE_ENROLL, FaceLoginPhase.CAPTURE_VERIFY -> {
+                        cancelFaceCapture(); return true
+                    }
+                }
+            }
             return false
         }
         return when (s.homeRole()) {

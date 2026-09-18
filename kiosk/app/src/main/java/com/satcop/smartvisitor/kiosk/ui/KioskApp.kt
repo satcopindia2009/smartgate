@@ -57,6 +57,7 @@ import com.satcop.smartvisitor.kiosk.ui.steps.PhotoIdStep
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorDetailsStep
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorTypeStep
 import com.satcop.smartvisitor.kiosk.ui.theme.CardShape
+import com.satcop.smartvisitor.kiosk.ui.face.FaceLoginScreen
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import kotlinx.coroutines.delay
@@ -96,6 +97,7 @@ fun KioskApp(
                     .padding(horizontal = hPad, vertical = vPad)
                     .padding(bottom = if (compact) 36.dp else 0.dp),
             ) {
+                val faceCtx = LocalContext.current
                 if (!state.signedIn) {
                     if (state.screen == KioskScreen.FACE_LOGIN) {
                         Box(
@@ -107,14 +109,21 @@ fun KioskApp(
                                 .border(1.dp, KioskColors.border, CardShape)
                                 .padding(horizontal = if (compact) 16.dp else 32.dp, vertical = if (compact) 16.dp else 28.dp),
                         ) {
-                            FaceLoginScaffoldScreen(
+                            FaceLoginScreen(
+                                phase = state.facePhase,
+                                username = state.loginUsername,
                                 enrolled = state.faceEnrolled,
                                 consentAgreed = state.faceConsentAgreed,
+                                consentAt = state.faceConsentAt,
                                 busy = state.faceBusy,
                                 message = state.faceMessage,
-                                onToggleConsent = viewModel::toggleFaceConsent,
-                                onEnroll = viewModel::enrollFaceStub,
-                                onFaceLogin = viewModel::faceLoginStub,
+                                onUsername = viewModel::updateFaceUsername,
+                                onAgreeConsent = viewModel::agreeFaceConsent,
+                                onDeclineConsent = viewModel::declineFaceConsent,
+                                onStartEnroll = viewModel::startFaceEnroll,
+                                onStartVerify = viewModel::startFaceVerify,
+                                onCaptured = viewModel::onFaceCaptured,
+                                onCancelCapture = viewModel::cancelFaceCapture,
                                 onUsePassword = viewModel::closeFaceLogin,
                             )
                         }
@@ -128,7 +137,7 @@ fun KioskApp(
                             onUsername = viewModel::updateLoginUsername,
                             onPassword = viewModel::updateLoginPassword,
                             onSubmit = viewModel::login,
-                            onFaceLogin = viewModel::openFaceLogin,
+                            onFaceLogin = { viewModel.openFaceLogin(faceCtx) },
                         )
                     }
                 } else {

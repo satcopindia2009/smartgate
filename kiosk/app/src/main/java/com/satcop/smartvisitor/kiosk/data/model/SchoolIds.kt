@@ -45,3 +45,17 @@ object GateConsent {
     const val AGREE_HI = "सहमत हूँ और आगे बढ़ें"
     const val DECLINE = "Decline / Back · अस्वीकार / वापस"
 }
+
+/** Staff face login consent — Gate|Host|Guard (visitor OUT). Compliance pack staff_face_notice_en_hi_v1. */
+object StaffFaceConsent {
+    const val VERSION = "staff_face_notice_en_hi_v1"
+    const val TITLE_EN = "Staff face login notice"
+    const val TITLE_HI = "स्टाफ फेस लॉगिन सूचना"
+    const val BODY_EN =
+        "This school uses Satcop Smart Visitor face login so you can sign in with your face on the school device. We will capture a live face image to create a login template stored on the school’s Satcop servers (not as a long-lived face gallery on this phone). The template is used only to verify it is you at login. You can still use your username and password anytime. The school admin can reset your face login; you would enroll again. You may ask the school office about access, correction, or deletion of this biometric login data.\n\nBy tapping I agree & continue, you consent to creating and using your staff face-login template for school sign-in."
+    const val BODY_HI =
+        "यह स्कूल Satcop Smart Visitor फेस लॉगिन का उपयोग करता है ताकि आप स्कूल डिवाइस पर अपने चेहरे से साइन इन कर सकें। हम एक लाइव चेहरे की छवि लेकर लॉगिन टेम्पलेट बनाएंगे, जो स्कूल के Satcop सर्वर पर रखा जाएगा (इस फ़ोन पर लंबे समय तक फेस गैलरी के रूप में नहीं)। टेम्पलेट केवल यह जाँचने के लिए है कि लॉगिन पर आप ही हैं। आप कभी भी उपयोगकर्ता नाम और पासवर्ड से साइन इन कर सकते हैं। स्कूल एडमिन आपका फेस लॉगिन रीसेट कर सकता है; तब दोबारा नामांकन करना होगा। इस बायोमेट्रिक लॉगिन डेटा की पहुँच, सुधार या हटाने के लिए स्कूल कार्यालय से संपर्क करें।\n\nसहमत हूँ और आगे बढ़ें पर टैप करके आप स्कूल साइन-इन हेतु स्टाफ फेस-लॉगिन टेम्पलेट बनाने और उपयोग करने की सहमति देते हैं।"
+    const val AGREE_EN = "I agree & continue"
+    const val AGREE_HI = "सहमत हूँ और आगे बढ़ें"
+    const val DECLINE = "Decline / Back · अस्वीकार / वापस"
+}
