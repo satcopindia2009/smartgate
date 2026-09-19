@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -64,7 +66,9 @@ fun HostHomeScreen(
         .filter { it.isNotBlank() }
         .joinToString(" · ")
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (compact) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
     ) {
         Text(
@@ -427,7 +431,9 @@ fun UnsupportedRoleScreen(
 ) {
     val label = role.trim().ifBlank { "unknown" }
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (compact) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
     ) {
         Text(
