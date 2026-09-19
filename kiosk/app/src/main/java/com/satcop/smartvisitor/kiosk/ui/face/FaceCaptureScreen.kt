@@ -83,9 +83,17 @@ fun FaceCaptureScreen(
 
     var previewBmp by remember { mutableStateOf<Bitmap?>(null) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
+    var cameraError by remember { mutableStateOf<String?>(null) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val mainExecutor = remember { ContextCompat.getMainExecutor(context) }
+    // Crashfix 1046: unbind camera on leave; never touch Compose state off main.
     DisposableEffect(Unit) {
-        onDispose { cameraExecutor.shutdown() }
+        onDispose {
+            runCatching {
+                ProcessCameraProvider.getInstance(context).get().unbindAll()
+            }
+            cameraExecutor.shutdown()
+        }
     }
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -131,23 +139,28 @@ fun FaceCaptureScreen(
                     modifier = Modifier.fillMaxWidth().height(280.dp),
                     contentScale = ContentScale.Crop,
                 )
+                cameraError != null -> Text(
+                    cameraError!!,
+                    color = KioskColors.orange,
+                    fontFamily = KioskFont,
+                    modifier = Modifier.padding(12.dp),
+                )
                 else -> AndroidView(
                     factory = { ctx ->
                         PreviewView(ctx).also { pv ->
                             pv.scaleType = PreviewView.ScaleType.FILL_CENTER
                             val future = ProcessCameraProvider.getInstance(ctx)
                             future.addListener({
-                                val provider = future.get()
-                                val preview = Preview.Builder()
-                                    .setTargetResolution(Size(640, 480))
-                                    .build()
-                                    .also { it.setSurfaceProvider(pv.surfaceProvider) }
-                                val capture = ImageCapture.Builder()
-                                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                                    .setTargetResolution(Size(640, 480))
-                                    .build()
-                                imageCapture = capture
                                 runCatching {
+                                    val provider = future.get()
+                                    val preview = Preview.Builder()
+                                        .setTargetResolution(Size(640, 480))
+                                        .build()
+                                        .also { it.setSurfaceProvider(pv.surfaceProvider) }
+                                    val capture = ImageCapture.Builder()
+                                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                        .setTargetResolution(Size(640, 480))
+                                        .build()
                                     provider.unbindAll()
                                     provider.bindToLifecycle(
                                         lifecycleOwner,
@@ -155,6 +168,10 @@ fun FaceCaptureScreen(
                                         preview,
                                         capture,
                                     )
+                                    imageCapture = capture
+                                    cameraError = null
+                                }.onFailure { e ->
+                                    cameraError = "Camera failed: ${e.message ?: e.javaClass.simpleName}"
                                 }
                             }, ContextCompat.getMainExecutor(ctx))
                         }
@@ -194,10 +211,13 @@ fun FaceCaptureScreen(
                             override fun onCaptureSuccess(image: ImageProxy) {
                                 val bmp = imageProxyToBitmap(image)
                                 image.close()
-                                previewBmp = bmp
+                                // Compose state only on main — off-thread set crashes ("keeps stopping").
+                                mainExecutor.execute { previewBmp = bmp }
                             }
                             override fun onError(exception: ImageCaptureException) {
-                                // surfaced via message by caller if needed
+                                mainExecutor.execute {
+                                    cameraError = "Capture failed: ${exception.message ?: "error"}"
+                                }
                             }
                         })
                     } else {

@@ -87,22 +87,24 @@ fun KioskApp(
         val cardHPad = if (compact) 16.dp else 32.dp
         val cardVPad = if (compact) 16.dp else 28.dp
         CompositionLocalProvider(LocalKioskCompact provides compact) {
-            // Crashfix 1045: phone outer verticalScroll nests with Gate step scroll and puts
-            // Guard weight()/fillMaxSize under infinite height → crash right after login.
-            // Scroll only the unsigned-in (login) shell; signed-in roles own their own scroll.
+            // Crashfix 1045/1046: outer phone verticalScroll only for password login.
+            // FACE_LOGIN has its own scroll + CameraX — nesting crashes on Face login tap.
+            // Signed-in roles own their own scroll (Gate/Host/Guard).
             val signedIn = state.signedIn
+            val faceLogin = !signedIn && state.screen == KioskScreen.FACE_LOGIN
+            val outerPhoneScroll = compact && !signedIn && !faceLogin
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(if (compact && !signedIn) Modifier else Modifier.fillMaxSize())
+                    .then(if (outerPhoneScroll) Modifier else Modifier.fillMaxSize())
                     .widthIn(max = 1180.dp)
                     .align(Alignment.TopCenter)
                     .then(
-                        if (compact && !signedIn) Modifier.verticalScroll(rememberScrollState())
+                        if (outerPhoneScroll) Modifier.verticalScroll(rememberScrollState())
                         else Modifier,
                     )
                     .padding(horizontal = hPad, vertical = vPad)
-                    .padding(bottom = if (compact && !signedIn) 36.dp else 0.dp),
+                    .padding(bottom = if (outerPhoneScroll) 36.dp else 0.dp),
             ) {
                 val faceCtx = LocalContext.current
                 if (!signedIn) {
