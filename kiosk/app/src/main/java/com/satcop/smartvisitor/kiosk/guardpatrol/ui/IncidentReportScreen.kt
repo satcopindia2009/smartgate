@@ -119,7 +119,7 @@ fun IncidentReportScreen(
         )
 
         Text(
-            "Incident type *",
+            "incident_type *",
             color = KioskColors.textMuted,
             fontSize = 12.sp,
             fontFamily = KioskFont,
@@ -158,7 +158,7 @@ fun IncidentReportScreen(
 
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Notes *", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+            Text("incident_notes *", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
             Text("${notes.length}/500", color = KioskColors.textDim, fontSize = 11.sp, fontFamily = KioskFont)
         }
         Spacer(Modifier.height(4.dp))
@@ -169,7 +169,7 @@ fun IncidentReportScreen(
                 .fillMaxWidth()
                 .heightIn(min = 100.dp),
             placeholder = {
-                Text("Add details about the incident…", color = KioskColors.textMuted, fontFamily = KioskFont)
+                Text("Describe what happened…", color = KioskColors.textMuted, fontFamily = KioskFont)
             },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = KioskColors.text,
@@ -190,7 +190,7 @@ fun IncidentReportScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "LIVE PHOTO REQUIRED *",
+                "live_photo * (required)",
                 color = KioskColors.peakAmberBright,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -251,7 +251,7 @@ fun IncidentReportScreen(
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Tap to capture live photo",
+                        "Tap to capture photo",
                         color = KioskColors.text,
                         fontSize = 13.sp,
                         fontFamily = KioskFont,
@@ -285,7 +285,7 @@ fun IncidentReportScreen(
         if (cps.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
             Text(
-                "Checkpoint (optional)",
+                "checkpoint / location (optional)",
                 color = KioskColors.textMuted,
                 fontSize = 12.sp,
                 fontFamily = KioskFont,

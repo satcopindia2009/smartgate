@@ -1,5 +1,10 @@
 package com.satcop.smartvisitor.kiosk.ui
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,13 +18,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -38,6 +52,7 @@ import com.satcop.smartvisitor.kiosk.ui.theme.ChipShape
 import com.satcop.smartvisitor.kiosk.ui.theme.ControlShape
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
+import java.io.ByteArrayOutputStream
 
 @Composable
 fun GuardToolRow(onHistory: () -> Unit, onCourier: () -> Unit, onCheckout: () -> Unit, onLostFound: () -> Unit) {
@@ -112,41 +127,185 @@ fun HistoryScreen(
 
 @Composable
 fun CourierLogScreen(
-    company: String, recipient: String, personName: String, mobile: String, note: String, dept: String,
-    busy: Boolean, recent: List<CourierEvent>,
-    onCompany: (String) -> Unit, onRecipient: (String) -> Unit, onPerson: (String) -> Unit,
-    onMobile: (String) -> Unit, onNote: (String) -> Unit, onDept: (String) -> Unit,
-    onReceive: () -> Unit, onHandOver: (String) -> Unit, onBack: () -> Unit,
+    company: String,
+    tracking: String,
+    packageType: String,
+    gateLabel: String,
+    collectedBy: String,
+    note: String,
+    busy: Boolean,
+    recent: List<CourierEvent>,
+    packagePhotoJpeg: ByteArray? = null,
+    onCompany: (String) -> Unit,
+    onTracking: (String) -> Unit,
+    onPackageType: (String) -> Unit,
+    onGateLabel: (String) -> Unit,
+    onCollectedBy: (String) -> Unit,
+    onNote: (String) -> Unit,
+    onPackagePhoto: (ByteArray) -> Unit = {},
+    onClearPackagePhoto: () -> Unit = {},
+    onReceive: () -> Unit,
+    onHandOver: (String) -> Unit,
+    onBack: () -> Unit,
 ) {
+    val takePicture = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview(),
+    ) { bitmap: Bitmap? ->
+        if (bitmap == null) return@rememberLauncherForActivityResult
+        val stream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+        onPackagePhoto(stream.toByteArray())
+    }
+    val preview = remember(packagePhotoJpeg) {
+        packagePhotoJpeg?.let { bytes ->
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+        }
+    }
+    val packageTypes = listOf("Envelope", "Box", "Parcel", "Other")
+    val canSave = !busy &&
+        company.isNotBlank() &&
+        tracking.isNotBlank() &&
+        packageType.isNotBlank() &&
+        gateLabel.isNotBlank() &&
+        collectedBy.isNotBlank()
+
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
         HeaderRow("Courier log / New courier", "Not a Visit — no host approve for lobby receive", onBack)
         Spacer(Modifier.height(12.dp))
-        KioskField(label = "courier_company *", value = company, onValueChange = onCompany, placeholder = "e.g. DTDC, FedEx, Delhivery", modifier = Modifier.fillMaxWidth())
+        KioskField(
+            label = "courier_company *",
+            value = company,
+            onValueChange = onCompany,
+            placeholder = "e.g. DTDC, FedEx, Delhivery",
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(Modifier.height(8.dp))
-        KioskField(label = "recipient_name *", value = recipient, onValueChange = onRecipient, placeholder = "e.g. staff / host name", modifier = Modifier.fillMaxWidth())
+        KioskField(
+            label = "tracking_number *",
+            value = tracking,
+            onValueChange = onTracking,
+            placeholder = "AWB / tracking ID",
+            capitalization = KeyboardCapitalization.Characters,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(Modifier.height(8.dp))
-        KioskField(label = "Dept / host (optional)", value = dept, onValueChange = onDept, placeholder = "Accounts", modifier = Modifier.fillMaxWidth())
+        Text("package_type *", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+        Spacer(Modifier.height(6.dp))
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            packageTypes.forEach { opt ->
+                val on = opt.equals(packageType, ignoreCase = true)
+                Box(
+                    Modifier
+                        .clip(ChipShape)
+                        .background(if (on) KioskColors.cyanDim else KioskColors.sidebar)
+                        .border(1.dp, if (on) KioskColors.cyan else KioskColors.border, ChipShape)
+                        .clickable { onPackageType(opt) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Text(opt, color = if (on) KioskColors.cyanBright else KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+                }
+            }
+        }
         Spacer(Modifier.height(8.dp))
-        KioskField(label = "Courier person (optional)", value = personName, onValueChange = onPerson, placeholder = "Rider", modifier = Modifier.fillMaxWidth())
+        KioskField(
+            label = "gate *",
+            value = gateLabel,
+            onValueChange = onGateLabel,
+            placeholder = "Main Gate",
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(Modifier.height(8.dp))
-        KioskField(label = "Courier mobile (optional)", value = mobile, onValueChange = onMobile, placeholder = "10-digit", keyboardType = KeyboardType.Phone, capitalization = KeyboardCapitalization.None, modifier = Modifier.fillMaxWidth())
+        KioskField(
+            label = "collected_by *",
+            value = collectedBy,
+            onValueChange = onCollectedBy,
+            placeholder = "Guard / desk name",
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(Modifier.height(8.dp))
-        KioskField(label = "Package note (optional)", value = note, onValueChange = onNote, placeholder = "Invoice packet", capitalization = KeyboardCapitalization.Sentences, modifier = Modifier.fillMaxWidth())
+        KioskField(
+            label = "package_note (optional)",
+            value = note,
+            onValueChange = onNote,
+            placeholder = "Invoice packet",
+            capitalization = KeyboardCapitalization.Sentences,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(Modifier.height(12.dp))
-        KioskPrimaryButton(text = if (busy) "Saving…" else "Mark Received", onClick = onReceive, enabled = !busy && company.isNotBlank() && recipient.isNotBlank(), modifier = Modifier.fillMaxWidth())
+        Text("Package photo (optional)", color = KioskColors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, fontFamily = KioskFont)
+        Spacer(Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .clip(ControlShape)
+                .background(KioskColors.sidebar)
+                .border(1.dp, KioskColors.cyan.copy(alpha = 0.45f), ControlShape)
+                .clickable(enabled = !busy) { takePicture.launch(null) },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (preview != null) {
+                Image(
+                    bitmap = preview,
+                    contentDescription = "Package photo",
+                    modifier = Modifier.fillMaxWidth().height(160.dp),
+                    contentScale = ContentScale.Crop,
+                )
+                TextButton(onClick = onClearPackagePhoto, modifier = Modifier.align(Alignment.TopEnd)) {
+                    Icon(Icons.Default.Close, null, tint = KioskColors.red, modifier = Modifier.size(20.dp))
+                }
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.CameraAlt, null, tint = KioskColors.cyanBright, modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.height(6.dp))
+                    Text("Tap to capture photo", color = KioskColors.text, fontSize = 13.sp, fontFamily = KioskFont)
+                    Text("Optional package evidence", color = KioskColors.textMuted, fontSize = 11.sp, fontFamily = KioskFont)
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        KioskPrimaryButton(
+            text = if (busy) "Saving…" else "Mark Received",
+            onClick = onReceive,
+            enabled = canSave,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Spacer(Modifier.height(16.dp))
         Text("Recent couriers", color = KioskColors.text, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
         Spacer(Modifier.height(8.dp))
         recent.forEach { c ->
-            Column(Modifier.fillMaxWidth().clip(ControlShape).background(KioskColors.sidebar).border(1.dp, KioskColors.border, ControlShape).padding(12.dp)) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(ControlShape)
+                    .background(KioskColors.sidebar)
+                    .border(1.dp, KioskColors.border, ControlShape)
+                    .padding(12.dp),
+            ) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${c.courierCompany} → ${c.recipientName}", color = KioskColors.text, fontFamily = KioskFont, modifier = Modifier.weight(1f))
+                    Text(
+                        "${c.courierCompany} · ${c.trackingNumber ?: c.recipientName}",
+                        color = KioskColors.text,
+                        fontFamily = KioskFont,
+                        modifier = Modifier.weight(1f),
+                    )
                     Pill(c.status)
                 }
-                Text(c.packageNote.orEmpty(), color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+                val sub = listOfNotNull(
+                    c.packageType,
+                    c.collectedBy?.let { "by $it" },
+                    c.packageNote,
+                ).joinToString(" · ")
+                if (sub.isNotBlank()) {
+                    Text(sub, color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+                }
                 if (c.status == CourierStatus.RECEIVED) {
                     Spacer(Modifier.height(8.dp))
-                    KioskGhostButton(text = "Hand over", onClick = { onHandOver(c.id) }, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp))
+                    KioskGhostButton(
+                        text = "Hand over",
+                        onClick = { onHandOver(c.id) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                    )
                 }
             }
             Spacer(Modifier.height(8.dp))

@@ -301,11 +301,14 @@ class GuardPatrolViewModel(
                         return@launch
                     }
                 }
+                val cp = current.checkpoints[checkpointId] ?: GuardPatrolFixtures.checkpoint(checkpointId)
+                val payload = cp?.tagPayload?.takeIf { it.isNotBlank() } ?: "SGCP:$checkpointId"
                 runCatching {
                     withContext(Dispatchers.IO) {
                         api.scan(
                             roundId = round.id,
                             checkpointId = checkpointId,
+                            tagPayload = payload,
                             deviceId = LiveGuardPatrolApi.DEMO_DEVICE_ID,
                             offCampusSuspect = offCampus,
                         )

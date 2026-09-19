@@ -20,12 +20,12 @@ object GuardPatrolFixtures {
     )
 
     val checkpoints = listOf(
-        Checkpoint("cp-main", SCHOOL_ID, "Main gate", "Main Gate", TagType.QR, true, 18.5204, 73.8567),
-        Checkpoint("cp-ped", SCHOOL_ID, "Pedestrian", "Pedestrian Gate", TagType.QR, true, 18.5208, 73.8572),
-        Checkpoint("cp-staff", SCHOOL_ID, "Staff", "Staff Gate", TagType.NFC, true, 18.5210, 73.8578),
-        Checkpoint("cp-bus", SCHOOL_ID, "Bus Bay", "Bus Bay", TagType.QR, true, 18.5215, 73.8565),
-        Checkpoint("cp-play", SCHOOL_ID, "Playground", "Playground", TagType.NFC, true, 18.5218, 73.8575),
-        Checkpoint("cp-park", SCHOOL_ID, "Parking", "Parking", TagType.QR, true, 18.5202, 73.8580),
+        Checkpoint("cp-main", SCHOOL_ID, "Main gate", "Main Gate", TagType.QR, true, 18.5204, 73.8567, "CPQR-SCH-DEMO-01-CP-MAIN"),
+        Checkpoint("cp-ped", SCHOOL_ID, "Pedestrian", "Pedestrian Gate", TagType.QR, true, 18.5208, 73.8572, "CPQR-SCH-DEMO-01-CP-PED"),
+        Checkpoint("cp-staff", SCHOOL_ID, "Staff", "Staff Gate", TagType.NFC, true, 18.5210, 73.8578, "CPNFC-SCH-DEMO-01-CP-STAFF"),
+        Checkpoint("cp-bus", SCHOOL_ID, "Bus Bay", "Bus Bay", TagType.QR, true, 18.5215, 73.8565, "CPQR-SCH-DEMO-01-CP-BUS"),
+        Checkpoint("cp-play", SCHOOL_ID, "Playground", "Playground", TagType.NFC, true, 18.5218, 73.8575, "CPNFC-SCH-DEMO-01-CP-PLAY"),
+        Checkpoint("cp-park", SCHOOL_ID, "Parking", "Parking", TagType.QR, true, 18.5202, 73.8580, "CPQR-SCH-DEMO-01-CP-PARK"),
     )
 
     val templates = listOf(

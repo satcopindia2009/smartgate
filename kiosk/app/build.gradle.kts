@@ -13,8 +13,8 @@ android {
         applicationId = "com.satcop.smartvisitor.kiosk"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1041
-        versionName = "0.9.8-1role-face-gps-geocode"
+        versionCode = 1042
+        versionName = "0.9.9-1role-bringme-depth"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }

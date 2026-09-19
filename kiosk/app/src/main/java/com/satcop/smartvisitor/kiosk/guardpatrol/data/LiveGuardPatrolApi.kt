@@ -96,7 +96,8 @@ class LiveGuardPatrolApi(
 
     fun scan(
         roundId: String,
-        checkpointId: String,
+        checkpointId: String? = null,
+        tagPayload: String? = null,
         deviceId: String,
         lat: Double? = null,
         lng: Double? = null,
@@ -106,6 +107,7 @@ class LiveGuardPatrolApi(
         json.encodeToString(
             ScanRequest(
                 checkpointId = checkpointId,
+                tagPayload = tagPayload,
                 deviceId = deviceId,
                 lat = lat,
                 lng = lng,

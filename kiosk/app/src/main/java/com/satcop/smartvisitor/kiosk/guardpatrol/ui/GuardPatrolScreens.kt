@@ -29,6 +29,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -427,13 +428,22 @@ private fun AssignmentCard(
                 fontFamily = KioskFont,
             )
         }
+        if (!assignment.shiftStart.isNullOrBlank() || !assignment.shiftEnd.isNullOrBlank()) {
+            val start = assignment.shiftStart?.take(5) ?: "—"
+            val end = assignment.shiftEnd?.take(5) ?: "—"
+            Text(
+                text = "Shift · $start–$end",
+                color = KioskColors.cyanBright,
+                fontSize = 12.sp,
+                fontFamily = KioskFont,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         Spacer(Modifier.height(6.dp))
-        val shift = listOfNotNull(assignment.shiftStart, assignment.shiftEnd).joinToString("–")
         Text(
             text = buildString {
                 append("$checkpointCount CPs · ${durationMin} min")
                 if (ordered) append(" · Ordered") else append(" · Any order")
-                if (shift.isNotBlank()) append(" · $shift")
             },
             color = KioskColors.textDim,
             fontSize = 12.sp,
@@ -528,7 +538,7 @@ private fun ActiveRoundScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "Checkpoints $count / ${tpl.checkpointIds.size}",
+                text = "Progress $count / ${tpl.checkpointIds.size}",
                 color = KioskColors.text,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -541,6 +551,17 @@ private fun ActiveRoundScreen(
                 fontFamily = KioskFont,
             )
         }
+        Spacer(Modifier.height(6.dp))
+        val progressFrac = if (tpl.checkpointIds.isEmpty()) 0f else count.toFloat() / tpl.checkpointIds.size.toFloat()
+        LinearProgressIndicator(
+            progress = { progressFrac },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(ControlShape),
+            color = KioskColors.cyan,
+            trackColor = KioskColors.borderSubtle,
+        )
         Spacer(Modifier.height(10.dp))
         Column(
             modifier = Modifier
@@ -562,6 +583,7 @@ private fun ActiveRoundScreen(
                     scannedAt = last?.scannedAtEpochMs,
                     outOfOrder = last?.outOfOrder == true,
                     offCampus = last?.offCampusSuspect == true,
+                    onScanQr = onScanQr,
                 )
             }
         }
@@ -866,6 +888,7 @@ private fun CheckpointRow(
     scannedAt: Long?,
     outOfOrder: Boolean,
     offCampus: Boolean,
+    onScanQr: (() -> Unit)? = null,
 ) {
     val border = when {
         done -> KioskColors.green
@@ -928,22 +951,34 @@ private fun CheckpointRow(
             fontFamily = KioskFont,
             modifier = Modifier.padding(top = 4.dp),
         )
-        if (done && scannedAt != null) {
+        if (done) {
             Text(
-                text = "Scanned ${formatTime(scannedAt)}",
+                text = if (scannedAt != null) "Done · ${formatTime(scannedAt)}" else "Done",
                 color = KioskColors.greenBright,
                 fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
                 fontFamily = KioskFont,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
-                if (outOfOrder) {
-                    FlagChip("out_of_order", KioskColors.orangeDim, KioskColors.peakAmberBright)
-                }
-                if (offCampus) {
-                    FlagChip("off_campus_suspect", KioskColors.redDim, KioskColors.red)
+            if (scannedAt != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    if (outOfOrder) {
+                        FlagChip("out_of_order", KioskColors.orangeDim, KioskColors.peakAmberBright)
+                    }
+                    if (offCampus) {
+                        FlagChip("off_campus_suspect", KioskColors.redDim, KioskColors.red)
+                    }
                 }
             }
+        } else if (onScanQr != null) {
+            Spacer(Modifier.height(8.dp))
+            SecondaryButton(
+                label = "Scan QR",
+                icon = { Icon(Icons.Default.QrCodeScanner, null, tint = KioskColors.cyanBright, modifier = Modifier.size(16.dp)) },
+                onClick = onScanQr,
+                modifier = Modifier.fillMaxWidth(),
+                accent = KioskColors.cyan,
+            )
         }
     }
 }

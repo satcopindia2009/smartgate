@@ -144,6 +144,9 @@ data class CourierEvent(
     val recipientDeptOrHost: String? = null,
     val packageNote: String? = null,
     val photoKey: String? = null,
+    val trackingNumber: String? = null,
+    val packageType: String? = null,
+    val collectedBy: String? = null,
     val status: String,
     val receivedAt: String,
     val handedOverAt: String? = null,
@@ -162,6 +165,9 @@ data class CourierCreate(
     val recipientDeptOrHost: String? = null,
     val packageNote: String? = null,
     val photoKey: String? = null,
+    val trackingNumber: String? = null,
+    val packageType: String? = null,
+    val collectedBy: String? = null,
 )
 
 @Serializable

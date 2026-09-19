@@ -15,6 +15,7 @@ object GuardPatrolMapper {
         active = dto.active,
         lat = dto.lat,
         lng = dto.lng,
+        tagPayload = dto.tagPayload?.takeIf { it.isNotBlank() } ?: "SGCP:${dto.id}",
     )
 
     fun toDomain(dto: PatrolTemplateDto): RoundTemplate = RoundTemplate(

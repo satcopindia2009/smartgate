@@ -120,11 +120,12 @@ data class KioskUiState(
     val autofetchBusy: Boolean = false,
     val autofetchHint: String? = null,
     val courierCompany: String = "",
-    val courierRecipient: String = "",
-    val courierPerson: String = "",
-    val courierMobile: String = "",
+    val courierTracking: String = "",
+    val courierPackageType: String = "Envelope",
+    val courierGateLabel: String = "",
+    val courierCollectedBy: String = "",
     val courierNote: String = "",
-    val courierDept: String = "",
+    val courierPackagePhotoJpeg: ByteArray? = null,
     val courierRecent: List<CourierEvent> = emptyList(),
     val courierBusy: Boolean = false,
     val checkoutInside: List<InsideVisit> = emptyList(),
@@ -1350,24 +1351,73 @@ class KioskViewModel(
     fun openCourier() {
         viewModelScope.launch {
             val list = runCatching { repository.listCouriers() }.getOrDefault(emptyList())
-            _state.update { it.copy(screen = KioskScreen.COURIER, courierRecent = list, courierBusy = false) }
+            _state.update {
+                val gate = it.selectedGate
+                it.copy(
+                    screen = KioskScreen.COURIER,
+                    courierRecent = list,
+                    courierBusy = false,
+                    courierGateLabel = if (it.courierGateLabel.isNotBlank()) it.courierGateLabel
+                    else (gate?.name ?: gate?.id ?: it.draft.gateId),
+                    courierCollectedBy = if (it.courierCollectedBy.isNotBlank()) it.courierCollectedBy
+                    else it.meDisplayName.ifBlank { "Gate guard" },
+                )
+            }
         }
     }
     fun updateCourierCompany(v: String) = _state.update { it.copy(courierCompany = v) }
-    fun updateCourierRecipient(v: String) = _state.update { it.copy(courierRecipient = v) }
-    fun updateCourierPerson(v: String) = _state.update { it.copy(courierPerson = v) }
-    fun updateCourierMobile(v: String) = _state.update { it.copy(courierMobile = v) }
+    fun updateCourierTracking(v: String) = _state.update { it.copy(courierTracking = v) }
+    fun updateCourierPackageType(v: String) = _state.update { it.copy(courierPackageType = v) }
+    fun updateCourierGateLabel(v: String) = _state.update { it.copy(courierGateLabel = v) }
+    fun updateCourierCollectedBy(v: String) = _state.update { it.copy(courierCollectedBy = v) }
     fun updateCourierNote(v: String) = _state.update { it.copy(courierNote = v) }
-    fun updateCourierDept(v: String) = _state.update { it.copy(courierDept = v) }
+    fun setCourierPackagePhoto(jpeg: ByteArray) = _state.update { it.copy(courierPackagePhotoJpeg = jpeg) }
+    fun clearCourierPackagePhoto() = _state.update { it.copy(courierPackagePhotoJpeg = null) }
     fun receiveCourier() {
         val s = _state.value
         val gateId = s.selectedGate?.id ?: s.draft.gateId
         viewModelScope.launch {
             _state.update { it.copy(courierBusy = true) }
             try {
-                repository.receiveCourier(CourierCreate(gateId = gateId, courierCompany = s.courierCompany, courierPersonName = s.courierPerson.ifBlank { null }, courierMobile = s.courierMobile.ifBlank { null }, recipientName = s.courierRecipient, recipientDeptOrHost = s.courierDept.ifBlank { null }, packageNote = s.courierNote.ifBlank { null }))
+                var photoKey: String? = null
+                val jpeg = s.courierPackagePhotoJpeg
+                if (jpeg != null && jpeg.isNotEmpty()) {
+                    val uploaded = repository.uploadMedia(
+                        jpeg,
+                        "courier-package.jpg",
+                        "image/jpeg",
+                        "live_photo",
+                    )
+                    photoKey = uploaded.key
+                }
+                val collected = s.courierCollectedBy.trim()
+                repository.receiveCourier(
+                    CourierCreate(
+                        gateId = gateId,
+                        courierCompany = s.courierCompany.trim(),
+                        recipientName = collected.ifBlank { "Lobby" },
+                        packageNote = s.courierNote.ifBlank { null },
+                        photoKey = photoKey,
+                        trackingNumber = s.courierTracking.trim().ifBlank { null },
+                        packageType = s.courierPackageType.trim().ifBlank { null },
+                        collectedBy = collected.ifBlank { null },
+                    ),
+                )
                 val list = repository.listCouriers()
-                _state.update { it.copy(courierBusy = false, courierRecent = list, courierCompany = "", courierRecipient = "", courierPerson = "", courierMobile = "", courierNote = "", courierDept = "", toast = "Courier Received · on History", toastKind = ToastKind.SUCCESS) }
+                _state.update {
+                    it.copy(
+                        courierBusy = false,
+                        courierRecent = list,
+                        courierCompany = "",
+                        courierTracking = "",
+                        courierPackageType = "Envelope",
+                        courierCollectedBy = it.meDisplayName.ifBlank { "Gate guard" },
+                        courierNote = "",
+                        courierPackagePhotoJpeg = null,
+                        toast = "Courier Received · on History",
+                        toastKind = ToastKind.SUCCESS,
+                    )
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(courierBusy = false, toast = e.message ?: "Courier save failed", toastKind = ToastKind.ERROR) }
             }

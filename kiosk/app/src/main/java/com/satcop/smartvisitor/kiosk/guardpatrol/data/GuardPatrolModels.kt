@@ -27,6 +27,8 @@ data class Checkpoint(
     val active: Boolean = true,
     val lat: Double? = null,
     val lng: Double? = null,
+    /** Admin QR / NFC payload — send on POST /rounds/{id}/scans (A4). */
+    val tagPayload: String? = null,
 )
 
 data class RoundTemplate(

@@ -15,6 +15,7 @@ data class PatrolCheckpointDto(
     val active: Boolean = true,
     val lat: Double? = null,
     val lng: Double? = null,
+    val tagPayload: String? = null,
     val meta: Meta? = null,
 )
 
@@ -81,7 +82,8 @@ data class StartRoundRequest(
 
 @Serializable
 data class ScanRequest(
-    val checkpointId: String,
+    val checkpointId: String? = null,
+    val tagPayload: String? = null,
     val deviceId: String,
     val lat: Double? = null,
     val lng: Double? = null,
