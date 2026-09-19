@@ -3,6 +3,7 @@ package com.satcop.smartvisitor.kiosk.guardpatrol.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.satcop.smartvisitor.kiosk.data.geo.CaptureGeo
+import com.satcop.smartvisitor.kiosk.data.geo.GeoFenceCodes
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.CreatePatrolIncidentRequest
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.IncidentType
@@ -618,14 +619,13 @@ class GuardPatrolViewModel(
                     )
                 }
             } catch (e: ApiException) {
-                val geo = e.code.contains("GEO_FENCE", ignoreCase = true) ||
-                    e.message.contains("GEO_FENCE", ignoreCase = true)
+                val geo = GeoFenceCodes.isRestricted(e.code, e.message)
                 _state.update {
                     it.copy(
                         incidentBusy = false,
                         toast = ToastEvent(
                             System.currentTimeMillis(),
-                            if (geo) "Outside campus geo-fence — move inside campus" else (e.message),
+                            if (geo) GeoFenceCodes.toastMessage() else (e.message),
                             ToastKind.ERROR,
                         ),
                     )

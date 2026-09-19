@@ -16,6 +16,7 @@ import com.satcop.smartvisitor.kiosk.data.model.InsideListResponse
 import com.satcop.smartvisitor.kiosk.data.model.LoginRequest
 import com.satcop.smartvisitor.kiosk.data.model.LoginResponse
 import com.satcop.smartvisitor.kiosk.data.model.MeResponse
+import com.satcop.smartvisitor.kiosk.data.model.School
 import com.satcop.smartvisitor.kiosk.data.model.MediaUploadResponse
 import com.satcop.smartvisitor.kiosk.data.model.NotificationListResponse
 import com.satcop.smartvisitor.kiosk.data.model.PassOut
@@ -98,6 +99,9 @@ class LiveVisitorApi(
     }
 
     fun me(): MeResponse = get<MeResponse>("/auth/me").also { session.updateUser(it) }
+
+    /** GET /schools/me — faceLoginEnabled + geoFenceMode when Backend READY. */
+    fun schoolMe(): School = get("/schools/me")
 
     fun listStaff(active: Boolean = true): StaffListResponse =
         get("/staff?active=$active")

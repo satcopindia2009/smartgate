@@ -30,6 +30,7 @@ import com.satcop.smartvisitor.kiosk.data.model.PickupCreate
 import com.satcop.smartvisitor.kiosk.data.model.PickupOut
 import com.satcop.smartvisitor.kiosk.data.model.PickupReasons
 import com.satcop.smartvisitor.kiosk.data.geo.CaptureGeo
+import com.satcop.smartvisitor.kiosk.data.geo.GeoFenceCodes
 import com.satcop.smartvisitor.kiosk.data.model.FaceEnrollRequest
 import com.satcop.smartvisitor.kiosk.data.model.FaceVerifyRequest
 import com.satcop.smartvisitor.kiosk.data.model.GateConsent
@@ -139,6 +140,8 @@ data class KioskUiState(
     val faceConsentAgreed: Boolean = false,
     val faceConsentAt: String? = null,
     val faceConsentVersion: String? = null,
+    /** From GET /schools/me — off|soft|restrict when Backend READY. */
+    val geoFenceMode: String? = null,
     val faceBusy: Boolean = false,
     val faceMessage: String? = null,
     val facePhase: FaceLoginPhase = FaceLoginPhase.HUB,
@@ -229,6 +232,10 @@ class KioskViewModel(
     private suspend fun loadAfterLogin(loginUser: MeResponse) {
         runCatching { repository.warmup() }
         val me = runCatching { repository.me() }.getOrNull() ?: loginUser
+        val schoolMe = runCatching { liveApi.schoolMe() }.getOrNull()
+        if (schoolMe?.geoFenceMode != null) {
+            _state.update { it.copy(geoFenceMode = schoolMe.geoFenceMode) }
+        }
         when (KioskRole.fromJwt(me.role)) {
             KioskRole.GATE -> loadGateHome(me)
             KioskRole.HOST -> {
@@ -1633,15 +1640,14 @@ class KioskViewModel(
                     )
                 }
             } catch (e: ApiException) {
-                val geo = e.code.contains("GEO_FENCE", ignoreCase = true) ||
-                    e.message.contains("GEO_FENCE", ignoreCase = true)
+                val geo = GeoFenceCodes.isRestricted(e.code, e.message)
                 if (geo) {
                     _state.update {
                         it.copy(
                             faceBusy = false,
                             facePhase = FaceLoginPhase.HUB,
                             faceMessage = e.message,
-                            toast = "Outside campus geo-fence — move inside campus",
+                            toast = GeoFenceCodes.toastMessage(),
                             toastKind = ToastKind.ERROR,
                         )
                     }
@@ -1694,15 +1700,14 @@ class KioskViewModel(
             }
             val liveErr = liveResult.exceptionOrNull()
             if (liveErr is ApiException) {
-                val geo = liveErr.code.contains("GEO_FENCE", ignoreCase = true) ||
-                    liveErr.message.contains("GEO_FENCE", ignoreCase = true)
+                val geo = GeoFenceCodes.isRestricted(liveErr.code, liveErr.message)
                 if (geo) {
                     _state.update {
                         it.copy(
                             faceBusy = false,
                             facePhase = FaceLoginPhase.HUB,
                             faceMessage = liveErr.message,
-                            toast = "Outside campus geo-fence — move inside campus",
+                            toast = GeoFenceCodes.toastMessage(),
                             toastKind = ToastKind.ERROR,
                         )
                     }

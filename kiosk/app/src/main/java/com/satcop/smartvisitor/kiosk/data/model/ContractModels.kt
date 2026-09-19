@@ -22,8 +22,12 @@ data class School(
     val id: String,
     val name: String,
     val timezone: String,
-    val overdueHoursDefault: Int,
+    val overdueHoursDefault: Int = 2,
     val config: SchoolConfig? = null,
+    /** School flag — staff face login (AC-FL). */
+    val faceLoginEnabled: Boolean? = null,
+    /** off | soft | restrict — default restrict (Viren HARD). Backend enforces 403. */
+    val geoFenceMode: String? = null,
 )
 
 @Serializable
