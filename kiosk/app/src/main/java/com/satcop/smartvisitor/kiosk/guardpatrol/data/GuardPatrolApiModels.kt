@@ -120,3 +120,40 @@ data class CreatePatrolAssignmentRequest(
     val shiftEnd: String? = null,
     val notes: String? = null,
 )
+
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+data class CreatePatrolIncidentRequest(
+    val schoolId: String,
+    val guardId: String,
+    val type: String,
+    val notes: String,
+    val photoKey: String,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val roundId: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val assignmentId: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val checkpointId: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val lat: Double? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val lng: Double? = null,
+)
+
+@Serializable
+data class PatrolIncidentDto(
+    val id: String,
+    val schoolId: String,
+    val guardId: String,
+    val type: String,
+    val notes: String = "",
+    val photoKey: String? = null,
+    val roundId: String? = null,
+    val assignmentId: String? = null,
+    val checkpointId: String? = null,
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val createdAt: String? = null,
+    val meta: Meta? = null,
+)

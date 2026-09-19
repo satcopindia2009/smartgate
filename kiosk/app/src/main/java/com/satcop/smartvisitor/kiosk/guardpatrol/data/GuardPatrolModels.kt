@@ -122,3 +122,39 @@ data class PatrolAssignment(
     val assignedAtEpochMs: Long? = null,
     val notes: String? = null,
 )
+
+enum class IncidentType {
+    SAFETY,
+    MAINTENANCE,
+    SUSPICIOUS,
+    OTHER;
+
+    fun display(): String = when (this) {
+        SAFETY -> "Safety"
+        MAINTENANCE -> "Maintenance"
+        SUSPICIOUS -> "Suspicious"
+        OTHER -> "Other"
+    }
+
+    fun apiValue(): String = name.lowercase()
+}
+
+/**
+ * Wave 2 Patrol Incident (AC-PI1/PI2) — Mobile log with live photo required.
+ * Admin list (AC-PI3) OUT of Mobile; retention ~90d (AC-PI4) compliance hint only.
+ */
+data class PatrolIncident(
+    val id: String,
+    val schoolId: String,
+    val roundId: String? = null,
+    val assignmentId: String? = null,
+    val checkpointId: String? = null,
+    val guardId: String,
+    val type: IncidentType,
+    val notes: String,
+    /** Local jpeg path / photoKey; required before submit (AC-PI1). */
+    val photoKey: String,
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val createdAtEpochMs: Long = System.currentTimeMillis(),
+)

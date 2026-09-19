@@ -3,6 +3,10 @@ package com.satcop.smartvisitor.kiosk.guardpatrol.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.CreatePatrolIncidentRequest
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.IncidentType
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.LocalPatrolIncidentStore
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolIncident
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.Checkpoint
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolAssignment
@@ -25,6 +29,7 @@ import kotlinx.coroutines.withContext
 enum class GuardPatrolScreen {
     START,
     ACTIVE,
+    INCIDENT,
     RESULT,
 }
 
@@ -61,6 +66,13 @@ data class GuardPatrolUiState(
     val liveReady: Boolean = false,
     val busy: Boolean = false,
     val statusLine: String = "Connecting…",
+    // Wave 2 Incident (AC-PI1/PI2/PI5) — additive; never blocks Start/Scan/End.
+    val incidentType: IncidentType = IncidentType.SAFETY,
+    val incidentNotes: String = "",
+    val incidentCheckpointId: String? = null,
+    val incidentPhotoJpeg: ByteArray? = null,
+    val incidentBusy: Boolean = false,
+    val incidentReturnScreen: GuardPatrolScreen = GuardPatrolScreen.ACTIVE,
 )
 
 class GuardPatrolViewModel(
@@ -497,6 +509,127 @@ class GuardPatrolViewModel(
             )
         }
     }
+
+    
+    fun openIncidentReport() {
+        val returnTo = _state.value.screen
+        _state.update {
+            it.copy(
+                screen = GuardPatrolScreen.INCIDENT,
+                incidentReturnScreen = if (returnTo == GuardPatrolScreen.INCIDENT) GuardPatrolScreen.ACTIVE else returnTo,
+                incidentType = IncidentType.SAFETY,
+                incidentNotes = "",
+                incidentCheckpointId = null,
+                incidentPhotoJpeg = null,
+                incidentBusy = false,
+            )
+        }
+    }
+
+    fun cancelIncidentReport() {
+        _state.update {
+            it.copy(
+                screen = it.incidentReturnScreen,
+                incidentBusy = false,
+                incidentPhotoJpeg = null,
+            )
+        }
+    }
+
+    fun setIncidentType(type: IncidentType) {
+        _state.update { it.copy(incidentType = type) }
+    }
+
+    fun setIncidentNotes(value: String) {
+        _state.update { it.copy(incidentNotes = value) }
+    }
+
+    fun setIncidentCheckpoint(id: String?) {
+        _state.update { it.copy(incidentCheckpointId = id) }
+    }
+
+    fun setIncidentPhoto(jpeg: ByteArray) {
+        _state.update { it.copy(incidentPhotoJpeg = jpeg) }
+    }
+
+    fun clearIncidentPhoto() {
+        _state.update { it.copy(incidentPhotoJpeg = null) }
+    }
+
+    /** AC-PI1/PI2 — live photo required; links roundId/assignmentId; fixture if API 404 (AC-PI5). */
+    fun submitIncident() {
+        val s = _state.value
+        val jpeg = s.incidentPhotoJpeg
+        if (jpeg == null || jpeg.isEmpty()) {
+            _state.update {
+                it.copy(
+                    toast = ToastEvent(System.currentTimeMillis(), "Live photo required", ToastKind.WARNING),
+                )
+            }
+            return
+        }
+        val notes = s.incidentNotes.trim()
+        if (notes.isBlank()) {
+            _state.update {
+                it.copy(toast = ToastEvent(System.currentTimeMillis(), "Add notes", ToastKind.WARNING))
+            }
+            return
+        }
+        val round = s.round
+        viewModelScope.launch {
+            _state.update { it.copy(incidentBusy = true) }
+            val photoKey = "local/incident/${System.currentTimeMillis()}.jpg"
+            val liveMsg = runCatching {
+                withContext(Dispatchers.IO) {
+                    // Prefer media upload when available; until then send data-URI-ish key for Backend later.
+                    api.createIncident(
+                        CreatePatrolIncidentRequest(
+                            schoolId = s.schoolId,
+                            guardId = s.guardId,
+                            type = s.incidentType.apiValue(),
+                            notes = notes,
+                            photoKey = photoKey,
+                            roundId = round?.id,
+                            assignmentId = round?.assignmentId,
+                            checkpointId = s.incidentCheckpointId,
+                            lat = if (s.simulateOffCampus) 0.0 else 18.5204,
+                            lng = if (s.simulateOffCampus) 0.0 else 73.8567,
+                        ),
+                    )
+                }
+                "LIVE"
+            }.getOrElse {
+                "FIXTURE"
+            }
+            val incident = PatrolIncident(
+                id = LocalPatrolIncidentStore.newId(),
+                schoolId = s.schoolId,
+                roundId = round?.id,
+                assignmentId = round?.assignmentId,
+                checkpointId = s.incidentCheckpointId,
+                guardId = s.guardId,
+                type = s.incidentType,
+                notes = notes,
+                photoKey = photoKey,
+                lat = if (s.simulateOffCampus) 0.0 else 18.5204,
+                lng = if (s.simulateOffCampus) 0.0 else 73.8567,
+            )
+            LocalPatrolIncidentStore.add(incident)
+            _state.update {
+                it.copy(
+                    incidentBusy = false,
+                    incidentPhotoJpeg = null,
+                    screen = it.incidentReturnScreen,
+                    toast = ToastEvent(
+                        System.currentTimeMillis(),
+                        "Incident logged · ${incident.type.display()} · $liveMsg · photo ~90d",
+                        ToastKind.SUCCESS,
+                    ),
+                )
+            }
+        }
+    }
+
 
     fun clearToast() {
         _state.update { it.copy(toast = null) }

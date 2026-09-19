@@ -115,6 +115,24 @@ class LiveGuardPatrolApi(
     fun endRound(roundId: String): PatrolRoundDto =
         post("/rounds/$roundId/end", "{}")
 
+    /**
+     * Wave 2 Patrol Incident — try POST /patrol-incidents then /rounds/{id}/incidents.
+     * Valley OpenAPI (0.7.0) has neither path; callers should fixture-fallback on 404.
+     */
+    fun createIncident(body: CreatePatrolIncidentRequest): PatrolIncidentDto {
+        val payload = json.encodeToString(body)
+        return try {
+            post("/patrol-incidents", payload)
+        } catch (e: ApiException) {
+            if (e.httpStatus == 404 && !body.roundId.isNullOrBlank()) {
+                post("/rounds/${body.roundId}/incidents", payload)
+            } else {
+                throw e
+            }
+        }
+    }
+
+
     private inline fun <reified T> get(path: String): T {
         val req = authorized(Request.Builder().url("$baseUrl$path").get())
         return json.decodeFromString(execute(req))

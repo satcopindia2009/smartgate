@@ -73,6 +73,7 @@ fun GuardPatrolApp(
     val activity = LocalContext.current as? Activity
     BackHandler {
         when (state.screen) {
+            GuardPatrolScreen.INCIDENT -> vm.cancelIncidentReport()
             GuardPatrolScreen.ACTIVE, GuardPatrolScreen.RESULT -> vm.backToStart()
             GuardPatrolScreen.START -> {
                 onExit?.invoke() ?: activity?.finishAffinity()
@@ -109,6 +110,17 @@ fun GuardPatrolApp(
                     onEnd = vm::endRound,
                     onToggleOffCampus = vm::setSimulateOffCampus,
                     onBackTemplates = vm::backToStart,
+                    onReportIncident = vm::openIncidentReport,
+                )
+                GuardPatrolScreen.INCIDENT -> IncidentReportScreen(
+                    state = state,
+                    onType = vm::setIncidentType,
+                    onNotes = vm::setIncidentNotes,
+                    onCheckpoint = vm::setIncidentCheckpoint,
+                    onPhoto = vm::setIncidentPhoto,
+                    onClearPhoto = vm::clearIncidentPhoto,
+                    onSubmit = vm::submitIncident,
+                    onCancel = vm::cancelIncidentReport,
                 )
                 GuardPatrolScreen.RESULT -> EndResultScreen(
                     state = state,
@@ -454,6 +466,7 @@ private fun ActiveRoundScreen(
     onEnd: () -> Unit,
     onToggleOffCampus: (Boolean) -> Unit,
     onBackTemplates: () -> Unit,
+    onReportIncident: () -> Unit,
 ) {
     val round = state.round ?: return
     val tpl = state.templates.find { it.id == round.templateId }
@@ -573,6 +586,13 @@ private fun ActiveRoundScreen(
                 accent = KioskColors.purple,
             )
         }
+        Spacer(Modifier.height(8.dp))
+        SecondaryButton(
+            label = "Report incident",
+            icon = { Icon(Icons.Default.Warning, null, tint = KioskColors.peakAmberBright, modifier = Modifier.size(18.dp)) },
+            onClick = onReportIncident,
+            accent = KioskColors.orange,
+        )
         Spacer(Modifier.height(8.dp))
         DangerButton(label = "End round", onClick = onEnd)
         Spacer(Modifier.height(6.dp))
