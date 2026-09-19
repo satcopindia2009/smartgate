@@ -556,7 +556,7 @@ class GuardPatrolViewModel(
         _state.update { it.copy(incidentPhotoJpeg = null) }
     }
 
-    /** AC-PI1/PI2 — live photo required; links roundId/assignmentId; fixture if API 404 (AC-PI5). */
+    /** AC-PI1/PI2 — live photo → POST /media/upload kind=patrol_incident_photo then POST /patrol-incidents. */
     fun submitIncident() {
         val s = _state.value
         val jpeg = s.incidentPhotoJpeg
@@ -578,42 +578,61 @@ class GuardPatrolViewModel(
         val round = s.round
         viewModelScope.launch {
             _state.update { it.copy(incidentBusy = true) }
-            val photoKey = "local/incident/${System.currentTimeMillis()}.jpg"
-            val liveMsg = runCatching {
+            val lat = if (s.simulateOffCampus) 0.0 else 18.5204
+            val lng = if (s.simulateOffCampus) 0.0 else 73.8567
+            val result = runCatching {
                 withContext(Dispatchers.IO) {
-                    // Prefer media upload when available; until then send data-URI-ish key for Backend later.
-                    api.createIncident(
+                    val uploaded = api.uploadMedia(
+                        bytes = jpeg,
+                        filename = "incident-${System.currentTimeMillis()}.jpg",
+                        kind = "patrol_incident_photo",
+                    )
+                    val dto = api.createIncident(
                         CreatePatrolIncidentRequest(
                             schoolId = s.schoolId,
                             guardId = s.guardId,
                             type = s.incidentType.apiValue(),
                             notes = notes,
-                            photoKey = photoKey,
+                            photoKey = uploaded.key,
                             roundId = round?.id,
                             assignmentId = round?.assignmentId,
                             checkpointId = s.incidentCheckpointId,
-                            lat = if (s.simulateOffCampus) 0.0 else 18.5204,
-                            lng = if (s.simulateOffCampus) 0.0 else 73.8567,
+                            lat = lat,
+                            lng = lng,
                         ),
                     )
+                    PatrolIncident(
+                        id = dto.id,
+                        schoolId = dto.schoolId.ifBlank { s.schoolId },
+                        roundId = dto.roundId ?: round?.id,
+                        assignmentId = dto.assignmentId ?: round?.assignmentId,
+                        checkpointId = dto.checkpointId ?: s.incidentCheckpointId,
+                        guardId = dto.guardId.ifBlank { s.guardId },
+                        type = s.incidentType,
+                        notes = dto.notes.ifBlank { notes },
+                        photoKey = dto.photoKey ?: uploaded.key,
+                        lat = dto.lat ?: lat,
+                        lng = dto.lng ?: lng,
+                    ) to "LIVE"
                 }
-                "LIVE"
-            }.getOrElse {
-                "FIXTURE"
+            }.getOrElse { err ->
+                val localKey = "local/incident/${System.currentTimeMillis()}.jpg"
+                val local = PatrolIncident(
+                    id = LocalPatrolIncidentStore.newId(),
+                    schoolId = s.schoolId,
+                    roundId = round?.id,
+                    assignmentId = round?.assignmentId,
+                    checkpointId = s.incidentCheckpointId,
+                    guardId = s.guardId,
+                    type = s.incidentType,
+                    notes = notes,
+                    photoKey = localKey,
+                    lat = lat,
+                    lng = lng,
+                )
+                local to "FIXTURE"
             }
-            val incident = PatrolIncident(
-                id = LocalPatrolIncidentStore.newId(),
-                schoolId = s.schoolId,
-                roundId = round?.id,
-                assignmentId = round?.assignmentId,
-                checkpointId = s.incidentCheckpointId,
-                guardId = s.guardId,
-                type = s.incidentType,
-                notes = notes,
-                photoKey = photoKey,
-                lat = if (s.simulateOffCampus) 0.0 else 18.5204,
-                lng = if (s.simulateOffCampus) 0.0 else 73.8567,
-            )
+            val (incident, liveMsg) = result
             LocalPatrolIncidentStore.add(incident)
             _state.update {
                 it.copy(
@@ -622,8 +641,8 @@ class GuardPatrolViewModel(
                     screen = it.incidentReturnScreen,
                     toast = ToastEvent(
                         System.currentTimeMillis(),
-                        "Incident logged · ${incident.type.display()} · $liveMsg · photo ~90d",
-                        ToastKind.SUCCESS,
+                        "Incident ${incident.id} · ${incident.type.display()} · $liveMsg · photo ~90d",
+                        if (liveMsg == "LIVE") ToastKind.SUCCESS else ToastKind.WARNING,
                     ),
                 )
             }

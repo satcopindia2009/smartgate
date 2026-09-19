@@ -11,7 +11,9 @@ import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.satcop.smartvisitor.kiosk.data.model.MediaUploadResponse
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -115,9 +117,30 @@ class LiveGuardPatrolApi(
     fun endRound(roundId: String): PatrolRoundDto =
         post("/rounds/$roundId/end", "{}")
 
+
+    /** POST /media/upload — kind=patrol_incident_photo (AC-PI1 / AC-PI4). */
+    fun uploadMedia(
+        bytes: ByteArray,
+        filename: String = "incident.jpg",
+        contentType: String = "image/jpeg",
+        kind: String = "patrol_incident_photo",
+    ): MediaUploadResponse {
+        val part = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart(
+                "file",
+                filename,
+                bytes.toRequestBody(contentType.toMediaType()),
+            )
+            .addFormDataPart("kind", kind)
+            .build()
+        val req = authorized(Request.Builder().url("$baseUrl/media/upload").post(part))
+        return json.decodeFromString(execute(req))
+    }
+
     /**
-     * Wave 2 Patrol Incident — try POST /patrol-incidents then /rounds/{id}/incidents.
-     * Valley OpenAPI (0.7.0) has neither path; callers should fixture-fallback on 404.
+     * Wave 2 Patrol Incident — POST /patrol-incidents (fallback /rounds/{id}/incidents).
+     * Prefer live; callers fixture-fallback only on transport/HTTP failure.
      */
     fun createIncident(body: CreatePatrolIncidentRequest): PatrolIncidentDto {
         val payload = json.encodeToString(body)
