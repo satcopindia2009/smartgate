@@ -142,8 +142,48 @@ fun KioskApp(
                     }
                 } else {
                     val role = state.homeRole()
-                    if (role == KioskRole.GUARD) {
-                        GuardPatrolApp(onExit = viewModel::logout)
+                    if (role == KioskRole.GUARD && state.screen == KioskScreen.COURIER) {
+                        CourierLogScreen(
+                            company = state.courierCompany,
+                            recipient = state.courierRecipient,
+                            personName = state.courierPerson,
+                            mobile = state.courierMobile,
+                            note = state.courierNote,
+                            dept = state.courierDept,
+                            busy = state.courierBusy,
+                            recent = state.courierRecent,
+                            onCompany = viewModel::updateCourierCompany,
+                            onRecipient = viewModel::updateCourierRecipient,
+                            onPerson = viewModel::updateCourierPerson,
+                            onMobile = viewModel::updateCourierMobile,
+                            onNote = viewModel::updateCourierNote,
+                            onDept = viewModel::updateCourierDept,
+                            onReceive = viewModel::receiveCourier,
+                            onHandOver = viewModel::handOverCourier,
+                            onBack = viewModel::closeGuardTool,
+                        )
+                    } else if (role == KioskRole.GUARD && state.screen == KioskScreen.LOST_FOUND) {
+                        LostFoundCreateScreen(
+                            description = state.lfDescription,
+                            location = state.lfLocation,
+                            finder = state.lfFinder,
+                            finderMobile = state.lfFinderMobile,
+                            foundAt = state.lfFoundAt,
+                            busy = state.lfBusy,
+                            onDescription = viewModel::updateLfDescription,
+                            onLocation = viewModel::updateLfLocation,
+                            onFinder = viewModel::updateLfFinder,
+                            onFinderMobile = viewModel::updateLfFinderMobile,
+                            onFoundAt = viewModel::updateLfFoundAt,
+                            onSubmit = viewModel::submitLostFound,
+                            onBack = viewModel::closeGuardTool,
+                        )
+                    } else if (role == KioskRole.GUARD) {
+                        GuardPatrolApp(
+                            onExit = viewModel::logout,
+                            onCourier = viewModel::openCourier,
+                            onLostFound = viewModel::openLostFound,
+                        )
                     } else {
                     KioskHeader(
                         schoolName = state.schoolName,

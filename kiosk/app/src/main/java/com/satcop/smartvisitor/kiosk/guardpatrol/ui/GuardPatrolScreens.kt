@@ -65,6 +65,8 @@ import java.util.Date
 @Composable
 fun GuardPatrolApp(
     onExit: (() -> Unit)? = null,
+    onCourier: (() -> Unit)? = null,
+    onLostFound: (() -> Unit)? = null,
     vm: GuardPatrolViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsState()
@@ -102,6 +104,9 @@ fun GuardPatrolApp(
                     onStart = vm::startRound,
                     onStartAssignment = vm::startFromAssignment,
                     onToggleLive = vm::setUseLive,
+                    onCourier = onCourier,
+                    onLostFound = onLostFound,
+                    onReportIncident = vm::openIncidentReport,
                 )
                 GuardPatrolScreen.ACTIVE -> ActiveRoundScreen(
                     state = state,
@@ -111,6 +116,8 @@ fun GuardPatrolApp(
                     onToggleOffCampus = vm::setSimulateOffCampus,
                     onBackTemplates = vm::backToStart,
                     onReportIncident = vm::openIncidentReport,
+                    onCourier = onCourier,
+                    onLostFound = onLostFound,
                 )
                 GuardPatrolScreen.INCIDENT -> IncidentReportScreen(
                     state = state,
@@ -208,6 +215,9 @@ private fun StartRoundScreen(
     onStart: () -> Unit,
     onStartAssignment: (String) -> Unit,
     onToggleLive: (Boolean) -> Unit,
+    onCourier: (() -> Unit)? = null,
+    onLostFound: (() -> Unit)? = null,
+    onReportIncident: (() -> Unit)? = null,
 ) {
     val allowSelfStart = !state.requireAssignment
     Column(
@@ -263,6 +273,12 @@ private fun StartRoundScreen(
                 fromLive = state.assignmentsFromLive,
                 busy = state.busy,
                 onStart = onStartAssignment,
+            )
+
+            GuardToolsChips(
+                onCourier = onCourier,
+                onLostFound = onLostFound,
+                onReportIncident = onReportIncident,
             )
             if (allowSelfStart) {
                 Text(
@@ -467,6 +483,8 @@ private fun ActiveRoundScreen(
     onToggleOffCampus: (Boolean) -> Unit,
     onBackTemplates: () -> Unit,
     onReportIncident: () -> Unit,
+    onCourier: (() -> Unit)? = null,
+    onLostFound: (() -> Unit)? = null,
 ) {
     val round = state.round ?: return
     val tpl = state.templates.find { it.id == round.templateId }
@@ -587,11 +605,10 @@ private fun ActiveRoundScreen(
             )
         }
         Spacer(Modifier.height(8.dp))
-        SecondaryButton(
-            label = "Report incident",
-            icon = { Icon(Icons.Default.Warning, null, tint = KioskColors.peakAmberBright, modifier = Modifier.size(18.dp)) },
-            onClick = onReportIncident,
-            accent = KioskColors.orange,
+        GuardToolsChips(
+            onCourier = onCourier,
+            onLostFound = onLostFound,
+            onReportIncident = onReportIncident,
         )
         Spacer(Modifier.height(8.dp))
         DangerButton(label = "End round", onClick = onEnd)
@@ -1008,6 +1025,76 @@ private fun DangerButton(label: String, onClick: () -> Unit) {
             fontFamily = KioskFont,
             fontSize = 15.sp,
         )
+    }
+}
+
+
+@Composable
+private fun GuardToolsChips(
+    onCourier: (() -> Unit)?,
+    onLostFound: (() -> Unit)?,
+    onReportIncident: (() -> Unit)?,
+) {
+    if (onCourier == null && onLostFound == null && onReportIncident == null) return
+    Text(
+        "Quick tools",
+        color = KioskColors.textMuted,
+        fontSize = 12.sp,
+        fontFamily = KioskFont,
+        modifier = Modifier.padding(bottom = 6.dp),
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        if (onCourier != null) {
+            ToolChip(
+                label = "Courier entry",
+                sub = "Log visitor / parcel",
+                accent = KioskColors.cyan,
+                onClick = onCourier,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (onLostFound != null) {
+            ToolChip(
+                label = "Lost & Found",
+                sub = "Create record",
+                accent = KioskColors.purple,
+                onClick = onLostFound,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (onReportIncident != null) {
+            ToolChip(
+                label = "Report incident",
+                sub = "+ photo",
+                accent = KioskColors.orange,
+                onClick = onReportIncident,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ToolChip(
+    label: String,
+    sub: String,
+    accent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .clip(ControlShape)
+            .background(accent.copy(alpha = 0.12f))
+            .border(1.dp, accent.copy(alpha = 0.45f), ControlShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+    ) {
+        Text(label, color = KioskColors.text, fontFamily = KioskFont, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        Text(sub, color = KioskColors.textMuted, fontFamily = KioskFont, fontSize = 10.sp)
     }
 }
 
