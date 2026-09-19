@@ -53,25 +53,33 @@ fun FaceLoginScreen(
     onCancelCapture: () -> Unit,
     onUsePassword: () -> Unit,
 ) {
+    val capturePhase =
+        phase == FaceLoginPhase.CAPTURE_ENROLL || phase == FaceLoginPhase.CAPTURE_VERIFY
+    // Crashfix 1046: scroll HUB/CONSENT only — never scroll CameraX preview.
     Column(
         Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
+            .then(
+                if (capturePhase) Modifier
+                else Modifier.verticalScroll(rememberScrollState()),
+            ),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            "Staff face login",
-            color = KioskColors.text,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = KioskFont,
-        )
-        Text(
-            "Gate · Host · Guard · visitor face OUT · password always available (AC-FL1)",
-            color = KioskColors.textMuted,
-            fontSize = 13.sp,
-            fontFamily = KioskFont,
-        )
+        if (!capturePhase) {
+            Text(
+                "Staff face login",
+                color = KioskColors.text,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = KioskFont,
+            )
+            Text(
+                "Gate · Host · Guard · visitor face OUT · password always available (AC-FL1)",
+                color = KioskColors.textMuted,
+                fontSize = 13.sp,
+                fontFamily = KioskFont,
+            )
+        }
 
         when (phase) {
             FaceLoginPhase.CONSENT_ENROLL -> {

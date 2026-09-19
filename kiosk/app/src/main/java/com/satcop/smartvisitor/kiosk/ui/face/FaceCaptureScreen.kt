@@ -89,9 +89,10 @@ fun FaceCaptureScreen(
     // Crashfix 1046: unbind camera on leave; never touch Compose state off main.
     DisposableEffect(Unit) {
         onDispose {
-            runCatching {
-                ProcessCameraProvider.getInstance(context).get().unbindAll()
-            }
+            val future = ProcessCameraProvider.getInstance(context)
+            future.addListener({
+                runCatching { future.get().unbindAll() }
+            }, mainExecutor)
             cameraExecutor.shutdown()
         }
     }
