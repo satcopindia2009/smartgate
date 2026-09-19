@@ -5,8 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.CreatePatrolIncidentRequest
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.IncidentType
-import com.satcop.smartvisitor.kiosk.guardpatrol.data.LocalPatrolIncidentStore
-import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolIncident
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.Checkpoint
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolAssignment
@@ -556,7 +554,7 @@ class GuardPatrolViewModel(
         _state.update { it.copy(incidentPhotoJpeg = null) }
     }
 
-    /** AC-PI1/PI2 — live photo → POST /media/upload kind=patrol_incident_photo then POST /patrol-incidents. */
+    /** AC-PI1/PI2 — LIVE only: media kind=patrol_incident_photo then POST /patrol-incidents (no fixture). */
     fun submitIncident() {
         val s = _state.value
         val jpeg = s.incidentPhotoJpeg
@@ -580,14 +578,14 @@ class GuardPatrolViewModel(
             _state.update { it.copy(incidentBusy = true) }
             val lat = if (s.simulateOffCampus) 0.0 else 18.5204
             val lng = if (s.simulateOffCampus) 0.0 else 73.8567
-            val result = runCatching {
-                withContext(Dispatchers.IO) {
+            try {
+                val dto = withContext(Dispatchers.IO) {
                     val uploaded = api.uploadMedia(
                         bytes = jpeg,
                         filename = "incident-${System.currentTimeMillis()}.jpg",
                         kind = "patrol_incident_photo",
                     )
-                    val dto = api.createIncident(
+                    api.createIncident(
                         CreatePatrolIncidentRequest(
                             schoolId = s.schoolId,
                             guardId = s.guardId,
@@ -601,50 +599,31 @@ class GuardPatrolViewModel(
                             lng = lng,
                         ),
                     )
-                    PatrolIncident(
-                        id = dto.id,
-                        schoolId = dto.schoolId.ifBlank { s.schoolId },
-                        roundId = dto.roundId ?: round?.id,
-                        assignmentId = dto.assignmentId ?: round?.assignmentId,
-                        checkpointId = dto.checkpointId ?: s.incidentCheckpointId,
-                        guardId = dto.guardId.ifBlank { s.guardId },
-                        type = s.incidentType,
-                        notes = dto.notes.ifBlank { notes },
-                        photoKey = dto.photoKey ?: uploaded.key,
-                        lat = dto.lat ?: lat,
-                        lng = dto.lng ?: lng,
-                    ) to "LIVE"
                 }
-            }.getOrElse { err ->
-                val localKey = "local/incident/${System.currentTimeMillis()}.jpg"
-                val local = PatrolIncident(
-                    id = LocalPatrolIncidentStore.newId(),
-                    schoolId = s.schoolId,
-                    roundId = round?.id,
-                    assignmentId = round?.assignmentId,
-                    checkpointId = s.incidentCheckpointId,
-                    guardId = s.guardId,
-                    type = s.incidentType,
-                    notes = notes,
-                    photoKey = localKey,
-                    lat = lat,
-                    lng = lng,
-                )
-                local to "FIXTURE"
-            }
-            val (incident, liveMsg) = result
-            LocalPatrolIncidentStore.add(incident)
-            _state.update {
-                it.copy(
-                    incidentBusy = false,
-                    incidentPhotoJpeg = null,
-                    screen = it.incidentReturnScreen,
-                    toast = ToastEvent(
-                        System.currentTimeMillis(),
-                        "Incident ${incident.id} · ${incident.type.display()} · $liveMsg · photo ~90d",
-                        if (liveMsg == "LIVE") ToastKind.SUCCESS else ToastKind.WARNING,
-                    ),
-                )
+                _state.update {
+                    it.copy(
+                        incidentBusy = false,
+                        incidentPhotoJpeg = null,
+                        screen = it.incidentReturnScreen,
+                        toast = ToastEvent(
+                            System.currentTimeMillis(),
+                            "Incident ${dto.id} · LIVE · photo ~90d",
+                            ToastKind.SUCCESS,
+                        ),
+                    )
+                }
+            } catch (e: Exception) {
+                val msg = (e as? ApiException)?.message ?: e.message ?: "Submit failed"
+                _state.update {
+                    it.copy(
+                        incidentBusy = false,
+                        toast = ToastEvent(
+                            System.currentTimeMillis(),
+                            "LIVE failed · $msg",
+                            ToastKind.ERROR,
+                        ),
+                    )
+                }
             }
         }
     }
