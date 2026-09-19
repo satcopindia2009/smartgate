@@ -8,12 +8,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.satcop.smartvisitor.kiosk.data.geo.CaptureGeo
 import com.satcop.smartvisitor.kiosk.ui.KioskApp
 import com.satcop.smartvisitor.kiosk.ui.theme.SatcopKioskTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CaptureGeo.install(applicationContext)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)

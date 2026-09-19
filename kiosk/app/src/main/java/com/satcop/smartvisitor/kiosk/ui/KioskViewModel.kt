@@ -29,6 +29,7 @@ import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.PickupCreate
 import com.satcop.smartvisitor.kiosk.data.model.PickupOut
 import com.satcop.smartvisitor.kiosk.data.model.PickupReasons
+import com.satcop.smartvisitor.kiosk.data.geo.CaptureGeo
 import com.satcop.smartvisitor.kiosk.data.model.FaceEnrollRequest
 import com.satcop.smartvisitor.kiosk.data.model.FaceVerifyRequest
 import com.satcop.smartvisitor.kiosk.data.model.GateConsent
@@ -1564,6 +1565,7 @@ class KioskViewModel(
         }
     }
 
+
     private fun enrollFace(jpegBytes: ByteArray) {
         val s = _state.value
         val user = s.loginUsername.trim()
@@ -1591,8 +1593,8 @@ class KioskViewModel(
             _state.update { it.copy(faceBusy = true, faceMessage = "Enrolling…") }
             store.enroll(user, jpegBytes, s.faceConsentVersion!!, s.faceConsentAt!!)
             val b64 = LocalFaceTemplateStore.jpegToBase64(jpegBytes)
-            val liveMsg = runCatching {
-                // Valley enroll requires Bearer — bootstrap session via password if needed.
+            val stamp = CaptureGeo.read()
+            try {
                 if (liveApi.accessToken.isNullOrBlank()) {
                     val pw = s.loginPassword
                     if (pw.isBlank()) {
@@ -1608,21 +1610,64 @@ class KioskViewModel(
                         faceConsentAt = s.faceConsentAt!!,
                         consentVersion = StaffFaceConsent.VERSION,
                         consentAt = s.faceConsentAt,
+                        capturedAt = stamp.capturedAt,
+                        lat = stamp.lat,
+                        lng = stamp.lng,
+                        accuracyM = stamp.accuracyM,
+                        gpsMissing = stamp.gpsMissing,
                     ),
                 )
-                "Live enroll OK (Bearer)"
-            }.getOrElse { e ->
-                "Local demo enroll OK · live pending (${e.message?.take(100) ?: "error"})"
-            }
-            _state.update {
-                it.copy(
-                    faceBusy = false,
-                    faceEnrolled = true,
-                    facePhase = FaceLoginPhase.HUB,
-                    faceMessage = liveMsg,
-                    toast = "Face enrolled · staff only",
-                    toastKind = ToastKind.SUCCESS,
-                )
+                val msg = if (stamp.gpsMissing) {
+                    "Live enroll OK · GPS unavailable (gpsMissing)"
+                } else {
+                    "Live enroll OK (Bearer)"
+                }
+                _state.update {
+                    it.copy(
+                        faceBusy = false,
+                        faceEnrolled = true,
+                        facePhase = FaceLoginPhase.HUB,
+                        faceMessage = msg,
+                        toast = if (stamp.gpsMissing) "Face enrolled · location missing (allowed)" else "Face enrolled · staff only",
+                        toastKind = if (stamp.gpsMissing) ToastKind.WARNING else ToastKind.SUCCESS,
+                    )
+                }
+            } catch (e: ApiException) {
+                val geo = e.code.contains("GEO_FENCE", ignoreCase = true) ||
+                    e.message.contains("GEO_FENCE", ignoreCase = true)
+                if (geo) {
+                    _state.update {
+                        it.copy(
+                            faceBusy = false,
+                            facePhase = FaceLoginPhase.HUB,
+                            faceMessage = e.message,
+                            toast = "Outside campus geo-fence — move inside campus",
+                            toastKind = ToastKind.ERROR,
+                        )
+                    }
+                } else {
+                    _state.update {
+                        it.copy(
+                            faceBusy = false,
+                            faceEnrolled = true,
+                            facePhase = FaceLoginPhase.HUB,
+                            faceMessage = "Local demo enroll OK · live pending (${e.message.take(100)})",
+                            toast = "Face enrolled · staff only",
+                            toastKind = ToastKind.SUCCESS,
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        faceBusy = false,
+                        faceEnrolled = true,
+                        facePhase = FaceLoginPhase.HUB,
+                        faceMessage = "Local demo enroll OK · live pending (${e.message?.take(100) ?: "error"})",
+                        toast = "Face enrolled · staff only",
+                        toastKind = ToastKind.SUCCESS,
+                    )
+                }
             }
         }
     }
@@ -1633,11 +1678,49 @@ class KioskViewModel(
         viewModelScope.launch {
             _state.update { it.copy(faceBusy = true, faceMessage = "Verifying…") }
             val b64 = LocalFaceTemplateStore.jpegToBase64(jpegBytes)
-            val live = runCatching {
-                liveApi.faceVerify(FaceVerifyRequest(imageBase64 = b64, username = user.ifBlank { null }))
-            }.getOrNull()
+            val stamp = CaptureGeo.read()
+            val liveResult = runCatching {
+                liveApi.faceVerify(
+                    FaceVerifyRequest(
+                        imageBase64 = b64,
+                        username = user.ifBlank { null },
+                        capturedAt = stamp.capturedAt,
+                        lat = stamp.lat,
+                        lng = stamp.lng,
+                        accuracyM = stamp.accuracyM,
+                        gpsMissing = stamp.gpsMissing,
+                    ),
+                )
+            }
+            val liveErr = liveResult.exceptionOrNull()
+            if (liveErr is ApiException) {
+                val geo = liveErr.code.contains("GEO_FENCE", ignoreCase = true) ||
+                    liveErr.message.contains("GEO_FENCE", ignoreCase = true)
+                if (geo) {
+                    _state.update {
+                        it.copy(
+                            faceBusy = false,
+                            facePhase = FaceLoginPhase.HUB,
+                            faceMessage = liveErr.message,
+                            toast = "Outside campus geo-fence — move inside campus",
+                            toastKind = ToastKind.ERROR,
+                        )
+                    }
+                    return@launch
+                }
+            }
+            val live = liveResult.getOrNull()
             if (live != null && !live.accessToken.isNullOrBlank() && live.user != null) {
-                _state.update { it.copy(faceBusy = false, facePhase = FaceLoginPhase.HUB, faceMessage = "Live face verify OK") }
+                val warn = if (stamp.gpsMissing) " · GPS unavailable (allowed)" else ""
+                _state.update {
+                    it.copy(
+                        faceBusy = false,
+                        facePhase = FaceLoginPhase.HUB,
+                        faceMessage = "Live face verify OK$warn",
+                        toast = if (stamp.gpsMissing) "Face OK · location missing (gpsMissing)" else null,
+                        toastKind = if (stamp.gpsMissing) ToastKind.WARNING else ToastKind.SUCCESS,
+                    )
+                }
                 loadAfterLogin(live.user)
                 return@launch
             }
@@ -1674,6 +1757,7 @@ class KioskViewModel(
             }
         }
     }
+
     /** true = nested pop consumed; false = finish app (AC-BP1/BP2). */
     fun onSystemBack(): Boolean {
         val s = _state.value

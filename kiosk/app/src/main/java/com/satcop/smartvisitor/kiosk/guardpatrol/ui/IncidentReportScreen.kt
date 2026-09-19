@@ -203,6 +203,20 @@ fun IncidentReportScreen(
                 fontFamily = KioskFont,
             )
         }
+        Text(
+            "EN: Face or incident photos on school duty may record time and approximate GPS. Outside geo-fence may block. Denying location is OK — coordinates are never invented.",
+            color = KioskColors.textMuted,
+            fontSize = 10.sp,
+            fontFamily = KioskFont,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Text(
+            "HI: फेस/घटना फोटो के साथ समय और अनुमानित GPS दर्ज हो सकता है। जियो-फेंस के बाहर ब्लॉक हो सकता है।",
+            color = KioskColors.textMuted,
+            fontSize = 10.sp,
+            fontFamily = KioskFont,
+            modifier = Modifier.padding(top = 2.dp),
+        )
         Spacer(Modifier.height(6.dp))
         Box(
             modifier = Modifier

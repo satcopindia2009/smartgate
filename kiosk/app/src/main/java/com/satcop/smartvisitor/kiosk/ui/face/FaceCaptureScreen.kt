@@ -102,6 +102,18 @@ fun FaceCaptureScreen(
             fontSize = 13.sp,
             fontFamily = KioskFont,
         )
+        Text(
+            text = "EN: Face photos on school duty may record time and approximate GPS for campus safety and audit. Outside geo-fence may block. Denying location is OK — coordinates are never invented. (guard_capture_location_hint_en_hi_v1)",
+            color = KioskColors.textMuted,
+            fontSize = 10.sp,
+            fontFamily = KioskFont,
+        )
+        Text(
+            text = "HI: स्कूल ड्यूटी पर फेस फोटो के साथ समय और अनुमानित GPS दर्ज हो सकता है। जियो-फेंस के बाहर कार्रवाई ब्लॉक हो सकती है।",
+            color = KioskColors.textMuted,
+            fontSize = 10.sp,
+            fontFamily = KioskFont,
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()

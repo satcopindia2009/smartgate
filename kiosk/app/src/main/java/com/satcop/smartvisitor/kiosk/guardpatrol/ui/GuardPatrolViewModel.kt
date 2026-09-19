@@ -2,6 +2,7 @@ package com.satcop.smartvisitor.kiosk.guardpatrol.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.satcop.smartvisitor.kiosk.data.geo.CaptureGeo
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.CreatePatrolIncidentRequest
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.IncidentType
@@ -554,7 +555,7 @@ class GuardPatrolViewModel(
         _state.update { it.copy(incidentPhotoJpeg = null) }
     }
 
-    /** AC-PI1/PI2 — LIVE only: media kind=patrol_incident_photo then POST /patrol-incidents (no fixture). */
+    /** AC-PI1/PI2 — LIVE only + capture stamps (AC-CAP); toast on GEO_FENCE_RESTRICTED. */
     fun submitIncident() {
         val s = _state.value
         val jpeg = s.incidentPhotoJpeg
@@ -576,9 +577,10 @@ class GuardPatrolViewModel(
         val round = s.round
         viewModelScope.launch {
             _state.update { it.copy(incidentBusy = true) }
-            val lat = if (s.simulateOffCampus) 0.0 else 18.5204
-            val lng = if (s.simulateOffCampus) 0.0 else 73.8567
             try {
+                val stamp = CaptureGeo.read()
+                val lat = stamp.lat ?: if (s.simulateOffCampus) 0.0 else null
+                val lng = stamp.lng ?: if (s.simulateOffCampus) 0.0 else null
                 val dto = withContext(Dispatchers.IO) {
                     val uploaded = api.uploadMedia(
                         bytes = jpeg,
@@ -597,9 +599,12 @@ class GuardPatrolViewModel(
                             checkpointId = s.incidentCheckpointId,
                             lat = lat,
                             lng = lng,
+                            capturedAt = stamp.capturedAt,
+                            gpsMissing = stamp.gpsMissing,
                         ),
                     )
                 }
+                val warn = if (stamp.gpsMissing) " · GPS unavailable" else ""
                 _state.update {
                     it.copy(
                         incidentBusy = false,
@@ -607,19 +612,31 @@ class GuardPatrolViewModel(
                         screen = it.incidentReturnScreen,
                         toast = ToastEvent(
                             System.currentTimeMillis(),
-                            "Incident ${dto.id} · LIVE · photo ~90d",
-                            ToastKind.SUCCESS,
+                            "Incident ${dto.id} · LIVE$warn · photo ~90d",
+                            if (stamp.gpsMissing) ToastKind.WARNING else ToastKind.SUCCESS,
                         ),
                     )
                 }
-            } catch (e: Exception) {
-                val msg = (e as? ApiException)?.message ?: e.message ?: "Submit failed"
+            } catch (e: ApiException) {
+                val geo = e.code.contains("GEO_FENCE", ignoreCase = true) ||
+                    e.message.contains("GEO_FENCE", ignoreCase = true)
                 _state.update {
                     it.copy(
                         incidentBusy = false,
                         toast = ToastEvent(
                             System.currentTimeMillis(),
-                            "LIVE failed · $msg",
+                            if (geo) "Outside campus geo-fence — move inside campus" else (e.message),
+                            ToastKind.ERROR,
+                        ),
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        incidentBusy = false,
+                        toast = ToastEvent(
+                            System.currentTimeMillis(),
+                            e.message ?: "LIVE failed",
                             ToastKind.ERROR,
                         ),
                     )
@@ -627,7 +644,6 @@ class GuardPatrolViewModel(
             }
         }
     }
-
 
     fun clearToast() {
         _state.update { it.copy(toast = null) }

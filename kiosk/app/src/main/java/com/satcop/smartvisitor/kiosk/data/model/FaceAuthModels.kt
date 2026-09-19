@@ -1,8 +1,11 @@
 package com.satcop.smartvisitor.kiosk.data.model
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 /** POST /v1/auth/face/enroll — live when valley returns 200; local demo until then. */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class FaceEnrollRequest(
     val username: String,
@@ -13,6 +16,16 @@ data class FaceEnrollRequest(
     /** Aliases accepted by Backend. */
     val consentVersion: String? = null,
     val consentAt: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val capturedAt: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val lat: Double? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val lng: Double? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val accuracyM: Float? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val gpsMissing: Boolean? = null,
 )
 
 @Serializable
@@ -24,10 +37,21 @@ data class FaceEnrollResponse(
 )
 
 /** POST /v1/auth/face/verify — no new consent; fail → password (AC-FL3). */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class FaceVerifyRequest(
     val imageBase64: String,
     val username: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val capturedAt: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val lat: Double? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val lng: Double? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val accuracyM: Float? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val gpsMissing: Boolean? = null,
 )
 
 @Serializable

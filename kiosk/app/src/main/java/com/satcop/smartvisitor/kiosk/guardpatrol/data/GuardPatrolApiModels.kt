@@ -139,6 +139,10 @@ data class CreatePatrolIncidentRequest(
     val lat: Double? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val lng: Double? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val capturedAt: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val gpsMissing: Boolean? = null,
 )
 
 @Serializable
