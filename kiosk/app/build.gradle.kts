@@ -13,8 +13,8 @@ android {
         applicationId = "com.satcop.smartvisitor.kiosk"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1046
-        versionName = "1.0.3-1role-unified-facelogin-crashfix"
+        versionCode = 1047
+        versionName = "1.0.4-1role-unified-id-capture"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }

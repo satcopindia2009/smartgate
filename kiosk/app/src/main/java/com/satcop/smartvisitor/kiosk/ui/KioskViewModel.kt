@@ -850,12 +850,12 @@ class KioskViewModel(
             return
         }
         val bmp = bitmap ?: PlaceholderBitmap.idCard(_state.value.draft)
+        // ID number stays compulsory — capturing ID must not clear idNumber errors.
         _state.update {
             it.copy(
                 idImage = bmp,
                 draft = it.draft.copy(idImageCaptured = true),
-                fieldErrors = it.fieldErrors - "idNumber",
-                toast = if (bitmap == null) "ID image attached (demo)" else "ID image attached",
+                toast = if (bitmap == null) "ID captured (demo)" else "ID captured",
                 toastKind = ToastKind.INFO,
             )
         }

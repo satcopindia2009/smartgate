@@ -67,7 +67,7 @@ object RegistrationValidator {
         return errors
     }
 
-    /** Wave 2: live photo required; V1 = ID number OR ID image (number preferred). */
+    /** Live photo required; govt ID number ALWAYS compulsory (ID image never substitutes). */
     fun validateStep3(draft: RegistrationDraft): Map<String, String> {
         val errors = linkedMapOf<String, String>()
         if (!draft.livePhotoCaptured) {
@@ -76,8 +76,8 @@ object RegistrationValidator {
         if (draft.idType.isBlank()) {
             errors[FieldKeys.ID_TYPE] = "Select an ID type"
         }
-        if (draft.idNumber.trim().isEmpty() && !draft.idImageCaptured) {
-            errors[FieldKeys.ID] = "Enter an ID number or attach an ID image"
+        if (draft.idNumber.trim().isEmpty()) {
+            errors[FieldKeys.ID] = "Govt ID number is required"
         }
         return errors
     }
@@ -86,7 +86,7 @@ object RegistrationValidator {
         val required = listOf(FieldKeys.VISITOR_NAME, FieldKeys.MOBILE, FieldKeys.PURPOSE, FieldKeys.HOST_ID)
         return when {
             FieldKeys.LIVE_PHOTO in errors -> "Please capture a live photo"
-            FieldKeys.ID in errors -> "ID number or ID image is required"
+            FieldKeys.ID in errors -> "Govt ID number is required"
             required.any { it in errors } -> "Please fill name, mobile, purpose, and host"
             else -> errors.values.firstOrNull() ?: "Please check the form"
         }

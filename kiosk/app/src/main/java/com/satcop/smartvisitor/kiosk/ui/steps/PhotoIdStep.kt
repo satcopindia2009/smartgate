@@ -85,26 +85,24 @@ fun PhotoIdStep(
     val context = LocalContext.current
     val compact = LocalKioskCompact.current
     var strokes by remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
+    // Pending capture target: live visitor photo vs govt ID document (camera only — no gallery).
+    var pendingCapture by remember { mutableStateOf("live") }
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp ->
-        onLivePhoto(bmp)
+        when (pendingCapture) {
+            "id" -> onIdImage(bmp)
+            else -> onLivePhoto(bmp)
+        }
     }
     val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) camera.launch(null) else onLivePhoto(null)
+        if (granted) camera.launch(null)
+        else if (pendingCapture == "id") onIdImage(null)
+        else onLivePhoto(null)
     }
-    fun captureLive() {
+    fun captureWithCamera(target: String) {
+        pendingCapture = target
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
         if (granted) camera.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)
-    }
-    val gallery = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri == null) {
-            onIdImage(null)
-            return@rememberLauncherForActivityResult
-        }
-        val decoded = runCatching {
-            context.contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it) }
-        }.getOrNull()
-        onIdImage(decoded)
     }
     if (!draft.consentAgreed) {
         Column(
@@ -119,7 +117,7 @@ fun PhotoIdStep(
                 fontFamily = KioskFont,
             )
             Text(
-                text = "Please read and agree before we take a live photo or ID image.",
+                text = "Please read and agree before we take a live photo or capture ID.",
                 color = KioskColors.textMuted,
                 fontSize = 14.sp,
                 fontFamily = KioskFont,
@@ -140,7 +138,7 @@ fun PhotoIdStep(
                 fontFamily = KioskFont,
             )
             Text(
-                text = "Live photo required · ID number or ID image (V1)",
+                text = "Live photo required · Govt ID number required · ID capture only",
                 color = KioskColors.textMuted,
                 fontSize = 14.sp,
                 fontFamily = KioskFont,
@@ -224,17 +222,17 @@ fun PhotoIdStep(
                     subtitle = "Camera · demo placeholder if no camera",
                     error = errors[FieldKeys.LIVE_PHOTO],
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = { captureLive() },
+                    onClick = { captureWithCamera("live") },
                     preview = livePreview,
                 )
                 CaptureBox(
-                    label = "Govt ID upload",
+                    label = "Govt ID document",
                     filled = idImage != null || draft.idImageCaptured,
-                    title = if (draft.idImageCaptured) "ID attached" else "Tap to upload ID",
-                    subtitle = "Aadhaar / DL / Voter · optional if number entered",
+                    title = if (draft.idImageCaptured) "ID captured" else "Tap to capture ID",
+                    subtitle = "Camera only · Aadhaar / DL / Voter · no gallery",
                     error = null,
                     modifier = Modifier.fillMaxWidth(),
-                    onClick = { gallery.launch("image/*") },
+                    onClick = { captureWithCamera("id") },
                     preview = idPreview,
                 )
             }
@@ -252,17 +250,17 @@ fun PhotoIdStep(
                     subtitle = "Camera · demo placeholder if no camera",
                     error = errors[FieldKeys.LIVE_PHOTO],
                     modifier = Modifier.weight(1f),
-                    onClick = { captureLive() },
+                    onClick = { captureWithCamera("live") },
                     preview = livePreview,
                 )
                 CaptureBox(
-                    label = "Govt ID upload",
+                    label = "Govt ID document",
                     filled = idImage != null || draft.idImageCaptured,
-                    title = if (draft.idImageCaptured) "ID attached" else "Tap to upload ID",
-                    subtitle = "Aadhaar / DL / Voter · optional if number entered",
+                    title = if (draft.idImageCaptured) "ID captured" else "Tap to capture ID",
+                    subtitle = "Camera only · Aadhaar / DL / Voter · no gallery",
                     error = null,
                     modifier = Modifier.weight(1f),
-                    onClick = { gallery.launch("image/*") },
+                    onClick = { captureWithCamera("id") },
                     preview = idPreview,
                 )
             }
@@ -315,10 +313,10 @@ fun PhotoIdStep(
         }
 
         KioskField(
-            label = "Govt ID number (V1 — required unless ID image)",
+            label = "Govt ID number (required)",
             value = draft.idNumber,
             onValueChange = onIdNumber,
-            placeholder = "Number or leave blank if uploading ID photo",
+            placeholder = "Enter ID number to continue",
             error = errors[FieldKeys.ID],
             capitalization = KeyboardCapitalization.Characters,
             modifier = Modifier
@@ -365,7 +363,7 @@ fun PhotoIdStep(
                 )
                 CyanSubmitButton(
                     text = if (submitting) "Submitting…" else "Submit & notify host",
-                    enabled = !submitting && !blocked,
+                    enabled = !submitting && !blocked && draft.idNumber.trim().isNotEmpty(),
                     onClick = onSubmit,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -380,7 +378,7 @@ fun PhotoIdStep(
                 KioskGhostButton(text = "Back", onClick = onBack)
                 CyanSubmitButton(
                     text = if (submitting) "Submitting…" else "Submit & notify host",
-                    enabled = !submitting && !blocked,
+                    enabled = !submitting && !blocked && draft.idNumber.trim().isNotEmpty(),
                     onClick = onSubmit,
                 )
             }
