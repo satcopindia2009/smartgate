@@ -23,9 +23,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -48,9 +50,8 @@ import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import java.io.ByteArrayOutputStream
 
 /**
- * Wave 2 Patrol Incident report (AC-PI1/PI2/PI5).
- * Live camera photo required; retention hint under photo (AC-PI4 EN+HI).
- * Additive — Cancel returns to Active without touching Scan/End.
+ * Guard Report incident — layout/copy aligned to mock 10 (fields).
+ * Skin HOLD: dark Satcop tokens. LIVE photo → media patrol_incident_photo.
  */
 @Composable
 fun IncidentReportScreen(
@@ -83,8 +84,12 @@ fun IncidentReportScreen(
         order.mapNotNull { id -> state.checkpoints[id]?.let { id to it.name } }
     }.orEmpty()
 
-    val canSubmit = state.incidentPhotoJpeg != null && state.incidentNotes.isNotBlank() && !state.incidentBusy
+    val notes = state.incidentNotes.take(500)
+    val canSubmit = state.incidentPhotoJpeg != null && notes.isNotBlank() && !state.incidentBusy
     val shape = RoundedCornerShape(12.dp)
+    val roundName = state.round?.let { r ->
+        state.templates.find { it.id == r.templateId }?.name ?: "Active round"
+    } ?: "Patrol"
 
     Column(
         modifier = Modifier
@@ -92,6 +97,12 @@ fun IncidentReportScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
+        TextButton(onClick = onCancel) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = KioskColors.cyanBright, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.size(6.dp))
+            Text("Back to scan list", color = KioskColors.cyanBright, fontFamily = KioskFont)
+        }
+
         Text(
             "Report incident",
             color = KioskColors.text,
@@ -100,14 +111,19 @@ fun IncidentReportScreen(
             fontFamily = KioskFont,
         )
         Text(
-            "Live photo required · does not pause Scan / End",
+            "Capture details during your active round · $roundName",
             color = KioskColors.textMuted,
             fontSize = 12.sp,
             fontFamily = KioskFont,
-            modifier = Modifier.padding(top = 2.dp, bottom = 10.dp),
+            modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
         )
 
-        Text("Type", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+        Text(
+            "Incident type *",
+            color = KioskColors.textMuted,
+            fontSize = 12.sp,
+            fontFamily = KioskFont,
+        )
         Spacer(Modifier.height(6.dp))
         Row(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -141,16 +157,19 @@ fun IncidentReportScreen(
         }
 
         Spacer(Modifier.height(12.dp))
-        Text("Notes", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Notes *", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+            Text("${notes.length}/500", color = KioskColors.textDim, fontSize = 11.sp, fontFamily = KioskFont)
+        }
         Spacer(Modifier.height(4.dp))
         OutlinedTextField(
-            value = state.incidentNotes,
-            onValueChange = onNotes,
+            value = notes,
+            onValueChange = { onNotes(it.take(500)) },
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 88.dp),
+                .heightIn(min = 100.dp),
             placeholder = {
-                Text("What happened?", color = KioskColors.textMuted, fontFamily = KioskFont)
+                Text("Add details about the incident…", color = KioskColors.textMuted, fontFamily = KioskFont)
             },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = KioskColors.text,
@@ -161,7 +180,92 @@ fun IncidentReportScreen(
                 focusedContainerColor = KioskColors.card,
                 unfocusedContainerColor = KioskColors.card,
             ),
-            maxLines = 4,
+            maxLines = 5,
+        )
+
+        Spacer(Modifier.height(12.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "LIVE PHOTO REQUIRED *",
+                color = KioskColors.peakAmberBright,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = KioskFont,
+            )
+            Text(
+                "Photo stored ~90 days (EN + HI)",
+                color = KioskColors.textMuted,
+                fontSize = 10.sp,
+                fontFamily = KioskFont,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .clip(shape)
+                .background(KioskColors.card)
+                .border(1.dp, KioskColors.orange.copy(alpha = 0.55f), shape)
+                .clickable(enabled = !state.incidentBusy) { takePicture.launch(null) },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (preview != null) {
+                Image(
+                    bitmap = preview,
+                    contentDescription = "Incident photo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+                TextButton(
+                    onClick = onClearPhoto,
+                    modifier = Modifier.align(Alignment.TopEnd),
+                ) {
+                    Icon(Icons.Default.Close, null, tint = KioskColors.red, modifier = Modifier.size(20.dp))
+                }
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.CameraAlt,
+                        null,
+                        tint = KioskColors.peakAmberBright,
+                        modifier = Modifier.size(36.dp),
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Tap to capture live photo",
+                        color = KioskColors.text,
+                        fontSize = 13.sp,
+                        fontFamily = KioskFont,
+                    )
+                    Text(
+                        "Ensure good lighting and clear view",
+                        color = KioskColors.textMuted,
+                        fontSize = 11.sp,
+                        fontFamily = KioskFont,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "EN: Incident photos are kept about 90 days after the incident is closed, then removed. Notes stay in the school audit record.",
+            color = KioskColors.textMuted,
+            fontSize = 10.sp,
+            fontFamily = KioskFont,
+            lineHeight = 13.sp,
+        )
+        Text(
+            "HI: घटना बंद होने के बाद फोटो लगभग 90 दिन रखी जाती है, फिर हटा दी जाती है। नोट्स स्कूल ऑडिट रिकॉर्ड में रहते हैं।",
+            color = KioskColors.textMuted,
+            fontSize = 10.sp,
+            fontFamily = KioskFont,
+            lineHeight = 13.sp,
+            modifier = Modifier.padding(top = 2.dp),
         )
 
         if (cps.isNotEmpty()) {
@@ -203,67 +307,6 @@ fun IncidentReportScreen(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-        Text("Live photo *", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
-        Spacer(Modifier.height(6.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(180.dp)
-                .clip(shape)
-                .background(KioskColors.card)
-                .border(1.dp, KioskColors.border, shape)
-                .clickable(enabled = !state.incidentBusy) { takePicture.launch(null) },
-            contentAlignment = Alignment.Center,
-        ) {
-            if (preview != null) {
-                Image(
-                    bitmap = preview,
-                    contentDescription = "Incident photo",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-                TextButton(
-                    onClick = onClearPhoto,
-                    modifier = Modifier.align(Alignment.TopEnd),
-                ) {
-                    Icon(Icons.Default.Close, null, tint = KioskColors.red, modifier = Modifier.size(20.dp))
-                }
-            } else {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.CameraAlt,
-                        null,
-                        tint = KioskColors.cyanBright,
-                        modifier = Modifier.size(36.dp),
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Tap to capture live photo",
-                        color = KioskColors.textMuted,
-                        fontSize = 13.sp,
-                        fontFamily = KioskFont,
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "EN: Incident photos are kept about 90 days after the incident is closed, then removed. Notes stay in the school audit record.",
-            color = KioskColors.textMuted,
-            fontSize = 10.sp,
-            fontFamily = KioskFont,
-            lineHeight = 13.sp,
-        )
-        Text(
-            "HI: घटना बंद होने के बाद फोटो लगभग 90 दिन रखी जाती है, फिर हटा दी जाती है। नोट्स स्कूल ऑडिट रिकॉर्ड में रहते हैं।",
-            color = KioskColors.textMuted,
-            fontSize = 10.sp,
-            fontFamily = KioskFont,
-            lineHeight = 13.sp,
-            modifier = Modifier.padding(top = 2.dp),
-        )
-
         Spacer(Modifier.height(16.dp))
         if (state.incidentBusy) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
@@ -299,9 +342,20 @@ fun IncidentReportScreen(
                     fontFamily = KioskFont,
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) {
-                Text("Cancel", color = KioskColors.textMuted, fontFamily = KioskFont)
+            Spacer(Modifier.height(10.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.Lock, null, tint = KioskColors.textDim, modifier = Modifier.size(12.dp))
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    "All reports are private and secure",
+                    color = KioskColors.textDim,
+                    fontSize = 10.sp,
+                    fontFamily = KioskFont,
+                )
             }
         }
         Spacer(Modifier.height(24.dp))

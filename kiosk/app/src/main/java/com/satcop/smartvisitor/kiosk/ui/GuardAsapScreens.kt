@@ -119,11 +119,11 @@ fun CourierLogScreen(
     onReceive: () -> Unit, onHandOver: (String) -> Unit, onBack: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-        HeaderRow("Courier log", "Lobby receive · no host approve", onBack)
+        HeaderRow("Courier log / New courier", "Not a Visit — no host approve for lobby receive", onBack)
         Spacer(Modifier.height(12.dp))
-        KioskField(label = "Courier company *", value = company, onValueChange = onCompany, placeholder = "BlueDart / DTDC", modifier = Modifier.fillMaxWidth())
+        KioskField(label = "courier_company *", value = company, onValueChange = onCompany, placeholder = "e.g. DTDC, FedEx, Delhivery", modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        KioskField(label = "Recipient *", value = recipient, onValueChange = onRecipient, placeholder = "Staff name", modifier = Modifier.fillMaxWidth())
+        KioskField(label = "recipient_name *", value = recipient, onValueChange = onRecipient, placeholder = "e.g. staff / host name", modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
         KioskField(label = "Dept / host (optional)", value = dept, onValueChange = onDept, placeholder = "Accounts", modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
