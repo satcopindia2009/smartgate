@@ -262,9 +262,15 @@ private fun StartRoundScreen(
             )
         }
         Spacer(Modifier.height(10.dp))
+        // Crashfix 1044: never put weight()+verticalScroll on the SAME node.
         Column(
             modifier = Modifier
-                .weight(1f)
+                .weight(1f, fill = true)
+                .fillMaxWidth(),
+        ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -313,6 +319,7 @@ private fun StartRoundScreen(
                 )
             }
         }
+        } // end weight host
         if (allowSelfStart) {
             Spacer(Modifier.height(12.dp))
             PrimaryButton(
@@ -552,7 +559,7 @@ private fun ActiveRoundScreen(
             )
         }
         Spacer(Modifier.height(6.dp))
-        val progressFrac = if (tpl.checkpointIds.isEmpty()) 0f else count.toFloat() / tpl.checkpointIds.size.toFloat()
+        val progressFrac = if (tpl.checkpointIds.isEmpty()) 0f else (count.toFloat() / tpl.checkpointIds.size.toFloat()).coerceIn(0f, 1f)
         LinearProgressIndicator(
             progress = { progressFrac },
             modifier = Modifier
@@ -565,7 +572,12 @@ private fun ActiveRoundScreen(
         Spacer(Modifier.height(10.dp))
         Column(
             modifier = Modifier
-                .weight(1f)
+                .weight(1f, fill = true)
+                .fillMaxWidth(),
+        ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -587,6 +599,7 @@ private fun ActiveRoundScreen(
                 )
             }
         }
+        } // end weight host
         Spacer(Modifier.height(10.dp))
         Row(
             verticalAlignment = Alignment.CenterVertically,
