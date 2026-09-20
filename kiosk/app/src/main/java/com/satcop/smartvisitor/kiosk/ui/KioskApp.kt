@@ -58,6 +58,8 @@ import com.satcop.smartvisitor.kiosk.ui.steps.VisitorDetailsStep
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorTypeStep
 import com.satcop.smartvisitor.kiosk.ui.theme.CardShape
 import com.satcop.smartvisitor.kiosk.ui.face.FaceLoginScreen
+import com.satcop.smartvisitor.kiosk.ui.apple.GateTodayScreen
+import com.satcop.smartvisitor.kiosk.ui.apple.HostInboxScreen
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import kotlinx.coroutines.delay
@@ -104,7 +106,10 @@ fun KioskApp(
                         if (outerPhoneScroll) Modifier.verticalScroll(rememberScrollState())
                         else Modifier,
                     )
-                    .padding(horizontal = hPad, vertical = vPad)
+                    .then(
+                        if (signedIn) Modifier
+                        else Modifier.padding(horizontal = hPad, vertical = vPad),
+                    )
                     .padding(bottom = if (outerPhoneScroll) 36.dp else 0.dp),
             ) {
                 val faceCtx = LocalContext.current
@@ -201,6 +206,43 @@ fun KioskApp(
                             onExit = null,
                             onCourier = viewModel::openCourier,
                             onLostFound = viewModel::openLostFound,
+                        )
+                    } else if (role == KioskRole.HOST) {
+                        HostInboxScreen(
+                            displayName = state.meDisplayName,
+                            schoolId = state.schoolId,
+                            staffId = state.meStaffId,
+                            pending = state.pendingVisits,
+                            active = state.hostActiveVisits,
+                            photos = state.pendingPhotos,
+                            afterHours = state.afterHours,
+                            busy = state.hostBusy,
+                            rejectingVisitId = state.rejectingVisitId,
+                            rejectReason = state.rejectReason,
+                            onRefresh = viewModel::refreshHostPending,
+                            onApprove = viewModel::approvePending,
+                            onStartReject = viewModel::startReject,
+                            onPickRejectReason = viewModel::pickRejectReason,
+                            onCancelReject = viewModel::cancelReject,
+                            onConfirmReject = viewModel::confirmReject,
+                            onMeetingDone = viewModel::meetingDone,
+                            onShowAfterHours = viewModel::toggleAfterHoursPanel,
+                            showingAfterHours = state.showingAfterHours,
+                            onLogout = viewModel::logout,
+                        )
+                    } else if (role == KioskRole.GATE && state.step == 1 && state.screen == KioskScreen.HOME) {
+                        GateTodayScreen(
+                            gateName = state.selectedGate?.name ?: "Main Gate",
+                            recent = state.recent,
+                            selectedVisitorType = state.draft.visitorType,
+                            onSelectVisitorType = viewModel::selectVisitorType,
+                            onContinueRegistration = viewModel::continueFromStep1,
+                            onCourier = viewModel::openCourier,
+                            onHistory = viewModel::openHistory,
+                            onCheckout = viewModel::openCheckout,
+                            onLostFound = viewModel::openLostFound,
+                            onPickup = viewModel::openPickup,
+                            onLogout = viewModel::logout,
                         )
                     } else {
                     KioskHeader(
@@ -339,14 +381,6 @@ fun KioskApp(
                                 Column(
                                     modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
                                 ) {
-                                    if (state.step == 1) {
-                                        GuardToolRow(
-                                            onHistory = viewModel::openHistory,
-                                            onCourier = viewModel::openCourier,
-                                            onCheckout = viewModel::openCheckout,
-                                            onLostFound = viewModel::openLostFound,
-                                        )
-                                    }
                                     StepDots(current = state.step)
                                     // Avoid weight()+verticalScroll() (measure crash on some devices).
                                     AnimatedContent(
@@ -371,28 +405,6 @@ fun KioskApp(
                                     }
                                 }
                             }
-                            role == KioskRole.HOST -> HostHomeScreen(
-                                displayName = state.meDisplayName,
-                                schoolId = state.schoolId,
-                                staffId = state.meStaffId,
-                                pending = state.pendingVisits,
-                                active = state.hostActiveVisits,
-                                photos = state.pendingPhotos,
-                                afterHours = state.afterHours,
-                                busy = state.hostBusy,
-                                rejectingVisitId = state.rejectingVisitId,
-                                rejectReason = state.rejectReason,
-                                compact = compact,
-                                onRefresh = viewModel::refreshHostPending,
-                                onApprove = viewModel::approvePending,
-                                onStartReject = viewModel::startReject,
-                                onPickRejectReason = viewModel::pickRejectReason,
-                                onCancelReject = viewModel::cancelReject,
-                                onConfirmReject = viewModel::confirmReject,
-                                onMeetingDone = viewModel::meetingDone,
-                                onShowAfterHours = viewModel::toggleAfterHoursPanel,
-                                showingAfterHours = state.showingAfterHours,
-                            )
                             else -> UnsupportedRoleScreen(
                                 role = state.meRole,
                                 compact = compact,

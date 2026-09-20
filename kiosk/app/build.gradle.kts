@@ -13,8 +13,8 @@ android {
         applicationId = "com.satcop.smartvisitor.kiosk"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1053
-        versionName = "1.0.8-1role-live-myschedules"
+        versionCode = 1054
+        versionName = "1.0.8-1role-apple-ld"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }

@@ -61,6 +61,7 @@ import com.satcop.smartvisitor.kiosk.ui.theme.ChipShape
 import com.satcop.smartvisitor.kiosk.ui.theme.ControlShape
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
+import com.satcop.smartvisitor.kiosk.ui.apple.GuardTodayShell
 import java.util.Date
 
 @Composable
@@ -99,14 +100,38 @@ fun GuardPatrolApp(
         Column(Modifier.fillMaxSize()) {
             Phase2Banner()
             when (state.screen) {
-                GuardPatrolScreen.START -> StartRoundScreen(
-                    state = state,
-                    onStartAssignment = vm::startFromAssignment,
-                    onRefreshAssignments = vm::refreshAssignments,
-                    onCourier = onCourier,
-                    onLostFound = onLostFound,
-                    onReportIncident = vm::openIncidentReport,
-                )
+                GuardPatrolScreen.START -> {
+                    val firstAsg = state.assignments.firstOrNull()
+                    val tpl = firstAsg?.let { a -> state.templates.find { it.id == a.templateId } }
+                    val totalCp = tpl?.checkpointIds?.size ?: state.assignments.size.coerceAtLeast(0)
+                    GuardTodayShell(
+                        displayName = state.guardLabel,
+                        schoolName = state.schoolName,
+                        statusLine = state.statusLine,
+                        assignmentCount = state.assignments.size,
+                        progressDone = 0,
+                        progressTotal = totalCp,
+                        routeLabel = tpl?.name ?: "Assigned today",
+                        nextCheckpoint = tpl?.checkpointIds?.firstOrNull(),
+                        onContinuePatrol = {
+                            val id = firstAsg?.id
+                            if (id != null) vm.startFromAssignment(id)
+                        },
+                        onCourier = { onCourier?.invoke() },
+                        onLostFound = { onLostFound?.invoke() },
+                        onReportIncident = vm::openIncidentReport,
+                        patrolContent = {
+                            StartRoundScreen(
+                                state = state,
+                                onStartAssignment = vm::startFromAssignment,
+                                onRefreshAssignments = vm::refreshAssignments,
+                                onCourier = onCourier,
+                                onLostFound = onLostFound,
+                                onReportIncident = vm::openIncidentReport,
+                            )
+                        },
+                    )
+                }
                 GuardPatrolScreen.ACTIVE -> ActiveRoundScreen(
                     state = state,
                     onScanQr = { vm.openScanPicker("QR") },
