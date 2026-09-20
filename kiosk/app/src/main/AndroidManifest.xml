@@ -9,10 +9,13 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!-- AC-PH1: phone-only product — no tablet/xlarge product surface -->
     <supports-screens
-        android:largeScreens="true"
+        android:smallScreens="true"
         android:normalScreens="true"
-        android:xlargeScreens="true" />
+        android:largeScreens="false"
+        android:xlargeScreens="false"
+        android:requiresSmallestWidthDp="320" />
 
     <application
         android:allowBackup="false"
@@ -26,7 +29,7 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard"
             android:exported="true"
             android:lockTaskMode="if_whitelisted"
-            android:screenOrientation="fullUser"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.SatcopGateKiosk"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

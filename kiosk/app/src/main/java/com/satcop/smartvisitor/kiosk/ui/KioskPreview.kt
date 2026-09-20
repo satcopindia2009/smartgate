@@ -12,7 +12,7 @@ import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.SatcopKioskTheme
 
 @Preview(
-    name = "Gate tablet landscape",
+    name = "DEPRECATED tablet landscape (out of scope AC-PH1)",
     device = "spec:width=1280dp,height=800dp,dpi=240,orientation=landscape",
     showBackground = true,
     backgroundColor = 0xFF0F1115,

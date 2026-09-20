@@ -81,11 +81,12 @@ fun KioskApp(
             .statusBarsPadding()
             .imePadding(),
     ) {
-        val compact = maxWidth < CompactWidthBreakpoint
-        val hPad = if (compact) 16.dp else 28.dp
-        val vPad = if (compact) 12.dp else 20.dp
-        val cardHPad = if (compact) 16.dp else 32.dp
-        val cardVPad = if (compact) 16.dp else 28.dp
+        // AC-PH1/PH2: always phone-portrait compact — ignore tablet width branch.
+        val compact = true
+        val hPad = 16.dp
+        val vPad = 12.dp
+        val cardHPad = 16.dp
+        val cardVPad = 16.dp
         CompositionLocalProvider(LocalKioskCompact provides compact) {
             // Crashfix 1045/1046: outer phone verticalScroll only for password login.
             // FACE_LOGIN has its own scroll + CameraX — nesting crashes on Face login tap.
