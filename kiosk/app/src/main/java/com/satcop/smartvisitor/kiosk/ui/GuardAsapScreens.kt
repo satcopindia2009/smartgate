@@ -345,6 +345,63 @@ fun CheckoutVerifyScreen(inside: List<InsideVisit>, selectedId: String?, busy: B
     }
 }
 
+
+@Composable
+fun GuardHomeHub(
+    schoolName: String,
+    displayName: String,
+    onPatrol: () -> Unit,
+    onCourier: () -> Unit,
+    onLostFound: () -> Unit,
+    onIncident: () -> Unit,
+    onFaceRecheck: (() -> Unit)? = null,
+) {
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+        Text("Guard home", color = KioskColors.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+        Text(
+            text = listOf(displayName, schoolName).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Patrol · courier · L&F · incident" },
+            color = KioskColors.textMuted,
+            fontSize = 13.sp,
+            fontFamily = KioskFont,
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubCard("Patrol", "Assigned today", Modifier.weight(1f), onPatrol)
+            HubCard("Courier", "Parcel entry", Modifier.weight(1f), onCourier)
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HubCard("Lost & Found", "Log item", Modifier.weight(1f), onLostFound)
+            HubCard("Incident", "Report + photo", Modifier.weight(1f), onIncident)
+        }
+        if (onFaceRecheck != null) {
+            Spacer(Modifier.height(20.dp))
+            KioskGhostButton(
+                text = "Face re-check",
+                onClick = onFaceRecheck,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HubCard(title: String, subtitle: String, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier
+            .heightIn(min = 110.dp)
+            .clip(ControlShape)
+            .background(KioskColors.sidebar)
+            .border(1.dp, KioskColors.border, ControlShape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(title, color = KioskColors.text, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, fontSize = 16.sp)
+        Text(subtitle, color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+    }
+}
+
 @Composable
 fun LostFoundCreateScreen(
     description: String,

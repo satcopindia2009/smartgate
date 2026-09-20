@@ -13,7 +13,7 @@ enum class KioskRole {
 }
 
 enum class KioskScreen {
-    HOME, PICKUP, HISTORY, HISTORY_DETAIL, COURIER, CHECKOUT, LOST_FOUND, FACE_LOGIN,
+    HOME, PICKUP, HISTORY, HISTORY_DETAIL, COURIER, CHECKOUT, LOST_FOUND, FACE_LOGIN, GUARD_PATROL,
 }
 
 fun KioskUiState.homeRole(): KioskRole = KioskRole.fromJwt(meRole)

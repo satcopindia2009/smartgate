@@ -1475,6 +1475,9 @@ class KioskViewModel(
             }
         }
     }
+    fun openGuardPatrol() {
+        _state.update { it.copy(screen = KioskScreen.GUARD_PATROL, toast = null) }
+    }
     fun openLostFound() {
         _state.update {
             it.copy(

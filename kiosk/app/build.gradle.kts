@@ -13,8 +13,8 @@ android {
         applicationId = "com.satcop.smartvisitor.kiosk"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1050
-        versionName = "1.0.7-1role-phone-portrait"
+        versionCode = 1051
+        versionName = "1.0.8-1role-gallery-align"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }

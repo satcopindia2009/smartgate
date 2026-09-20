@@ -66,7 +66,7 @@ fun LoginScreen(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Gate · Host · Guard · sign in to continue",
+                    text = "Staff login for Gate · Host · Guard",
                     color = KioskColors.textMuted,
                     fontSize = if (compact) 11.sp else 12.sp,
                     fontFamily = KioskFont,
@@ -92,7 +92,7 @@ fun LoginScreen(
             fontFamily = KioskFont,
         )
         Text(
-            text = "Demos: pranay.gate / PranayGate@2026 · pranay.host · gate/gate123 · guard/guard123. API ${ApiConfig.BASE_URL}",
+            text = "Staff login for Gate · Host · Guard",
             color = KioskColors.textMuted,
             fontSize = 14.sp,
             fontFamily = KioskFont,
@@ -117,6 +117,20 @@ fun LoginScreen(
             error = error,
             modifier = Modifier.fillMaxWidth(),
         )
+        Text(
+            text = "Faster on campus",
+            color = KioskColors.textMuted,
+            fontSize = 12.sp,
+            fontFamily = KioskFont,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        KioskGhostButton(
+            text = "Face login",
+            onClick = onFaceLogin,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+        )
         KioskPrimaryButton(
             text = if (busy) "Signing in…" else "Sign in",
             onClick = onSubmit,
@@ -126,12 +140,12 @@ fun LoginScreen(
                 .padding(top = 4.dp)
                 .heightIn(min = 52.dp),
         )
-        KioskGhostButton(
-            text = "Face login",
-            onClick = onFaceLogin,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp),
+        Text(
+            text = "Need help? Ask school admin",
+            color = KioskColors.textMuted,
+            fontSize = 12.sp,
+            fontFamily = KioskFont,
+            modifier = Modifier.padding(top = 8.dp),
         )
     }
 }

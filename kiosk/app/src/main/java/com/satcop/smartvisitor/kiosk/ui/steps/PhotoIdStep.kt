@@ -138,7 +138,7 @@ fun PhotoIdStep(
                 fontFamily = KioskFont,
             )
             Text(
-                text = "Live photo required · Govt ID number required · ID capture only",
+                text = "Step 3 · live photo + ID capture · ID number required",
                 color = KioskColors.textMuted,
                 fontSize = 14.sp,
                 fontFamily = KioskFont,
@@ -208,62 +208,33 @@ fun PhotoIdStep(
                 Text("🪪", fontSize = 28.sp)
             }
         }
-        if (compact) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                CaptureBox(
-                    label = "Live photo",
-                    filled = livePhoto != null || draft.livePhotoCaptured,
-                    title = if (draft.livePhotoCaptured) "Captured" else "Tap to capture",
-                    subtitle = "Camera · demo placeholder if no camera",
-                    error = errors[FieldKeys.LIVE_PHOTO],
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { captureWithCamera("live") },
-                    preview = livePreview,
-                )
-                CaptureBox(
-                    label = "Govt ID document",
-                    filled = idImage != null || draft.idImageCaptured,
-                    title = if (draft.idImageCaptured) "ID captured" else "Tap to capture ID",
-                    subtitle = "Camera only · Aadhaar / DL / Voter · no gallery",
-                    error = null,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { captureWithCamera("id") },
-                    preview = idPreview,
-                )
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                CaptureBox(
-                    label = "Live photo",
-                    filled = livePhoto != null || draft.livePhotoCaptured,
-                    title = if (draft.livePhotoCaptured) "Captured" else "Tap to capture",
-                    subtitle = "Camera · demo placeholder if no camera",
-                    error = errors[FieldKeys.LIVE_PHOTO],
-                    modifier = Modifier.weight(1f),
-                    onClick = { captureWithCamera("live") },
-                    preview = livePreview,
-                )
-                CaptureBox(
-                    label = "Govt ID document",
-                    filled = idImage != null || draft.idImageCaptured,
-                    title = if (draft.idImageCaptured) "ID captured" else "Tap to capture ID",
-                    subtitle = "Camera only · Aadhaar / DL / Voter · no gallery",
-                    error = null,
-                    modifier = Modifier.weight(1f),
-                    onClick = { captureWithCamera("id") },
-                    preview = idPreview,
-                )
-            }
+        // Gallery SoT phone: side-by-side Visitor photo | ID card (AC-PH portrait).
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CaptureBox(
+                label = "Visitor photo",
+                filled = livePhoto != null || draft.livePhotoCaptured,
+                title = if (draft.livePhotoCaptured) "Captured" else "Tap to capture",
+                subtitle = "Live camera",
+                error = errors[FieldKeys.LIVE_PHOTO],
+                modifier = Modifier.weight(1f),
+                onClick = { captureWithCamera("live") },
+                preview = livePreview,
+            )
+            CaptureBox(
+                label = "ID card",
+                filled = idImage != null || draft.idImageCaptured,
+                title = if (draft.idImageCaptured) "ID captured" else "Tap to capture ID",
+                subtitle = "Aadhaar / DL",
+                error = null,
+                modifier = Modifier.weight(1f),
+                onClick = { captureWithCamera("id") },
+                preview = idPreview,
+            )
         }
         if (errors[FieldKeys.LIVE_PHOTO] != null) {
             Text(
@@ -313,7 +284,7 @@ fun PhotoIdStep(
         }
 
         KioskField(
-            label = "Govt ID number (required)",
+            label = "ID number",
             value = draft.idNumber,
             onValueChange = onIdNumber,
             placeholder = "Enter ID number to continue",
@@ -362,7 +333,7 @@ fun PhotoIdStep(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 CyanSubmitButton(
-                    text = if (submitting) "Submitting…" else "Submit & notify host",
+                    text = if (submitting) "Submitting…" else "Issue pass",
                     enabled = !submitting && !blocked && draft.idNumber.trim().isNotEmpty(),
                     onClick = onSubmit,
                     modifier = Modifier.fillMaxWidth(),
@@ -377,7 +348,7 @@ fun PhotoIdStep(
             ) {
                 KioskGhostButton(text = "Back", onClick = onBack)
                 CyanSubmitButton(
-                    text = if (submitting) "Submitting…" else "Submit & notify host",
+                    text = if (submitting) "Submitting…" else "Issue pass",
                     enabled = !submitting && !blocked && draft.idNumber.trim().isNotEmpty(),
                     onClick = onSubmit,
                 )
@@ -414,7 +385,7 @@ private fun CaptureBox(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 200.dp)
+                .heightIn(min = 140.dp)
                 .clip(RoundedCornerShape(RadiusLg))
                 .background(if (filled) KioskColors.cyanDim else KioskColors.bg)
                 .border(2.dp, border, RoundedCornerShape(RadiusLg))
