@@ -228,6 +228,9 @@ data class LostFoundCreate(
     val foundZone: String? = null,
     /** Lost | Found — AC-LF2 required */
     val itemType: String = "Found",
+    /** Valley required */
+    val itemName: String = "",
+    val category: String = "Other",
 )
 
 /** Living POST /v1/lost-found/items body (OpenAPI LostFoundItemCreate). */
@@ -235,12 +238,16 @@ data class LostFoundCreate(
 data class LostFoundItemCreate(
     val description: String,
     val photoKey: String,
-    val foundLocation: String,
+    val foundLocation: String? = null,
     val foundGateId: String? = null,
     val foundZone: String? = null,
     val foundAt: String? = null,
     val status: String? = "Open",
-    val itemType: String? = null,
+    val itemType: String,
+    val itemName: String,
+    val category: String,
+    val reportedBy: String? = null,
+    val contactNumber: String? = null,
 )
 
 @Serializable
@@ -256,6 +263,7 @@ object HistoryKind {
     const val CHECKOUT = "checkout"
     const val PICKUP = "pickup"
     const val LOST_FOUND = "lost_found"
+    const val LOST_FOUND_PHOTO = "lost_found_photo"
 }
 
 object HistoryFilter {

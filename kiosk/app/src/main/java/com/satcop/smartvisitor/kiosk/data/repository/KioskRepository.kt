@@ -29,6 +29,8 @@ interface KioskRepository : DirectoryRepository {
         filename: String,
         contentType: String,
         kind: String,
+        consentAt: String? = null,
+        consentVersion: String? = null,
     ): MediaUploadResponse
 
     suspend fun matchBlacklist(

@@ -125,10 +125,12 @@ class HybridKioskRepository(
         filename: String,
         contentType: String,
         kind: String,
+        consentAt: String?,
+        consentVersion: String?,
     ): MediaUploadResponse = withContext(Dispatchers.IO) {
         if (dataSource == DataSource.LIVE) {
             try {
-                live.uploadMedia(bytes, filename, contentType, kind)
+                live.uploadMedia(bytes, filename, contentType, kind, consentAt, consentVersion)
             } catch (e: Exception) {
                 if (shouldFallback(e)) markFixtures()
                 localMedia(kind)

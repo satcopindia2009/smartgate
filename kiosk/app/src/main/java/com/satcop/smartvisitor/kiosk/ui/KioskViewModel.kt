@@ -1007,11 +1007,15 @@ class KioskViewModel(
         }
         try {
             val liveBmp = snap.livePhoto ?: PlaceholderBitmap.livePhoto(draft.visitorName)
+            val consentAt = draft.consentAt
+            val consentVer = GateConsent.VERSION
             val photo = repository.uploadMedia(
                 PlaceholderBitmap.toJpeg(liveBmp),
                 "live-photo.jpg",
                 "image/jpeg",
                 "live_photo",
+                consentAt = consentAt,
+                consentVersion = consentVer,
             )
             val idKey = snap.idImage?.let {
                 repository.uploadMedia(
@@ -1019,6 +1023,8 @@ class KioskViewModel(
                     "id-image.jpg",
                     "image/jpeg",
                     "id_image",
+                    consentAt = consentAt,
+                    consentVersion = consentVer,
                 ).key
             }
             val sigKey = snap.signature?.let {
@@ -1027,6 +1033,8 @@ class KioskViewModel(
                     "signature.jpg",
                     "image/jpeg",
                     "signature",
+                    consentAt = consentAt,
+                    consentVersion = consentVer,
                 ).key
             }
             val mobileTen = MobileIndia.tenDigit(draft.mobile) ?: draft.mobile.filter { it.isDigit() }
@@ -1510,7 +1518,7 @@ class KioskViewModel(
                     jpeg,
                     "lost-found-item.jpg",
                     "image/jpeg",
-                    "lost_found",
+                    "lost_found_photo",
                 )
                 val created = repository.createLostFound(
                     LostFoundCreate(
@@ -1522,6 +1530,8 @@ class KioskViewModel(
                         gateId = s.selectedGate?.id ?: s.draft.gateId,
                         photoKey = uploaded.key,
                         itemType = s.lfItemType,
+                        itemName = s.lfDescription.trim(),
+                        category = "Other",
                     ),
                 )
                 _state.update {

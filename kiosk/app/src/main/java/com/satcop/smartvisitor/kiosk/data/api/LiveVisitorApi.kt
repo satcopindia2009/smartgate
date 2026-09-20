@@ -202,8 +202,10 @@ class LiveVisitorApi(
         filename: String,
         contentType: String,
         kind: String,
+        consentAt: String? = null,
+        consentVersion: String? = null,
     ): MediaUploadResponse {
-        val part = MultipartBody.Builder()
+        val builder = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
                 "file",
@@ -211,7 +213,9 @@ class LiveVisitorApi(
                 bytes.toRequestBody(contentType.toMediaType()),
             )
             .addFormDataPart("kind", kind)
-            .build()
+        if (!consentAt.isNullOrBlank()) builder.addFormDataPart("consentAt", consentAt)
+        if (!consentVersion.isNullOrBlank()) builder.addFormDataPart("consentVersion", consentVersion)
+        val part = builder.build()
         val req = authorized(Request.Builder().url("$baseUrl/media/upload").post(part))
         return json.decodeFromString(execute(req))
     }
@@ -359,15 +363,21 @@ class LiveVisitorApi(
     fun createLostFound(body: LostFoundCreate): LostFoundItem {
         val photo = body.photoKey?.takeIf { it.isNotBlank() }
             ?: throw IllegalArgumentException("photoKey required (AC-LF1)")
+        val name = body.itemName.trim().ifBlank { body.description.trim() }
+        val category = body.category.trim().ifBlank { "Other" }
         val payload = LostFoundItemCreate(
             description = body.description.trim(),
             photoKey = photo,
-            foundLocation = body.locationFound.trim(),
+            foundLocation = body.locationFound.trim().ifBlank { null },
             foundGateId = body.gateId?.takeIf { it.isNotBlank() },
             foundZone = body.foundZone?.takeIf { it.isNotBlank() },
             foundAt = body.foundAt.takeIf { it.isNotBlank() },
             status = "Open",
-            itemType = body.itemType.takeIf { it.isNotBlank() },
+            itemType = body.itemType,
+            itemName = name,
+            category = category,
+            reportedBy = body.finderName.takeIf { it.isNotBlank() },
+            contactNumber = body.finderMobile?.takeIf { it.isNotBlank() },
         )
         return post("/lost-found/items", json.encodeToString(payload))
     }
