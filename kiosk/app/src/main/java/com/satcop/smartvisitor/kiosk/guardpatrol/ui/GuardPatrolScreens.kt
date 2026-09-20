@@ -101,11 +101,8 @@ fun GuardPatrolApp(
             when (state.screen) {
                 GuardPatrolScreen.START -> StartRoundScreen(
                     state = state,
-                    onSelect = vm::selectTemplate,
-                    onStart = vm::startRound,
                     onStartAssignment = vm::startFromAssignment,
                     onRefreshAssignments = vm::refreshAssignments,
-                    onToggleLive = vm::setUseLive,
                     onCourier = onCourier,
                     onLostFound = onLostFound,
                     onReportIncident = vm::openIncidentReport,
@@ -213,16 +210,12 @@ private fun Phase2Banner() {
 @Composable
 private fun StartRoundScreen(
     state: GuardPatrolUiState,
-    onSelect: (String) -> Unit,
-    onStart: () -> Unit,
     onStartAssignment: (String) -> Unit,
     onRefreshAssignments: () -> Unit,
-    onToggleLive: (Boolean) -> Unit,
     onCourier: (() -> Unit)? = null,
     onLostFound: (() -> Unit)? = null,
     onReportIncident: (() -> Unit)? = null,
 ) {
-    val allowSelfStart = !state.requireAssignment
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -237,32 +230,10 @@ private fun StartRoundScreen(
         Spacer(Modifier.height(6.dp))
         Text(
             text = state.statusLine,
-            color = if (state.useLive && state.liveReady) KioskColors.greenBright else KioskColors.textDim,
+            color = if (state.liveReady) KioskColors.greenBright else KioskColors.orange,
             fontSize = 11.sp,
             fontFamily = KioskFont,
         )
-        Spacer(Modifier.height(4.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onToggleLive(!state.useLive) },
-        ) {
-            Checkbox(
-                checked = state.useLive,
-                onCheckedChange = onToggleLive,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = KioskColors.cyan,
-                    uncheckedColor = KioskColors.border,
-                ),
-            )
-            Text(
-                text = "Use living API (SCH-DEMO-01)",
-                color = KioskColors.textDim,
-                fontSize = 11.sp,
-                fontFamily = KioskFont,
-            )
-        }
         Spacer(Modifier.height(10.dp))
         // Crashfix 1044: never put weight()+verticalScroll on the SAME node.
         Column(
@@ -270,66 +241,27 @@ private fun StartRoundScreen(
                 .weight(1f, fill = true)
                 .fillMaxWidth(),
         ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            AssignedTodaySection(
-                assignments = state.assignments,
-                templates = state.templates,
-                fromLive = state.assignmentsFromLive,
-                busy = state.busy,
-                onStart = onStartAssignment,
-                onRefresh = onRefreshAssignments,
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                AssignedTodaySection(
+                    assignments = state.assignments,
+                    templates = state.templates,
+                    fromLive = state.assignmentsFromLive,
+                    busy = state.busy,
+                    onStart = onStartAssignment,
+                    onRefresh = onRefreshAssignments,
+                )
 
-            GuardToolsChips(
-                onCourier = onCourier,
-                onLostFound = onLostFound,
-                onReportIncident = onReportIncident,
-            )
-            if (allowSelfStart) {
-                Text(
-                    text = "Or self-start a template",
-                    color = KioskColors.text,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = KioskFont,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-                Text(
-                    text = "Pick a template, then Start. Ordered templates warn on skip-ahead (F1) — scans still count.",
-                    color = KioskColors.textDim,
-                    fontSize = 12.sp,
-                    fontFamily = KioskFont,
-                )
-                state.templates.forEach { tpl ->
-                    TemplateCard(
-                        template = tpl,
-                        selected = state.selectedTemplateId == tpl.id,
-                        onClick = { onSelect(tpl.id) },
-                    )
-                }
-            } else {
-                Text(
-                    text = "Self-start disabled (requireAssignment=true). Use an assignment above.",
-                    color = KioskColors.textMuted,
-                    fontSize = 12.sp,
-                    fontFamily = KioskFont,
-                    modifier = Modifier.padding(top = 6.dp),
+                GuardToolsChips(
+                    onCourier = onCourier,
+                    onLostFound = onLostFound,
+                    onReportIncident = onReportIncident,
                 )
             }
-        }
-        } // end weight host
-        if (allowSelfStart) {
-            Spacer(Modifier.height(12.dp))
-            PrimaryButton(
-                label = if (state.busy) "Working…" else "Start round",
-                enabled = state.selectedTemplateId != null && !state.busy,
-                onClick = onStart,
-            )
         }
     }
 }
@@ -343,7 +275,6 @@ private fun AssignedTodaySection(
     onStart: (String) -> Unit,
     onRefresh: () -> Unit,
 ) {
-    val source = if (fromLive) "live" else "fixture"
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -369,9 +300,10 @@ private fun AssignedTodaySection(
     }
     Text(
         text = if (assignments.isEmpty()) {
-            "No assignments for today ($source)."
+            if (fromLive) "No Admin schedules for today."
+            else "Waiting for Living schedules…"
         } else {
-            "${assignments.size} duty(ies) · $source · dutyDate ${assignments.first().dutyDate}"
+            "${assignments.size} duty(ies) · Living · dutyDate ${assignments.first().dutyDate}"
         },
         color = KioskColors.textDim,
         fontSize = 11.sp,
@@ -387,7 +319,7 @@ private fun AssignedTodaySection(
                 .padding(14.dp),
         ) {
             Text(
-                text = "Admin has not assigned a patrol yet. Tap Refresh after Admin assigns Living.",
+                text = "No assigned patrol yet. Ask Admin to assign Living (POST /patrol-schedules), then tap Refresh.",
                 color = KioskColors.textMuted,
                 fontSize = 12.sp,
                 fontFamily = KioskFont,
@@ -868,49 +800,6 @@ private fun OrderBadge(ordered: Boolean, label: String) {
     )
 }
 
-@Composable
-private fun TemplateCard(
-    template: RoundTemplate,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val borderColor = if (selected) KioskColors.purple else KioskColors.border
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(CardShape)
-            .background(if (selected) KioskColors.cardHover else KioskColors.card)
-            .border(1.dp, borderColor, CardShape)
-            .clickable(onClick = onClick)
-            .padding(14.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = template.name,
-                color = KioskColors.text,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = KioskFont,
-                modifier = Modifier.weight(1f),
-            )
-            OrderBadge(
-                ordered = template.ordered,
-                label = if (template.ordered) "Ordered" else "Any order",
-            )
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = "${template.checkpointIds.size} checkpoints · ${template.expectedDurationMin} min",
-            color = KioskColors.textDim,
-            fontSize = 12.sp,
-            fontFamily = KioskFont,
-        )
-    }
-}
 
 @Composable
 private fun CheckpointRow(

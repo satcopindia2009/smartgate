@@ -90,13 +90,9 @@ class GuardPatrolViewModel(
     }
 
     fun setUseLive(value: Boolean) {
-        if (value == _state.value.useLive) return
-        if (value) {
-            _state.update { it.copy(useLive = true, busy = true, statusLine = "Connecting…") }
-            bootstrapLive()
-        } else {
-            applyFixtures(status = "Fixture mode (offline)")
-        }
+        // AC-GP2 live-only — fixture Assigned today removed. Always reconnect Living.
+        _state.update { it.copy(useLive = true, busy = true, statusLine = "Connecting…") }
+        bootstrapLive()
     }
 
     fun refreshAssignments() {
@@ -112,11 +108,7 @@ class GuardPatrolViewModel(
                     busy = false,
                     assignments = assignments,
                     assignmentsFromLive = fromLive,
-                    statusLine = if (fromLive) {
-                        "LIVE · ${assignments.size} assignment(s) · $dutyDate"
-                    } else {
-                        "Fixture assignments · $dutyDate"
-                    },
+                    statusLine = "LIVE · my-schedules ${assignments.size} · $dutyDate",
                     toast = ToastEvent(
                         System.currentTimeMillis(),
                         if (assignments.isEmpty()) "No assignments for today"
@@ -255,27 +247,17 @@ class GuardPatrolViewModel(
             }
             return
         }
-        val round = GuardPatrolEngine.startRound(
-            tpl,
-            guardId = _state.value.guardId,
-            assignmentId = assignmentId,
-        )
-        markAssignmentStarted(assignmentId, round.id)
-        val label = if (assignmentId != null) {
-            "Started from assignment · ${tpl.name}"
-        } else {
-            "Round started · ${tpl.name}"
-        }
+        // Live-only perform — never start a fixture round.
         _state.update {
             it.copy(
-                round = round,
-                screen = GuardPatrolScreen.ACTIVE,
-                showOffCampusBanner = false,
-                simulateOffCampus = false,
                 toast = ToastEvent(
-                    id = System.currentTimeMillis(),
-                    message = label,
-                    kind = ToastKind.SUCCESS,
+                    System.currentTimeMillis(),
+                    if (assignmentId == null) {
+                        "Assignment required — pick an Admin schedule"
+                    } else {
+                        "Living not ready — tap Refresh"
+                    },
+                    ToastKind.ERROR,
                 ),
             )
         }
@@ -543,9 +525,8 @@ class GuardPatrolViewModel(
                 useLive = keepLive,
                 liveReady = liveReady,
                 statusLine = statusLine,
-                assignments = assignments.ifEmpty {
-                    GuardPatrolFixtures.assignmentsForToday(guardId)
-                },
+                assignments = assignments,
+
                 assignmentsFromLive = assignmentsFromLive,
                 requireAssignment = requireAssignment,
             )
@@ -714,7 +695,7 @@ class GuardPatrolViewModel(
             }.getOrNull()
 
             if (ok == null) {
-                applyFixtures(status = "Live unreachable — fixture fallback")
+                applyFixtures(status = "Living unreachable — Assigned today empty until reconnect")
                 return@launch
             }
             val (templates, checkpoints, user) = ok
@@ -736,17 +717,17 @@ class GuardPatrolViewModel(
                     guardLabel = user?.displayName ?: "Guard G1",
                     assignments = assignments,
                     assignmentsFromLive = fromLive,
-                    requireAssignment = GuardPatrolFixtures.REQUIRE_ASSIGNMENT_DEFAULT,
+                    requireAssignment = true,
                     statusLine = "LIVE · ${user?.displayName ?: "guard"} · ${user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID}" +
-                        if (fromLive) " · assignments live" else " · assignments fixture",
+                        " · my-schedules ${assignments.size}",
                     toast = ToastEvent(
                         System.currentTimeMillis(),
-                        if (fromLive) {
-                            "Connected · ${assignments.size} assignment(s)"
+                        if (assignments.isEmpty()) {
+                            "Connected · no Admin schedules today"
                         } else {
-                            "Connected · Assigned today (fixture)"
+                            "Connected · ${assignments.size} schedule(s)"
                         },
-                        ToastKind.SUCCESS,
+                        if (assignments.isEmpty()) ToastKind.WARNING else ToastKind.SUCCESS,
                     ),
                 )
             }
@@ -784,27 +765,29 @@ class GuardPatrolViewModel(
             }
             return live to true
         }
-        return GuardPatrolFixtures.assignmentsForToday(queryGuardId) to false
+        // Live-only Assigned today — empty on transport failure (no fixture PA-* rows).
+        return emptyList<PatrolAssignment>() to false
     }
 
     private fun applyFixtures(status: String) {
-        val guardId = GuardPatrolFixtures.DEFAULT_GUARD_ID
+        // Keep templates/checkpoints for scan labels only — never fabricate Assigned today.
+        val guardId = api.signedInUser?.staffId ?: GuardPatrolFixtures.DEFAULT_GUARD_ID
         _state.update {
             it.copy(
                 busy = false,
-                useLive = false,
+                useLive = true,
                 liveReady = false,
                 templates = GuardPatrolFixtures.activeTemplates(),
                 checkpoints = GuardPatrolFixtures.checkpoints.associateBy { cp -> cp.id },
                 schoolId = GuardPatrolFixtures.SCHOOL_ID,
                 schoolName = GuardPatrolFixtures.school.name,
                 guardId = guardId,
-                guardLabel = "Guard G1",
-                assignments = GuardPatrolFixtures.assignmentsForToday(guardId),
+                guardLabel = api.signedInUser?.displayName ?: "Guard",
+                assignments = emptyList(),
                 assignmentsFromLive = false,
-                requireAssignment = GuardPatrolFixtures.REQUIRE_ASSIGNMENT_DEFAULT,
+                requireAssignment = true,
                 statusLine = status,
-                toast = ToastEvent(System.currentTimeMillis(), status, ToastKind.INFO),
+                toast = ToastEvent(System.currentTimeMillis(), status, ToastKind.WARNING),
             )
         }
     }

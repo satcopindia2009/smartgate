@@ -195,21 +195,12 @@ fun KioskApp(
                             onSubmit = viewModel::submitLostFound,
                             onBack = viewModel::closeGuardTool,
                         )
-                    } else if (role == KioskRole.GUARD && state.screen == KioskScreen.GUARD_PATROL) {
-                        GuardPatrolApp(
-                            onExit = viewModel::closeGuardTool,
-                            onCourier = viewModel::openCourier,
-                            onLostFound = viewModel::openLostFound,
-                        )
                     } else if (role == KioskRole.GUARD) {
-                        GuardHomeHub(
-                            schoolName = state.schoolName,
-                            displayName = state.meDisplayName,
-                            onPatrol = viewModel::openGuardPatrol,
+                        // AC-GP2: Guard home = Assigned today (perform). Hub cards not required for Viren.
+                        GuardPatrolApp(
+                            onExit = null,
                             onCourier = viewModel::openCourier,
                             onLostFound = viewModel::openLostFound,
-                            onIncident = viewModel::openGuardPatrol,
-                            onFaceRecheck = { viewModel.openFaceLogin(faceCtx) },
                         )
                     } else {
                     KioskHeader(
