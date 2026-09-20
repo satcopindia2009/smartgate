@@ -19,6 +19,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -305,40 +311,55 @@ fun ApplePillButton(
     )
 }
 
-data class AppleTabItem(val icon: String, val label: String)
+data class AppleTabItem(val label: String, val icon: ImageVector)
 
+/** AC-APP1: real Material3 NavigationBar — compact ~56–64dp, never inside verticalScroll. */
 @Composable
 fun AppleTabBar(
     tabs: List<AppleTabItem>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
 ) {
-    Row(
+    NavigationBar(
         modifier = Modifier
             .fillMaxWidth()
-            .background(KioskColors.tabBarBg)
-            .border(width = 0.33.dp, color = KioskColors.border)
-            .navigationBarsPadding()
-            .padding(top = 6.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
+            .height(60.dp)
+            .navigationBarsPadding(),
+        containerColor = KioskColors.tabBarBg,
+        contentColor = KioskColors.systemBlue,
+        tonalElevation = 0.dp,
+        windowInsets = WindowInsets(0, 0, 0, 0),
     ) {
         tabs.forEachIndexed { index, tab ->
             val on = index == selectedIndex
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onSelect(index) }
-                    .padding(vertical = 2.dp),
-            ) {
-                Text(tab.icon, fontSize = 22.sp, color = if (on) KioskColors.systemBlue else KioskColors.textMuted)
-                Text(
-                    tab.label,
-                    fontSize = 10.sp,
-                    color = if (on) KioskColors.systemBlue else KioskColors.textMuted,
-                    fontFamily = KioskFont,
-                )
-            }
+            NavigationBarItem(
+                selected = on,
+                onClick = { onSelect(index) },
+                icon = {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = tab.label,
+                        modifier = Modifier.size(20.dp),
+                    )
+                },
+                label = {
+                    Text(
+                        text = tab.label,
+                        fontSize = 10.sp,
+                        fontFamily = KioskFont,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                alwaysShowLabel = true,
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = KioskColors.systemBlue,
+                    selectedTextColor = KioskColors.systemBlue,
+                    unselectedIconColor = KioskColors.textMuted,
+                    unselectedTextColor = KioskColors.textMuted,
+                    indicatorColor = KioskColors.secondaryFill,
+                ),
+            )
         }
     }
 }

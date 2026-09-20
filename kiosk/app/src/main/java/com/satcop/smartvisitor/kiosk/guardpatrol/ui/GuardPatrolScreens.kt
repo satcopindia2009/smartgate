@@ -97,31 +97,64 @@ fun GuardPatrolApp(
             .fillMaxSize()
             .background(KioskColors.bg),
     ) {
-        Column(Modifier.fillMaxSize()) {
-            Phase2Banner()
-            when (state.screen) {
-                GuardPatrolScreen.START -> {
-                    val firstAsg = state.assignments.firstOrNull()
-                    val tpl = firstAsg?.let { a -> state.templates.find { it.id == a.templateId } }
-                    val totalCp = tpl?.checkpointIds?.size ?: state.assignments.size.coerceAtLeast(0)
-                    GuardTodayShell(
-                        displayName = state.guardLabel,
-                        schoolName = state.schoolName,
-                        statusLine = state.statusLine,
-                        assignmentCount = state.assignments.size,
-                        progressDone = 0,
-                        progressTotal = totalCp,
-                        routeLabel = tpl?.name ?: "Assigned today",
-                        nextCheckpoint = tpl?.checkpointIds?.firstOrNull(),
-                        onContinuePatrol = {
-                            val id = firstAsg?.id
-                            if (id != null) vm.startFromAssignment(id)
-                        },
-                        onCourier = { onCourier?.invoke() },
-                        onLostFound = { onLostFound?.invoke() },
-                        onReportIncident = vm::openIncidentReport,
-                        patrolContent = {
-                            StartRoundScreen(
+        // AC-APP1: never nest fillMaxSize shell under Phase2Banner (clips bottom NavigationBar).
+        when (state.screen) {
+            GuardPatrolScreen.INCIDENT -> IncidentReportScreen(
+                state = state,
+                onType = vm::setIncidentType,
+                onNotes = vm::setIncidentNotes,
+                onCheckpoint = vm::setIncidentCheckpoint,
+                onPhoto = vm::setIncidentPhoto,
+                onClearPhoto = vm::clearIncidentPhoto,
+                onSubmit = vm::submitIncident,
+                onCancel = vm::cancelIncidentReport,
+            )
+            else -> {
+                val firstAsg = state.assignments.firstOrNull()
+                val roundTpl = state.round?.let { r -> state.templates.find { it.id == r.templateId } }
+                val tpl = firstAsg?.let { a -> state.templates.find { it.id == a.templateId } } ?: roundTpl
+                val totalCp = tpl?.checkpointIds?.size ?: state.assignments.size.coerceAtLeast(0)
+                val progressDone = state.round?.scans?.size ?: 0
+                val progressTotal = totalCp
+                val preferredTab = when (state.screen) {
+                    GuardPatrolScreen.ACTIVE, GuardPatrolScreen.RESULT -> 1
+                    else -> null
+                }
+                GuardTodayShell(
+                    displayName = state.guardLabel,
+                    schoolName = state.schoolName,
+                    statusLine = state.statusLine,
+                    assignmentCount = state.assignments.size,
+                    progressDone = progressDone,
+                    progressTotal = progressTotal,
+                    routeLabel = tpl?.name ?: "Assigned today",
+                    nextCheckpoint = tpl?.checkpointIds?.firstOrNull(),
+                    onContinuePatrol = {
+                        val id = firstAsg?.id
+                        if (id != null) vm.startFromAssignment(id)
+                    },
+                    onCourier = { onCourier?.invoke() },
+                    onLostFound = { onLostFound?.invoke() },
+                    onReportIncident = vm::openIncidentReport,
+                    preferredTab = preferredTab,
+                    patrolContent = {
+                        when (state.screen) {
+                            GuardPatrolScreen.ACTIVE -> ActiveRoundScreen(
+                                state = state,
+                                onScanQr = { vm.openScanPicker("QR") },
+                                onScanNfc = { vm.openScanPicker("NFC") },
+                                onEnd = vm::endRound,
+                                onToggleOffCampus = vm::setSimulateOffCampus,
+                                onBackTemplates = vm::backToStart,
+                                onReportIncident = vm::openIncidentReport,
+                                onCourier = onCourier,
+                                onLostFound = onLostFound,
+                            )
+                            GuardPatrolScreen.RESULT -> EndResultScreen(
+                                state = state,
+                                onAnother = vm::backToStart,
+                            )
+                            else -> StartRoundScreen(
                                 state = state,
                                 onStartAssignment = vm::startFromAssignment,
                                 onRefreshAssignments = vm::refreshAssignments,
@@ -129,33 +162,8 @@ fun GuardPatrolApp(
                                 onLostFound = onLostFound,
                                 onReportIncident = vm::openIncidentReport,
                             )
-                        },
-                    )
-                }
-                GuardPatrolScreen.ACTIVE -> ActiveRoundScreen(
-                    state = state,
-                    onScanQr = { vm.openScanPicker("QR") },
-                    onScanNfc = { vm.openScanPicker("NFC") },
-                    onEnd = vm::endRound,
-                    onToggleOffCampus = vm::setSimulateOffCampus,
-                    onBackTemplates = vm::backToStart,
-                    onReportIncident = vm::openIncidentReport,
-                    onCourier = onCourier,
-                    onLostFound = onLostFound,
-                )
-                GuardPatrolScreen.INCIDENT -> IncidentReportScreen(
-                    state = state,
-                    onType = vm::setIncidentType,
-                    onNotes = vm::setIncidentNotes,
-                    onCheckpoint = vm::setIncidentCheckpoint,
-                    onPhoto = vm::setIncidentPhoto,
-                    onClearPhoto = vm::clearIncidentPhoto,
-                    onSubmit = vm::submitIncident,
-                    onCancel = vm::cancelIncidentReport,
-                )
-                GuardPatrolScreen.RESULT -> EndResultScreen(
-                    state = state,
-                    onAnother = vm::backToStart,
+                        }
+                    },
                 )
             }
         }
@@ -164,7 +172,7 @@ fun GuardPatrolApp(
             text = if (state.useLive) "LIVE" else "DEMO",
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(12.dp),
+                .padding(start = 12.dp, bottom = 72.dp),
             color = KioskColors.watermark,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
@@ -176,7 +184,7 @@ fun GuardPatrolApp(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 48.dp),
+                .padding(bottom = 72.dp),
         ) { data ->
             val kind = lastToastKind.value
             val bg = when (kind) {

@@ -19,7 +19,7 @@ class GuardPatrolActivity : ComponentActivity() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        // AC-APP1: show system bars; AppleTabBar + navigationBarsPadding handle insets.
+        // AC-APP1: show system bars; Material3 NavigationBar + navigationBarsPadding handle insets.
         setContent {
             SatcopKioskTheme {
                 GuardPatrolApp()

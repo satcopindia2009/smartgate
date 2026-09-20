@@ -2,6 +2,11 @@ package com.satcop.smartvisitor.kiosk.ui.apple
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Inbox
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,10 +39,10 @@ import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 
 /** AC-APP1 bottomnav SoT: Inbox · Done · Inside · More */
 private val hostTabs = listOf(
-    AppleTabItem("📥", "Inbox"),
-    AppleTabItem("✅", "Done"),
-    AppleTabItem("👤", "Inside"),
-    AppleTabItem("⋯", "More"),
+    AppleTabItem("Inbox", Icons.Filled.Inbox),
+    AppleTabItem("Done", Icons.Filled.CheckCircle),
+    AppleTabItem("Inside", Icons.Filled.Person),
+    AppleTabItem("More", Icons.Filled.MoreHoriz),
 )
 
 /**

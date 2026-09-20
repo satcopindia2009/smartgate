@@ -201,7 +201,8 @@ fun KioskApp(
                             onBack = viewModel::closeGuardTool,
                         )
                     } else if (role == KioskRole.GUARD) {
-                        // AC-GP2: Guard home = Assigned today (perform). Hub cards not required for Viren.
+                        // AC-APP1: GuardPatrolApp always wraps GuardTodayShell + M3 NavigationBar
+                        // (Today|Patrol|Desk|More). Patrol tab = assign→perform.
                         GuardPatrolApp(
                             onExit = null,
                             onCourier = viewModel::openCourier,
@@ -230,7 +231,9 @@ fun KioskApp(
                             showingAfterHours = state.showingAfterHours,
                             onLogout = viewModel::logout,
                         )
-                    } else if (role == KioskRole.GATE && state.step == 1 && state.screen == KioskScreen.HOME) {
+                    } else if (role == KioskRole.GATE && state.screen == KioskScreen.HOME) {
+                        // AC-APP1: Gate shell ALWAYS on HOME (not only step==1).
+                        // Registration step>1 stays under pinned NavigationBar.
                         GateTodayScreen(
                             gateName = state.selectedGate?.name ?: "Main Gate",
                             recent = state.recent,
@@ -243,6 +246,17 @@ fun KioskApp(
                             onLostFound = viewModel::openLostFound,
                             onPickup = viewModel::openPickup,
                             onLogout = viewModel::logout,
+                            registrationStep = state.step,
+                            registrationContent = if (state.step > 1) {
+                                {
+                                    StepDots(current = state.step)
+                                    KioskStep(
+                                        step = state.step,
+                                        state = state,
+                                        viewModel = viewModel,
+                                    )
+                                }
+                            } else null,
                         )
                     } else {
                     KioskHeader(
@@ -378,31 +392,14 @@ fun KioskApp(
                                 )
                             }
                             role == KioskRole.GATE -> {
-                                Column(
-                                    modifier = if (compact) Modifier.fillMaxWidth() else Modifier.fillMaxSize(),
-                                ) {
-                                    StepDots(current = state.step)
-                                    // Avoid weight()+verticalScroll() (measure crash on some devices).
-                                    AnimatedContent(
-                                        targetState = state.step,
-                                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                                        label = "kiosk-step",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .then(if (compact) Modifier else Modifier.weight(1f, fill = true)),
-                                    ) { step ->
-                                        Column(
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .verticalScroll(rememberScrollState()),
-                                        ) {
-                                            KioskStep(
-                                                step = step,
-                                                state = state,
-                                                viewModel = viewModel,
-                                            )
-                                        }
-                                    }
+                                // Should not reach for HOME (shell above). Subflows only.
+                                Text(
+                                    "Returning to Gate home…",
+                                    color = KioskColors.textMuted,
+                                    fontFamily = KioskFont,
+                                )
+                                androidx.compose.runtime.LaunchedEffect(Unit) {
+                                    viewModel.closeGuardTool()
                                 }
                             }
                             else -> UnsupportedRoleScreen(
@@ -415,14 +412,19 @@ fun KioskApp(
                     } // end non-guard
                 }
             }
+            // Keep watermark/toast above pinned M3 NavigationBar (~60dp + system inset)
+            val aboveNav = if (signedIn) 72.dp else 0.dp
             DemoWatermark(
                 label = state.watermark,
-                modifier = Modifier.align(Alignment.BottomStart),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(bottom = aboveNav),
             )
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(if (compact) 16.dp else 24.dp),
+                    .padding(if (compact) 16.dp else 24.dp)
+                    .padding(bottom = aboveNav),
             ) {
                 val toast = state.toast
                 if (toast != null) {

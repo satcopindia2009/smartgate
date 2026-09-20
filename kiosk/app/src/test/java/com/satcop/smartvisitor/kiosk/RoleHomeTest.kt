@@ -8,6 +8,7 @@ import com.satcop.smartvisitor.kiosk.ui.KioskUiState
 import com.satcop.smartvisitor.kiosk.ui.homeRole
 import com.satcop.smartvisitor.kiosk.ui.showsGateRegistration
 import com.satcop.smartvisitor.kiosk.ui.showsHostApprove
+import com.satcop.smartvisitor.kiosk.ui.showsGuardPatrol
 import com.satcop.smartvisitor.kiosk.ui.showsPickup
 import com.satcop.smartvisitor.kiosk.ui.showsUnsupportedRole
 import org.junit.Assert.assertEquals
@@ -74,3 +75,29 @@ class RoleHomeTest {
         assertEquals("AFTER_HOURS_SH_REQUIRED", AfterHoursCopy.CODE)
     }
 }
+
+
+    @Test
+    fun gateHomeShellSurvivesRegistrationStep() {
+        // AC-APP1: screen==HOME keeps Gate shell even when step>1 (not old webpage).
+        val registering = KioskUiState(
+            signedIn = true,
+            meRole = "gate",
+            screen = KioskScreen.HOME,
+            step = 2,
+        )
+        assertTrue(registering.showsGateRegistration())
+        assertEquals(KioskRole.GATE, registering.homeRole())
+        assertFalse(registering.showsPickup())
+    }
+
+    @Test
+    fun guardHomeIsAlwaysGuardRole() {
+        val guard = KioskUiState(
+            signedIn = true,
+            meRole = "guard",
+            screen = KioskScreen.HOME,
+        )
+        assertTrue(guard.showsGuardPatrol())
+        assertEquals(KioskRole.GUARD, guard.homeRole())
+    }

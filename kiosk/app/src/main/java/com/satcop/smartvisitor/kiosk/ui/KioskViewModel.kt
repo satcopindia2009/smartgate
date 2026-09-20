@@ -1346,7 +1346,7 @@ class KioskViewModel(
             refreshHistoryInternal()
         }
     }
-    fun closeGuardTool() { _state.update { it.copy(screen = KioskScreen.GUARD_PATROL, historySelected = null, checkoutSelectedId = null, toast = null) } }
+    fun closeGuardTool() { _state.update { it.copy(screen = KioskScreen.HOME, historySelected = null, checkoutSelectedId = null, toast = null) } }
     fun toggleHistoryToday() { _state.update { it.copy(historyTodayOnly = !it.historyTodayOnly) }; viewModelScope.launch { refreshHistoryInternal() } }
     fun setHistoryKind(kind: String) { _state.update { it.copy(historyKindFilter = kind) }; viewModelScope.launch { refreshHistoryInternal() } }
     fun setHistoryStatus(status: String) { _state.update { it.copy(historyStatusFilter = status) }; viewModelScope.launch { refreshHistoryInternal() } }

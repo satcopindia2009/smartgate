@@ -1,6 +1,14 @@
 package com.satcop.smartvisitor.kiosk.ui.apple
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,15 +43,15 @@ import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 
 /** AC-APP1 bottomnav SoT: Home · Inside · Log · More */
 private val gateTabs = listOf(
-    AppleTabItem("🏠", "Home"),
-    AppleTabItem("👥", "Inside"),
-    AppleTabItem("📋", "Log"),
-    AppleTabItem("⋯", "More"),
+    AppleTabItem("Home", Icons.Filled.Home),
+    AppleTabItem("Inside", Icons.Filled.Groups),
+    AppleTabItem("Log", Icons.Filled.ListAlt),
+    AppleTabItem("More", Icons.Filled.MoreHoriz),
 )
 
 /**
  * Gate shell from `/workspace/ux-mocks/phone-apple-bottomnav-2026-09-20/`
- * (gate-home / gate-inside). Compact above-fold · pinned AppleTabBar.
+ * (gate-home / gate-inside). Compact above-fold · pinned Material3 NavigationBar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +67,9 @@ fun GateTodayScreen(
     onLostFound: () -> Unit,
     onPickup: () -> Unit,
     onLogout: () -> Unit,
+    /** When >1, Home tab shows registration steps under pinned NavigationBar (AC-APP1). */
+    registrationStep: Int = 1,
+    registrationContent: (@Composable () -> Unit)? = null,
 ) {
     var tab by remember { mutableIntStateOf(0) }
     var sheetOpen by remember { mutableStateOf(false) }
@@ -86,7 +97,19 @@ fun GateTodayScreen(
                 .fillMaxWidth(),
         ) {
             when (tab) {
-                0 -> { // Home — LIGHT/gate-home.png 1:1
+                0 -> { // Home — LIGHT/gate-home.png 1:1 (or registration under shell)
+                    if (registrationStep > 1 && registrationContent != null) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            AppleShellNav(leading = "Home", trailing = " ", onLeading = { /* stay */ })
+                            AppleShellTitle("Check-in")
+                            AppleShellSub("Step $registrationStep · under shell · tabs stay")
+                            registrationContent()
+                        }
+                    } else {
                     AppleShellNav(leading = "Roles", trailing = "Scan", onTrailing = onPickup)
                     AppleShellTitle("Gate")
                     AppleShellSub("${gateName.ifBlank { "Main" }} · compact home · no long scroll")
@@ -124,6 +147,7 @@ fun GateTodayScreen(
                                 pill = "Pending",
                             )
                         }
+                    }
                     }
                 }
                 1 -> { // Inside — gate-inside.png

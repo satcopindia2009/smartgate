@@ -1,6 +1,12 @@
 package com.satcop.smartvisitor.kiosk.ui.apple
 
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,10 +23,10 @@ import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 
 /** AC-APP1 bottomnav SoT: Today · Patrol · Desk · More */
 private val guardTabs = listOf(
-    AppleTabItem("📅", "Today"),
-    AppleTabItem("🛡", "Patrol"),
-    AppleTabItem("📦", "Desk"),
-    AppleTabItem("⋯", "More"),
+    AppleTabItem("Today", Icons.Filled.CalendarToday),
+    AppleTabItem("Patrol", Icons.Filled.Security),
+    AppleTabItem("Desk", Icons.Filled.Inventory2),
+    AppleTabItem("More", Icons.Filled.MoreHoriz),
 )
 
 /**
@@ -42,10 +48,15 @@ fun GuardTodayShell(
     onLostFound: () -> Unit,
     onReportIncident: () -> Unit,
     onLogout: () -> Unit = {},
+    /** Force Patrol tab when assign→perform is active (ACTIVE/RESULT). */
+    preferredTab: Int? = null,
     /** Assigned-today perform UI (existing StartRoundScreen content). */
     patrolContent: @Composable () -> Unit,
 ) {
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(preferredTab ?: 0) }
+    LaunchedEffect(preferredTab) {
+        if (preferredTab != null) tab = preferredTab
+    }
     val total = progressTotal.coerceAtLeast(assignmentCount).coerceAtLeast(0)
     val done = progressDone.coerceIn(0, total.coerceAtLeast(0))
     val route = routeLabel.ifBlank { "Assigned today" }
