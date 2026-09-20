@@ -88,6 +88,7 @@ data class ScanRequest(
     val lat: Double? = null,
     val lng: Double? = null,
     val offCampusSuspect: Boolean = false,
+    val gpsMissing: Boolean? = null,
 )
 
 @Serializable

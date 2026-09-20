@@ -61,10 +61,32 @@ class LiveGuardPatrolApi(
         get<PatrolListResponse>("/checkpoints").data
 
     /**
-     * GET /patrol-assignments?dutyDate=&guardId=
-     * Prefer staffId (G1). Fixture-fallback only on transport/HTTP failure.
+     * Assigned schedule for Guard perform (Viren SoT):
+     * Prefer GET /patrol-schedules?guardId=me (& dutyDate).
+     * Fallback GET /patrol-assignments?dutyDate=&guardId= for older Living.
      */
     fun listAssignments(dutyDate: String, guardId: String = GuardPatrolFixtures.DEFAULT_GUARD_ID): List<PatrolAssignmentDto> {
+        val mine = "/my-schedules"
+        try {
+            val all = get<PatrolAssignmentListResponse>(mine).data
+            val today = all.filter { it.dutyDate == dutyDate }
+            if (today.isNotEmpty()) return today
+            if (all.isNotEmpty()) return all
+        } catch (_: ApiException) {
+            // fall through
+        }
+        val mePath = "/patrol-schedules?guardId=me&dutyDate=$dutyDate"
+        try {
+            return get<PatrolAssignmentListResponse>(mePath).data
+        } catch (_: ApiException) {
+            // fall through
+        }
+        val schedPath = "/patrol-schedules?dutyDate=$dutyDate&guardId=$guardId"
+        try {
+            return get<PatrolAssignmentListResponse>(schedPath).data
+        } catch (_: ApiException) {
+            // fall through
+        }
         val path = "/patrol-assignments?dutyDate=$dutyDate&guardId=$guardId"
         return get<PatrolAssignmentListResponse>(path).data
     }
@@ -102,6 +124,7 @@ class LiveGuardPatrolApi(
         lat: Double? = null,
         lng: Double? = null,
         offCampusSuspect: Boolean = false,
+        gpsMissing: Boolean = false,
     ): PatrolRoundDto = post(
         "/rounds/$roundId/scans",
         json.encodeToString(
@@ -112,6 +135,7 @@ class LiveGuardPatrolApi(
                 lat = lat,
                 lng = lng,
                 offCampusSuspect = offCampusSuspect,
+                gpsMissing = gpsMissing,
             ),
         ),
     )

@@ -58,6 +58,7 @@ object GuardPatrolMapper {
     fun parseAssignmentStatus(raw: String?): AssignmentStatus = when (raw?.lowercase()) {
         "started" -> AssignmentStatus.STARTED
         "completed" -> AssignmentStatus.COMPLETED
+        "partial" -> AssignmentStatus.PARTIAL
         "missed" -> AssignmentStatus.MISSED
         "cancelled" -> AssignmentStatus.CANCELLED
         else -> AssignmentStatus.ASSIGNED

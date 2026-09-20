@@ -67,7 +67,7 @@ object GuardPatrolFixtures {
     fun guard(id: String): Guard? = guards.find { it.id == id }
 
     /** School flag — when true, hide/disable self-start template picker (AC-AP7). Default false. */
-    const val REQUIRE_ASSIGNMENT_DEFAULT = false
+    const val REQUIRE_ASSIGNMENT_DEFAULT = true
 
     fun todayDutyDateIst(): String =
         java.time.LocalDate.now(java.time.ZoneId.of("Asia/Kolkata")).toString()

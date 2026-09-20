@@ -92,6 +92,7 @@ enum class AssignmentStatus {
     ASSIGNED,
     STARTED,
     COMPLETED,
+    PARTIAL,
     MISSED,
     CANCELLED;
 
@@ -99,6 +100,7 @@ enum class AssignmentStatus {
         ASSIGNED -> "Assigned"
         STARTED -> "Started"
         COMPLETED -> "Completed"
+        PARTIAL -> "Partial"
         MISSED -> "Missed"
         CANCELLED -> "Cancelled"
     }
@@ -108,7 +110,7 @@ enum class AssignmentStatus {
 
 /**
  * Admin-assigned patrol duty for a guard on a duty date (school TZ Asia/Kolkata).
- * AC-AP1–7 — Mobile consume of GET /patrol-assignments.
+ * AC-AP1–7 — Mobile consume of GET /patrol-schedules?guardId=me (fallback /patrol-assignments).
  */
 data class PatrolAssignment(
     val id: String,

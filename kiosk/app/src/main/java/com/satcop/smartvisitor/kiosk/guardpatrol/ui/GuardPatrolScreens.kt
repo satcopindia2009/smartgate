@@ -104,6 +104,7 @@ fun GuardPatrolApp(
                     onSelect = vm::selectTemplate,
                     onStart = vm::startRound,
                     onStartAssignment = vm::startFromAssignment,
+                    onRefreshAssignments = vm::refreshAssignments,
                     onToggleLive = vm::setUseLive,
                     onCourier = onCourier,
                     onLostFound = onLostFound,
@@ -215,6 +216,7 @@ private fun StartRoundScreen(
     onSelect: (String) -> Unit,
     onStart: () -> Unit,
     onStartAssignment: (String) -> Unit,
+    onRefreshAssignments: () -> Unit,
     onToggleLive: (Boolean) -> Unit,
     onCourier: (() -> Unit)? = null,
     onLostFound: (() -> Unit)? = null,
@@ -227,7 +229,7 @@ private fun StartRoundScreen(
             .padding(16.dp),
     ) {
         HeaderBlock(
-            title = "Start round",
+            title = "Assigned today",
             subtitle = state.schoolName,
         )
         Spacer(Modifier.height(10.dp))
@@ -280,6 +282,7 @@ private fun StartRoundScreen(
                 fromLive = state.assignmentsFromLive,
                 busy = state.busy,
                 onStart = onStartAssignment,
+                onRefresh = onRefreshAssignments,
             )
 
             GuardToolsChips(
@@ -338,15 +341,32 @@ private fun AssignedTodaySection(
     fromLive: Boolean,
     busy: Boolean,
     onStart: (String) -> Unit,
+    onRefresh: () -> Unit,
 ) {
     val source = if (fromLive) "live" else "fixture"
-    Text(
-        text = "Assigned today",
-        color = KioskColors.text,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.SemiBold,
-        fontFamily = KioskFont,
-    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Perform from schedule",
+            color = KioskColors.text,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = KioskFont,
+        )
+        Text(
+            text = if (busy) "…" else "Refresh",
+            color = KioskColors.cyanBright,
+            fontSize = 12.sp,
+            fontFamily = KioskFont,
+            modifier = Modifier
+                .clip(ChipShape)
+                .clickable(enabled = !busy, onClick = onRefresh)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
     Text(
         text = if (assignments.isEmpty()) {
             "No assignments for today ($source)."
@@ -367,7 +387,7 @@ private fun AssignedTodaySection(
                 .padding(14.dp),
         ) {
             Text(
-                text = "Admin has not assigned a patrol yet.",
+                text = "Admin has not assigned a patrol yet. Tap Refresh after Admin assigns Living.",
                 color = KioskColors.textMuted,
                 fontSize = 12.sp,
                 fontFamily = KioskFont,
@@ -479,7 +499,9 @@ private fun AssignmentCard(
             Text(
                 text = when {
                     busy -> "Working…"
-                    canStart -> "Start from assignment"
+                    assignment.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.STARTED ->
+                        "Continue · scan → finish"
+                    canStart -> "Start · scan → finish"
                     else -> assignment.status.display()
                 },
                 color = if (canStart && !busy) KioskColors.bg else KioskColors.textDim,
