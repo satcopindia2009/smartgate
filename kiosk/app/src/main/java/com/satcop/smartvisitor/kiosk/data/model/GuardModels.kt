@@ -189,6 +189,8 @@ data class LostFoundItem(
     val schoolId: String? = null,
     val campusId: String? = null,
     val description: String,
+    /** Lost | Found — AC-LF2 */
+    val itemType: String? = null,
     val photoKey: String? = null,
     val foundLocation: String,
     val foundGateId: String? = null,
@@ -224,6 +226,8 @@ data class LostFoundCreate(
     val notes: String? = null,
     val photoKey: String? = null,
     val foundZone: String? = null,
+    /** Lost | Found — AC-LF2 required */
+    val itemType: String = "Found",
 )
 
 /** Living POST /v1/lost-found/items body (OpenAPI LostFoundItemCreate). */
@@ -236,6 +240,7 @@ data class LostFoundItemCreate(
     val foundZone: String? = null,
     val foundAt: String? = null,
     val status: String? = "Open",
+    val itemType: String? = null,
 )
 
 @Serializable

@@ -136,6 +136,8 @@ data class KioskUiState(
     val lfFinder: String = "",
     val lfFinderMobile: String = "",
     val lfFoundAt: String = "",
+    val lfItemType: String = "Found",
+    val lfPhoto: Bitmap? = null,
     val lfBusy: Boolean = false,
     val faceEnrolled: Boolean = false,
     val faceConsentAgreed: Boolean = false,
@@ -1466,22 +1468,50 @@ class KioskViewModel(
         }
     }
     fun openLostFound() {
-        _state.update { it.copy(screen = KioskScreen.LOST_FOUND, lfFoundAt = LocalVisitStore.nowIst(), lfFinder = it.meDisplayName.ifBlank { "Gate guard" }) }
+        _state.update {
+            it.copy(
+                screen = KioskScreen.LOST_FOUND,
+                lfFoundAt = LocalVisitStore.nowIst(),
+                lfFinder = it.meDisplayName.ifBlank { "Gate guard" },
+                lfItemType = "Found",
+                lfPhoto = null,
+            )
+        }
     }
     fun updateLfDescription(v: String) = _state.update { it.copy(lfDescription = v) }
     fun updateLfLocation(v: String) = _state.update { it.copy(lfLocation = v) }
     fun updateLfFinder(v: String) = _state.update { it.copy(lfFinder = v) }
     fun updateLfFinderMobile(v: String) = _state.update { it.copy(lfFinderMobile = v) }
     fun updateLfFoundAt(v: String) = _state.update { it.copy(lfFoundAt = v) }
+    fun updateLfItemType(v: String) = _state.update { it.copy(lfItemType = v) }
+    fun setLfPhoto(bitmap: Bitmap?) = _state.update { it.copy(lfPhoto = bitmap) }
     fun submitLostFound() {
         val s = _state.value
         if (s.lfDescription.isBlank() || s.lfLocation.isBlank()) {
             _state.update { it.copy(toast = "Description and location required", toastKind = ToastKind.ERROR) }
             return
         }
+        if (s.lfItemType !in setOf("Lost", "Found")) {
+            _state.update { it.copy(toast = "Pick Lost or Found", toastKind = ToastKind.ERROR) }
+            return
+        }
+        val photoBmp = s.lfPhoto
+        if (photoBmp == null) {
+            _state.update { it.copy(toast = "Capture item photo (required)", toastKind = ToastKind.ERROR) }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(lfBusy = true) }
             try {
+                val stream = java.io.ByteArrayOutputStream()
+                photoBmp.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+                val jpeg = stream.toByteArray()
+                val uploaded = repository.uploadMedia(
+                    jpeg,
+                    "lost-found-item.jpg",
+                    "image/jpeg",
+                    "lost_found",
+                )
                 val created = repository.createLostFound(
                     LostFoundCreate(
                         description = s.lfDescription,
@@ -1490,7 +1520,8 @@ class KioskViewModel(
                         finderName = s.lfFinder.ifBlank { s.meDisplayName.ifBlank { "Gate guard" } },
                         finderMobile = s.lfFinderMobile.ifBlank { null },
                         gateId = s.selectedGate?.id ?: s.draft.gateId,
-                        photoKey = "media/lost_found/placeholder",
+                        photoKey = uploaded.key,
+                        itemType = s.lfItemType,
                     ),
                 )
                 _state.update {
@@ -1499,7 +1530,9 @@ class KioskViewModel(
                         lfDescription = "",
                         lfLocation = "",
                         lfFinderMobile = "",
-                        toast = "LF Open · ${created.id}",
+                        lfItemType = "Found",
+                        lfPhoto = null,
+                        toast = "${s.lfItemType} · ${created.id}",
                         toastKind = ToastKind.SUCCESS,
                         screen = KioskScreen.HOME,
                     )

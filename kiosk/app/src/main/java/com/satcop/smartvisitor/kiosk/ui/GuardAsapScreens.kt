@@ -8,6 +8,13 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
+import android.Manifest
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -340,26 +347,133 @@ fun CheckoutVerifyScreen(inside: List<InsideVisit>, selectedId: String?, busy: B
 
 @Composable
 fun LostFoundCreateScreen(
-    description: String, location: String, finder: String, finderMobile: String, foundAt: String, busy: Boolean,
-    onDescription: (String) -> Unit, onLocation: (String) -> Unit, onFinder: (String) -> Unit,
-    onFinderMobile: (String) -> Unit, onFoundAt: (String) -> Unit, onSubmit: () -> Unit, onBack: () -> Unit,
+    description: String,
+    location: String,
+    finder: String,
+    finderMobile: String,
+    foundAt: String,
+    itemType: String,
+    photo: Bitmap?,
+    busy: Boolean,
+    onDescription: (String) -> Unit,
+    onLocation: (String) -> Unit,
+    onFinder: (String) -> Unit,
+    onFinderMobile: (String) -> Unit,
+    onFoundAt: (String) -> Unit,
+    onItemType: (String) -> Unit,
+    onPhoto: (Bitmap?) -> Unit,
+    onSubmit: () -> Unit,
+    onBack: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val isLost = itemType.equals("Lost", ignoreCase = true)
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp ->
+        onPhoto(bmp)
+    }
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) camera.launch(null) else onPhoto(null)
+    }
+    fun capturePhoto() {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) camera.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)
+    }
+    val canSubmit = !busy && description.isNotBlank() && location.isNotBlank() &&
+        itemType in setOf("Lost", "Found") && photo != null
+
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-        HeaderRow("Lost & Found", "Create Open · Admin manages later", onBack)
+        HeaderRow(
+            "Lost & Found",
+            if (isLost) "Lost report · photo required · Admin claim later" else "Found item · photo required · Admin manages later",
+            onBack,
+        )
         Spacer(Modifier.height(12.dp))
-        KioskField(label = "Item description *", value = description, onValueChange = onDescription, placeholder = "Blue bottle", capitalization = KeyboardCapitalization.Sentences, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        KioskField(label = "Location found *", value = location, onValueChange = onLocation, placeholder = "Main Gate", modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        KioskField(label = "Date/time found *", value = foundAt, onValueChange = onFoundAt, placeholder = "ISO time", capitalization = KeyboardCapitalization.None, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        KioskField(label = "Finder name *", value = finder, onValueChange = onFinder, placeholder = "Guard", modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        KioskField(label = "Finder mobile (optional)", value = finderMobile, onValueChange = onFinderMobile, keyboardType = KeyboardType.Phone, capitalization = KeyboardCapitalization.None, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
-        Text("Photo: media/lost_found/placeholder (camera upload later · required on wire).", color = KioskColors.textDim, fontSize = 12.sp, fontFamily = KioskFont)
+        Text("Item type *", color = KioskColors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, fontFamily = KioskFont)
+        Spacer(Modifier.height(6.dp))
+        ChipRow(selected = itemType, options = listOf("Found", "Lost"), onSelect = onItemType)
         Spacer(Modifier.height(12.dp))
-        KioskPrimaryButton(text = if (busy) "Saving…" else "Create Open", onClick = onSubmit, enabled = !busy && description.isNotBlank() && location.isNotBlank(), modifier = Modifier.fillMaxWidth())
+        KioskField(
+            label = "Item description *",
+            value = description,
+            onValueChange = onDescription,
+            placeholder = if (isLost) "Blue bottle · last seen" else "Blue bottle",
+            capitalization = KeyboardCapitalization.Sentences,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
+        KioskField(
+            label = if (isLost) "Last seen location *" else "Location found *",
+            value = location,
+            onValueChange = onLocation,
+            placeholder = "Main Gate",
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
+        KioskField(
+            label = if (isLost) "Date/time lost *" else "Date/time found *",
+            value = foundAt,
+            onValueChange = onFoundAt,
+            placeholder = "ISO time",
+            capitalization = KeyboardCapitalization.None,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
+        KioskField(
+            label = if (isLost) "Reporter name *" else "Finder name *",
+            value = finder,
+            onValueChange = onFinder,
+            placeholder = "Guard",
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
+        KioskField(
+            label = if (isLost) "Reporter mobile (optional)" else "Finder mobile (optional)",
+            value = finderMobile,
+            onValueChange = onFinderMobile,
+            keyboardType = KeyboardType.Phone,
+            capitalization = KeyboardCapitalization.None,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text("Item photo *", color = KioskColors.text, fontSize = 13.sp, fontWeight = FontWeight.Medium, fontFamily = KioskFont)
+        Spacer(Modifier.height(6.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .clip(ControlShape)
+                .background(if (photo != null) KioskColors.cyanDim else KioskColors.sidebar)
+                .border(1.dp, if (photo != null) KioskColors.cyan else KioskColors.border, ControlShape)
+                .clickable(enabled = !busy) { capturePhoto() },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (photo != null) {
+                Image(
+                    bitmap = photo.asImageBitmap(),
+                    contentDescription = "L&F item photo",
+                    modifier = Modifier.fillMaxWidth().height(160.dp),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Tap to capture photo", color = KioskColors.text, fontSize = 13.sp, fontFamily = KioskFont)
+                    Text("Camera only · required (AC-LF1)", color = KioskColors.textDim, fontSize = 11.sp, fontFamily = KioskFont)
+                }
+            }
+        }
+        if (photo != null) {
+            Spacer(Modifier.height(6.dp))
+            Text("Thumb ready · will upload on save", color = KioskColors.cyanBright, fontSize = 11.sp, fontFamily = KioskFont)
+            Spacer(Modifier.height(4.dp))
+            KioskGhostButton(text = "Retake photo", onClick = { onPhoto(null) }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp))
+        }
+        Spacer(Modifier.height(12.dp))
+        KioskPrimaryButton(
+            text = if (busy) "Saving…" else if (isLost) "File Lost report" else "Create Found item",
+            onClick = onSubmit,
+            enabled = canSubmit,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

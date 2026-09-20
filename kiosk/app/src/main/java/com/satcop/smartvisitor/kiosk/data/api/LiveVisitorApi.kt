@@ -357,7 +357,8 @@ class LiveVisitorApi(
     }
 
     fun createLostFound(body: LostFoundCreate): LostFoundItem {
-        val photo = body.photoKey?.takeIf { it.isNotBlank() } ?: "media/lost_found/placeholder"
+        val photo = body.photoKey?.takeIf { it.isNotBlank() }
+            ?: throw IllegalArgumentException("photoKey required (AC-LF1)")
         val payload = LostFoundItemCreate(
             description = body.description.trim(),
             photoKey = photo,
@@ -366,6 +367,7 @@ class LiveVisitorApi(
             foundZone = body.foundZone?.takeIf { it.isNotBlank() },
             foundAt = body.foundAt.takeIf { it.isNotBlank() },
             status = "Open",
+            itemType = body.itemType.takeIf { it.isNotBlank() },
         )
         return post("/lost-found/items", json.encodeToString(payload))
     }

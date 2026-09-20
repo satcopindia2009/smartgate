@@ -503,9 +503,12 @@ class HybridKioskRepository(
             if (body.description.isBlank() || body.locationFound.isBlank()) {
                 throw ApiException("VALIDATION", "Description and found location are required", 400)
             }
-            val normalized = body.copy(
-                photoKey = body.photoKey?.takeIf { it.isNotBlank() } ?: "media/lost_found/placeholder",
-            )
+            val photo = body.photoKey?.takeIf { it.isNotBlank() }
+                ?: throw ApiException("VALIDATION", "Item photo required (AC-LF1)", 400)
+            if (body.itemType !in setOf("Lost", "Found")) {
+                throw ApiException("VALIDATION", "itemType must be Lost or Found (AC-LF2)", 400)
+            }
+            val normalized = body.copy(photoKey = photo)
             if (dataSource == DataSource.LIVE) {
                 try {
                     return@withContext live.createLostFound(normalized)

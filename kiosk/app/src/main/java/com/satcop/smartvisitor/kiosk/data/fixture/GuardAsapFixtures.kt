@@ -148,7 +148,9 @@ object GuardAsapFixtures {
             id = id,
             schoolId = DemoFixtures.SCHOOL_ID,
             description = body.description.trim(),
-            photoKey = body.photoKey?.takeIf { it.isNotBlank() } ?: "media/lost_found/placeholder",
+            itemType = body.itemType,
+            photoKey = body.photoKey?.takeIf { it.isNotBlank() }
+                ?: error("photoKey required AC-LF1"),
             foundLocation = body.locationFound.trim(),
             foundGateId = gateId ?: body.gateId,
             foundZone = body.foundZone,
