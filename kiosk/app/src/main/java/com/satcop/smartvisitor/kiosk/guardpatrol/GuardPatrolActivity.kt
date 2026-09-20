@@ -6,8 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolApp
 import com.satcop.smartvisitor.kiosk.ui.theme.SatcopKioskTheme
 
@@ -21,10 +19,7 @@ class GuardPatrolActivity : ComponentActivity() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            hide(WindowInsetsCompat.Type.navigationBars())
-        }
+        // AC-APP1: show system bars; AppleTabBar + navigationBarsPadding handle insets.
         setContent {
             SatcopKioskTheme {
                 GuardPatrolApp()

@@ -61,7 +61,7 @@ val AppleDark = ApplePalette(
 )
 
 /** Marker string retained in DEX for Hub verify (Appearance / Apple tokens). */
-const val APPLE_THEME_MARKER = "AppearanceMode-Apple-LD-1054"
+const val APPLE_THEME_MARKER = "AppearanceMode-Apple-LD-1055-bottomnav"
 
 /**
  * Reactive palette holder so existing `KioskColors.x` call sites recompose on L/D switch.

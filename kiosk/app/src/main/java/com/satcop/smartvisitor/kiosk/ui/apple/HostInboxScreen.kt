@@ -12,15 +12,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,12 +32,18 @@ import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 
+/** AC-APP1 bottomnav SoT: Inbox · Done · Inside · More */
 private val hostTabs = listOf(
     AppleTabItem("📥", "Inbox"),
     AppleTabItem("✅", "Done"),
-    AppleTabItem("👤", "Me"),
+    AppleTabItem("👤", "Inside"),
+    AppleTabItem("⋯", "More"),
 )
 
+/**
+ * Host shell from phone-apple-bottomnav (host-home / host-done).
+ * Approve/Decline above fold · pinned tab bar · no long-scroll home.
+ */
 @Composable
 fun HostInboxScreen(
     displayName: String,
@@ -66,14 +68,8 @@ fun HostInboxScreen(
     onLogout: () -> Unit = {},
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    var seg by remember { mutableIntStateOf(0) }
-    var search by remember { mutableStateOf("") }
-
-    val filteredPending = pending.filter {
-        search.isBlank() ||
-            (it.visitorName ?: "").contains(search, ignoreCase = true) ||
-            (it.purpose ?: "").contains(search, ignoreCase = true)
-    }
+    val topPending = pending.take(1)
+    val approvedToday = active.size
 
     Column(
         modifier = Modifier
@@ -83,40 +79,33 @@ fun HostInboxScreen(
         Column(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState()),
+                .fillMaxWidth(),
         ) {
             when (tab) {
-                0 -> {
-                    AppleNavBar(
-                        title = "Approvals",
-                        leading = "Select",
-                        trailing = "⋮",
-                        onTrailing = onRefresh,
-                    )
-                    AppleLargeTitle("Inbox")
-                    AppleSearchField(value = search, onValueChange = { search = it }, placeholder = "🔍 Search")
-                    Spacer(Modifier.height(8.dp))
-                    AppleSegmented(
-                        options = listOf("Needs you", "Approved", "All"),
-                        selectedIndex = seg,
-                        onSelect = { seg = it },
-                    )
+                0 -> { // Inbox home — host-home.png
+                    AppleShellNav(leading = "Roles", trailing = "Edit", onTrailing = onRefresh)
+                    AppleShellTitle("Host")
+                    AppleShellSub("Needs you · ${pending.size}")
                     if (afterHours) {
                         Text(
                             AfterHoursCopy.HOST_NO_OP,
                             color = KioskColors.systemOrange,
                             fontSize = 13.sp,
                             fontFamily = KioskFont,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                         )
                     }
-                    when (seg) {
-                        0 -> InboxList(
-                            visits = filteredPending,
-                            photos = photos,
+                    if (topPending.isEmpty()) {
+                        AppleInset {
+                            AppleCell("No pending visits", showChevron = false, showDivider = false)
+                        }
+                    } else {
+                        val visit = topPending.first()
+                        CompactApproveCard(
+                            visit = visit,
+                            photo = photos[visit.id],
                             busy = busy,
-                            rejectingVisitId = rejectingVisitId,
+                            rejecting = rejectingVisitId == visit.id,
                             rejectReason = rejectReason,
                             onApprove = onApprove,
                             onStartReject = onStartReject,
@@ -124,28 +113,43 @@ fun HostInboxScreen(
                             onCancelReject = onCancelReject,
                             onConfirmReject = onConfirmReject,
                         )
-                        1 -> ActiveList(active = active, onMeetingDone = onMeetingDone, busy = busy)
-                        else -> {
-                            InboxList(
-                                visits = filteredPending,
-                                photos = photos,
-                                busy = busy,
-                                rejectingVisitId = rejectingVisitId,
-                                rejectReason = rejectReason,
-                                onApprove = onApprove,
-                                onStartReject = onStartReject,
-                                onPickRejectReason = onPickRejectReason,
-                                onCancelReject = onCancelReject,
-                                onConfirmReject = onConfirmReject,
-                            )
-                            ActiveList(active = active, onMeetingDone = onMeetingDone, busy = busy)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    AppleGrid2 {
+                        AppleTile(
+                            icon = "✅",
+                            label = "Approved",
+                            detail = "Today $approvedToday",
+                            onClick = { tab = 1 },
+                        )
+                        AppleTile(
+                            icon = "👤",
+                            label = "Inside",
+                            detail = "With you ${active.size}",
+                            onClick = { tab = 2 },
+                        )
+                    }
+                }
+                1 -> { // Done — host-done.png
+                    AppleShellNav(leading = " ", trailing = "Filter")
+                    AppleShellTitle("Done")
+                    AppleShellSub("Today")
+                    AppleInset {
+                        if (active.isEmpty()) {
+                            AppleCell("None yet", showChevron = false, showDivider = false)
+                        } else {
+                            active.take(5).forEachIndexed { i, visit ->
+                                AppleCell(
+                                    title = visit.visitorName ?: "Visitor",
+                                    subtitle = "Approved · ${visit.status}",
+                                    trailing = "OK",
+                                    showChevron = false,
+                                    showDivider = i < active.take(5).lastIndex,
+                                    onClick = { if (!busy) onMeetingDone(visit.id) },
+                                )
+                            }
                         }
                     }
-                    Spacer(Modifier.height(24.dp))
-                }
-                1 -> {
-                    AppleLargeTitle("Done")
-                    ActiveList(active = active, onMeetingDone = onMeetingDone, busy = busy)
                     if (showingAfterHours) {
                         Text(
                             AfterHoursCopy.HOST_NO_OP,
@@ -155,10 +159,31 @@ fun HostInboxScreen(
                             modifier = Modifier.padding(16.dp),
                         )
                     }
-                    Spacer(Modifier.height(24.dp))
                 }
-                else -> {
-                    AppleLargeTitle("Me")
+                2 -> { // Inside
+                    AppleShellNav(leading = " ", trailing = " ")
+                    AppleShellTitle("Inside")
+                    AppleShellSub("With you · ${active.size}")
+                    AppleInset {
+                        if (active.isEmpty()) {
+                            AppleCell("None right now", showChevron = false, showDivider = false)
+                        } else {
+                            active.take(5).forEachIndexed { i, visit ->
+                                AppleCell(
+                                    title = visit.visitorName ?: "Visitor",
+                                    subtitle = visit.purpose ?: visit.status,
+                                    trailing = "Done",
+                                    showChevron = false,
+                                    showDivider = i < active.take(5).lastIndex,
+                                    onClick = { if (!busy) onMeetingDone(visit.id) },
+                                )
+                            }
+                        }
+                    }
+                }
+                else -> { // More
+                    AppleShellNav(leading = " ", trailing = " ")
+                    AppleShellTitle("More")
                     val identity = listOf(displayName, schoolId, staffId)
                         .filter { it.isNotBlank() }
                         .joinToString(" · ")
@@ -173,7 +198,6 @@ fun HostInboxScreen(
                     AppleInset {
                         AppleCell("Sign out", showChevron = false, showDivider = false, onClick = onLogout)
                     }
-                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
@@ -182,11 +206,11 @@ fun HostInboxScreen(
 }
 
 @Composable
-private fun InboxList(
-    visits: List<VisitOut>,
-    photos: Map<String, Bitmap>,
+private fun CompactApproveCard(
+    visit: VisitOut,
+    photo: Bitmap?,
     busy: Boolean,
-    rejectingVisitId: String?,
+    rejecting: Boolean,
     rejectReason: String?,
     onApprove: (String) -> Unit,
     onStartReject: (String) -> Unit,
@@ -194,155 +218,98 @@ private fun InboxList(
     onCancelReject: () -> Unit,
     onConfirmReject: () -> Unit,
 ) {
-    if (visits.isEmpty()) {
-        AppleInset {
-            AppleCell("No pending visits", showChevron = false, showDivider = false)
-        }
-        return
-    }
+    val name = visit.visitorName ?: "Visitor"
+    val initials = name.split(" ")
+        .mapNotNull { it.firstOrNull()?.toString() }
+        .take(2)
+        .joinToString("")
+        .ifBlank { "?" }
     AppleInset {
-        visits.forEachIndexed { index, visit ->
-            val name = visit.visitorName ?: "Visitor"
-            val initials = name.split(" ")
-                .mapNotNull { it.firstOrNull()?.toString() }
-                .take(2)
-                .joinToString("")
-                .ifBlank { "?" }
-            val photo = photos[visit.id]
-            val rejecting = rejectingVisitId == visit.id
-            Column {
-                Row(
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            if (photo != null) {
+                Image(
+                    bitmap = photo.asImageBitmap(),
+                    contentDescription = null,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                    if (photo != null) {
-                        Image(
-                            bitmap = photo.asImageBitmap(),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape),
-                        )
-                    } else {
-                        AppleAvatar(
-                            initials = initials,
-                            color = if (index % 2 == 0) KioskColors.systemBlue else KioskColors.systemOrange,
+                        .size(40.dp)
+                        .clip(CircleShape),
+                )
+            } else {
+                AppleAvatar(initials = initials, size = 40.dp)
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    name,
+                    color = KioskColors.text,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = KioskFont,
+                )
+                Text(
+                    listOfNotNull(visit.visitorType, visit.purpose, visit.gateId)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · ")
+                        .ifBlank { "Awaiting approval" },
+                    color = KioskColors.textMuted,
+                    fontSize = 12.sp,
+                    fontFamily = KioskFont,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                if (rejecting) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Decline reason", color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
+                    RejectReasons.chips.forEach { reason ->
+                        AppleCell(
+                            title = reason,
+                            trailing = if (rejectReason == reason) "✓" else null,
+                            showChevron = false,
+                            showDivider = true,
+                            onClick = { onPickRejectReason(reason) },
                         )
                     }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                name,
-                                color = KioskColors.text,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFamily = KioskFont,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Text(
-                                "now",
-                                color = KioskColors.textMuted,
-                                fontSize = 13.sp,
-                                fontFamily = KioskFont,
-                            )
-                        }
-                        Text(
-                            listOfNotNull(visit.visitorType, visit.purpose, visit.gateId)
-                                .filter { it.isNotBlank() }
-                                .joinToString(" · ")
-                                .ifBlank { "Awaiting approval" },
-                            color = KioskColors.textMuted,
-                            fontSize = 14.sp,
-                            fontFamily = KioskFont,
-                            modifier = Modifier.padding(top = 2.dp),
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        ApplePillButton(
+                            text = "Cancel",
+                            onClick = onCancelReject,
+                            positive = false,
+                            modifier = Modifier.weight(1f),
+                            enabled = !busy,
                         )
-                        if (rejecting) {
-                            Spacer(Modifier.height(8.dp))
-                            Text("Decline reason", color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
-                            RejectReasons.chips.forEach { reason ->
-                                AppleCell(
-                                    title = reason,
-                                    trailing = if (rejectReason == reason) "✓" else null,
-                                    showChevron = false,
-                                    showDivider = true,
-                                    onClick = { onPickRejectReason(reason) },
-                                )
-                            }
-                            Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                                ApplePillButton(
-                                    text = "Cancel",
-                                    onClick = onCancelReject,
-                                    positive = false,
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !busy,
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                ApplePillButton(
-                                    text = "Confirm decline",
-                                    onClick = onConfirmReject,
-                                    positive = true,
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !busy && !rejectReason.isNullOrBlank(),
-                                )
-                            }
-                        } else {
-                            Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                                ApplePillButton(
-                                    text = "Decline",
-                                    onClick = { onStartReject(visit.id) },
-                                    positive = false,
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !busy,
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                ApplePillButton(
-                                    text = "Approve",
-                                    onClick = { onApprove(visit.id) },
-                                    positive = true,
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !busy,
-                                )
-                            }
-                        }
+                        Spacer(Modifier.width(8.dp))
+                        ApplePillButton(
+                            text = "Confirm decline",
+                            onClick = onConfirmReject,
+                            positive = true,
+                            modifier = Modifier.weight(1f),
+                            enabled = !busy && !rejectReason.isNullOrBlank(),
+                        )
                     }
-                }
-                if (index < visits.lastIndex) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 16.dp),
-                        thickness = 0.33.dp,
-                        color = KioskColors.border,
-                    )
+                } else {
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        ApplePillButton(
+                            text = "Decline",
+                            onClick = { onStartReject(visit.id) },
+                            positive = false,
+                            modifier = Modifier.weight(1f),
+                            enabled = !busy,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        ApplePillButton(
+                            text = "Approve",
+                            onClick = { onApprove(visit.id) },
+                            positive = true,
+                            modifier = Modifier.weight(1f),
+                            enabled = !busy,
+                        )
+                    }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ActiveList(
-    active: List<VisitOut>,
-    onMeetingDone: (String) -> Unit,
-    busy: Boolean,
-) {
-    AppleSectionHeader("Inside / approved")
-    if (active.isEmpty()) {
-        AppleInset {
-            AppleCell("None right now", showChevron = false, showDivider = false)
-        }
-        return
-    }
-    AppleInset {
-        active.forEachIndexed { i, visit ->
-            AppleCell(
-                title = visit.visitorName ?: "Visitor",
-                subtitle = visit.purpose ?: visit.status,
-                trailing = "Done",
-                showChevron = false,
-                showDivider = i < active.lastIndex,
-                onClick = { if (!busy) onMeetingDone(visit.id) },
-            )
         }
     }
 }

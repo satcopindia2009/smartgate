@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -420,5 +421,178 @@ fun ApplePlainButton(text: String, modifier: Modifier = Modifier, onClick: () ->
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
+    )
+}
+
+
+/* ——— AC-APP1 bottomnav shell chrome (phone-apple-bottomnav SoT) ——— */
+
+@Composable
+fun AppleShellNav(
+    leading: String = "Roles",
+    trailing: String? = null,
+    onLeading: (() -> Unit)? = null,
+    onTrailing: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(32.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = leading,
+            color = KioskColors.systemBlue,
+            fontSize = 17.sp,
+            fontFamily = KioskFont,
+            modifier = Modifier.clickable(enabled = onLeading != null) { onLeading?.invoke() },
+        )
+        if (trailing != null) {
+            Text(
+                text = trailing,
+                color = KioskColors.systemBlue,
+                fontSize = 17.sp,
+                fontFamily = KioskFont,
+                modifier = Modifier.clickable(enabled = onTrailing != null) { onTrailing?.invoke() },
+            )
+        } else {
+            Spacer(Modifier.width(8.dp))
+        }
+    }
+}
+
+@Composable
+fun AppleShellTitle(text: String) {
+    Text(
+        text = text,
+        color = KioskColors.text,
+        fontSize = 34.sp,
+        fontWeight = FontWeight.Bold,
+        fontFamily = KioskFont,
+        letterSpacing = 0.3.sp,
+        lineHeight = 38.sp,
+        modifier = Modifier.padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 2.dp),
+    )
+}
+
+@Composable
+fun AppleShellSub(text: String) {
+    Text(
+        text = text,
+        color = KioskColors.textMuted,
+        fontSize = 13.sp,
+        fontFamily = KioskFont,
+        modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+    )
+}
+
+@Composable
+fun AppleHeroCta(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    filled: Boolean = true,
+    trailing: String = "→",
+) {
+    val bg = if (filled) KioskColors.systemBlue else KioskColors.secondaryFill
+    val fg = if (filled) Color.White else KioskColors.text
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = fg, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+            Text(
+                subtitle,
+                color = if (filled) fg.copy(alpha = 0.9f) else KioskColors.textMuted,
+                fontSize = 13.sp,
+                fontFamily = KioskFont,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+        Text(trailing, color = fg, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+fun AppleGrid2(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        content = content,
+    )
+}
+
+@Composable
+fun RowScope.AppleTile(
+    label: String,
+    detail: String? = null,
+    icon: String? = null,
+    stat: String? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .heightIn(min = 88.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(KioskColors.card)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+    ) {
+        if (icon != null) {
+            Text(icon, fontSize = 22.sp, modifier = Modifier.padding(bottom = 6.dp))
+        }
+        if (stat != null) {
+            Text(label, color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
+            Text(
+                stat,
+                color = KioskColors.systemBlue,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = KioskFont,
+            )
+        } else {
+            Text(label, color = KioskColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+            if (!detail.isNullOrBlank()) {
+                Text(
+                    detail,
+                    color = KioskColors.textMuted,
+                    fontSize = 12.sp,
+                    fontFamily = KioskFont,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AppleStatusPill(text: String) {
+    Text(
+        text = text,
+        color = KioskColors.systemBlue,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        fontFamily = KioskFont,
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(KioskColors.secondaryFill)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
     )
 }

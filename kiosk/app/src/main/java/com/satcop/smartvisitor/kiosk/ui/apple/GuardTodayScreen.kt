@@ -6,10 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -17,10 +13,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
-import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 
+/** AC-APP1 bottomnav SoT: Today · Patrol · Desk · More */
 private val guardTabs = listOf(
     AppleTabItem("📅", "Today"),
     AppleTabItem("🛡", "Patrol"),
@@ -29,8 +24,8 @@ private val guardTabs = listOf(
 )
 
 /**
- * Apple Guard "Today" shell. Patrol tab / Continue patrol keep assign→perform
- * (my-schedules / assignmentId start) reachable via [patrolContent].
+ * Guard shell from phone-apple-bottomnav (guard-home / patrol / desk).
+ * Start patrol CTA above fold · assign→perform via Patrol tab.
  */
 @Composable
 fun GuardTodayShell(
@@ -53,6 +48,11 @@ fun GuardTodayShell(
     var tab by remember { mutableIntStateOf(0) }
     val total = progressTotal.coerceAtLeast(assignmentCount).coerceAtLeast(0)
     val done = progressDone.coerceIn(0, total.coerceAtLeast(0))
+    val route = routeLabel.ifBlank { "Assigned today" }
+    val sub = listOf(
+        displayName.ifBlank { "Guard" },
+        schoolName.ifBlank { "Shift" },
+    ).filter { it.isNotBlank() }.joinToString(" · ")
 
     Column(
         modifier = Modifier
@@ -65,127 +65,75 @@ fun GuardTodayShell(
                 .fillMaxWidth(),
         ) {
             when (tab) {
-                0 -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    AppleNavBar(leading = "Account", trailing = "🔔", onLeading = onLogout)
-                    AppleLargeTitle("Today")
-                    Text(
-                        text = listOf(displayName.ifBlank { "Guard" }, schoolName.ifBlank { "Shift" })
-                            .filter { it.isNotBlank() }
-                            .joinToString(" · "),
-                        color = KioskColors.textMuted,
-                        fontSize = 13.sp,
-                        fontFamily = KioskFont,
-                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 4.dp),
-                    )
-                    AppleInset {
-                        AppleCell(
-                            title = "Patrol progress",
-                            subtitle = routeLabel.ifBlank { "Assigned today" },
-                            trailing = "$done/$total",
-                            showChevron = false,
-                            showDivider = true,
-                        )
-                        AppleCell(
-                            title = "Open incidents",
-                            trailing = "—",
-                            showChevron = false,
-                            showDivider = true,
-                        )
-                        AppleCell(
-                            title = "Couriers logged",
-                            trailing = "—",
-                            showChevron = false,
-                            showDivider = false,
-                        )
-                    }
-                    // Accent the progress trailing with system blue via a second label strip
-                    Text(
-                        text = statusLine,
-                        color = if (statusLine.contains("LIVE", ignoreCase = true)) {
-                            KioskColors.systemGreen
-                        } else {
-                            KioskColors.systemOrange
+                0 -> { // Today — guard-home.png 1:1
+                    AppleShellNav(leading = "Roles", trailing = "🔔", onLeading = onLogout)
+                    AppleShellTitle("Guard")
+                    AppleShellSub(sub.ifBlank { statusLine.ifBlank { "Shift" } })
+                    AppleHeroCta(
+                        title = "Start patrol",
+                        subtitle = "$route · $done/$total",
+                        onClick = {
+                            tab = 1
+                            onContinuePatrol()
                         },
-                        fontSize = 12.sp,
-                        fontFamily = KioskFont,
-                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp),
                     )
-                    AppleSectionHeader("Tasks")
-                    AppleInset {
-                        AppleCell(
-                            title = "Continue patrol",
-                            subtitle = nextCheckpoint?.let { "Next: $it" }
-                                ?: if (assignmentCount > 0) "$assignmentCount assigned" else "No assignment yet",
-                            glyph = "🛡",
-                            glyphColor = KioskColors.systemGreen,
-                            onClick = {
-                                tab = 1
-                                onContinuePatrol()
-                            },
-                        )
-                        AppleCell(
-                            title = "Log courier",
-                            glyph = "📦",
-                            glyphColor = KioskColors.systemOrange,
-                            onClick = onCourier,
-                        )
-                        AppleCell(
-                            title = "Lost & Found entry",
-                            glyph = "🎒",
-                            glyphColor = KioskColors.systemPurple,
-                            onClick = onLostFound,
-                        )
-                        AppleCell(
-                            title = "Report incident",
-                            glyph = "⚠",
-                            glyphColor = KioskColors.systemRed,
-                            showDivider = false,
+                    Spacer(Modifier.height(10.dp))
+                    AppleGrid2 {
+                        AppleTile(label = "Progress", stat = "$done/$total")
+                        AppleTile(
+                            icon = "⚠",
+                            label = "Incidents",
+                            detail = "Open —",
                             onClick = onReportIncident,
                         )
                     }
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(10.dp))
+                    AppleInset {
+                        AppleCell(title = "Courier log", onClick = onCourier, showDivider = true)
+                        AppleCell(title = "Lost & Found", onClick = onLostFound, showDivider = false)
+                    }
                 }
                 1 -> {
-                    // Keep live assign→perform wire fully reachable
+                    // Live assign→perform wire fully reachable
                     patrolContent()
                 }
-                2 -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    AppleLargeTitle("Desk")
+                2 -> { // Desk — guard-desk.png
+                    AppleShellNav(leading = " ", trailing = " ")
+                    AppleShellTitle("Desk")
+                    AppleShellSub("Primary desk actions only")
+                    AppleHeroCta(
+                        title = "Log courier",
+                        subtitle = "Parcel at gate",
+                        onClick = onCourier,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    AppleHeroCta(
+                        title = "Lost & Found",
+                        subtitle = "Lost or Found + photo",
+                        onClick = onLostFound,
+                        filled = false,
+                    )
+                    Spacer(Modifier.height(10.dp))
                     AppleInset {
                         AppleCell(
-                            title = "Log courier",
-                            glyph = "📦",
-                            glyphColor = KioskColors.systemOrange,
-                            onClick = onCourier,
-                        )
-                        AppleCell(
-                            title = "Lost & Found",
-                            glyph = "🎒",
-                            glyphColor = KioskColors.systemPurple,
-                            onClick = onLostFound,
+                            title = "Report incident",
+                            onClick = onReportIncident,
                             showDivider = false,
                         )
                     }
                 }
-                else -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 16.dp),
-                ) {
-                    AppleLargeTitle("More")
+                else -> { // More
+                    AppleShellNav(leading = " ", trailing = " ")
+                    AppleShellTitle("More")
                     AppearanceSegmentedRow()
                     AppleSectionHeader("Account")
                     AppleInset {
-                        AppleCell("Sign out", showChevron = false, showDivider = false, onClick = onLogout)
+                        AppleCell(
+                            "Sign out",
+                            showChevron = false,
+                            showDivider = false,
+                            onClick = onLogout,
+                        )
                     }
                 }
             }

@@ -10,11 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
@@ -29,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,13 +33,18 @@ import com.satcop.smartvisitor.kiosk.data.model.InsideVisit
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 
+/** AC-APP1 bottomnav SoT: Home · Inside · Log · More */
 private val gateTabs = listOf(
-    AppleTabItem("🏠", "Today"),
-    AppleTabItem("👤", "Visitors"),
+    AppleTabItem("🏠", "Home"),
+    AppleTabItem("👥", "Inside"),
     AppleTabItem("📋", "Log"),
-    AppleTabItem("⚙️", "More"),
+    AppleTabItem("⋯", "More"),
 )
 
+/**
+ * Gate shell from `/workspace/ux-mocks/phone-apple-bottomnav-2026-09-20/`
+ * (gate-home / gate-inside). Compact above-fold · pinned AppleTabBar.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GateTodayScreen(
@@ -60,80 +61,47 @@ fun GateTodayScreen(
     onLogout: () -> Unit,
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    var seg by remember { mutableIntStateOf(0) }
-    var search by remember { mutableStateOf("") }
     var sheetOpen by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val waiting = recent.filter {
+        it.status.equals("pending", ignoreCase = true) ||
+            it.status.contains("wait", ignoreCase = true)
+    }.take(1)
+    val inside = recent.filter {
+        it.status.equals("inside", ignoreCase = true) ||
+            it.status.equals("checked_in", ignoreCase = true) ||
+            it.status.equals("approved", ignoreCase = true)
+    }.take(3)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(KioskColors.bg),
     ) {
+        // Fixed chrome + compact content (NO verticalScroll on home — AC-APP3)
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
         ) {
             when (tab) {
-                0 -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    AppleNavBar(
-                        title = "Gate",
-                        leading = "Edit",
-                        trailing = "Scan",
-                        onTrailing = onPickup,
+                0 -> { // Home — LIGHT/gate-home.png 1:1
+                    AppleShellNav(leading = "Roles", trailing = "Scan", onTrailing = onPickup)
+                    AppleShellTitle("Gate")
+                    AppleShellSub("${gateName.ifBlank { "Main" }} · compact home · no long scroll")
+                    AppleHeroCta(
+                        title = "New check-in",
+                        subtitle = "Walk-in visitor",
+                        onClick = { sheetOpen = true },
                     )
-                    AppleLargeTitle("Today")
-                    AppleSearchField(
-                        value = search,
-                        onValueChange = { search = it },
-                        placeholder = "🔍 Search visitors or hosts",
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    AppleSegmented(
-                        options = listOf("Check-in", "Inside", "History"),
-                        selectedIndex = seg,
-                        onSelect = { idx ->
-                            seg = idx
-                            when (idx) {
-                                1 -> onCheckout()
-                                2 -> onHistory()
-                            }
-                        },
-                    )
-                    AppleSectionHeader("Quick actions")
-                    AppleInset {
-                        AppleCell(
-                            title = "New walk-in visitor",
-                            subtitle = "Parent, vendor, guest…",
-                            glyph = "＋",
-                            glyphColor = KioskColors.systemBlue,
-                            onClick = { sheetOpen = true },
-                        )
-                        AppleCell(
-                            title = "Scan invite QR",
-                            glyph = "▦",
-                            glyphColor = Color(0xFF64D2FF),
-                            onClick = onPickup,
-                        )
-                        AppleCell(
-                            title = "Courier drop-off",
-                            glyph = "📦",
-                            glyphColor = KioskColors.systemOrange,
-                            showDivider = false,
-                            onClick = onCourier,
-                        )
+                    Spacer(Modifier.height(10.dp))
+                    AppleGrid2 {
+                        AppleTile(icon = "📦", label = "Pickup", detail = "Student release", onClick = onPickup)
+                        AppleTile(icon = "📬", label = "Courier", detail = "Log parcel", onClick = onCourier)
                     }
-                    AppleSectionHeader("Waiting for host")
+                    Spacer(Modifier.height(10.dp))
                     AppleInset {
-                        val waiting = recent.filter {
-                            it.status.equals("pending", ignoreCase = true) ||
-                                it.status.contains("wait", ignoreCase = true)
-                        }
                         if (waiting.isEmpty()) {
                             AppleCell(
                                 title = "No visitors waiting",
@@ -142,63 +110,66 @@ fun GateTodayScreen(
                                 showDivider = false,
                             )
                         } else {
-                            waiting.forEachIndexed { i, v ->
+                            val v = waiting.first()
+                            val name = v.visitorName ?: "Visitor"
+                            val initials = name.split(" ")
+                                .mapNotNull { it.firstOrNull()?.toString() }
+                                .take(2)
+                                .joinToString("")
+                                .ifBlank { "?" }
+                            CompactPendingRow(
+                                initials = initials,
+                                title = name,
+                                subtitle = "Waiting host",
+                                pill = "Pending",
+                            )
+                        }
+                    }
+                }
+                1 -> { // Inside — gate-inside.png
+                    AppleShellNav(leading = " ", trailing = "Search")
+                    AppleShellTitle("Inside")
+                    AppleShellSub("On campus · ${inside.size.coerceAtLeast(recent.size).coerceAtMost(99)}")
+                    AppleInset {
+                        if (inside.isEmpty() && recent.isEmpty()) {
+                            AppleCell("No one inside", showChevron = false, showDivider = false)
+                        } else {
+                            val rows = inside.ifEmpty { recent.take(3) }
+                            rows.forEachIndexed { i, v ->
                                 val name = v.visitorName ?: "Visitor"
                                 val initials = name.split(" ")
                                     .mapNotNull { it.firstOrNull()?.toString() }
                                     .take(2)
                                     .joinToString("")
                                     .ifBlank { "?" }
-                                WaitingRow(
+                                CompactPendingRow(
                                     initials = initials,
                                     title = name,
-                                    subtitle = listOfNotNull(v.hostId, v.status).joinToString(" · "),
-                                    trailing = "Pending",
-                                    showDivider = i < waiting.lastIndex,
+                                    subtitle = listOfNotNull(v.gateId, v.status).joinToString(" · "),
+                                    trailing = v.visitorType ?: "",
+                                    showDivider = i < rows.lastIndex,
                                 )
                             }
                         }
                     }
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(10.dp))
+                    ApplePrimaryButton("Check out visitor", onClick = onCheckout)
                 }
-                1 -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 16.dp),
-                ) {
-                    AppleLargeTitle("Visitors")
-                    AppleInset {
-                        AppleCell("Inside now", subtitle = "Checkout verify", onClick = onCheckout)
-                        AppleCell(
-                            "Lost & Found",
-                            glyph = "🎒",
-                            glyphColor = KioskColors.systemPurple,
-                            onClick = onLostFound,
-                            showDivider = false,
-                        )
-                    }
-                }
-                2 -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    AppleLargeTitle("Log")
+                2 -> { // Log
+                    AppleShellNav(leading = " ", trailing = " ")
+                    AppleShellTitle("Log")
+                    AppleShellSub("Visit history")
                     AppleInset {
                         AppleCell("Visit history", onClick = onHistory, showDivider = false)
                     }
                 }
-                else -> Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 16.dp),
-                ) {
-                    AppleLargeTitle("More")
+                else -> { // More
+                    AppleShellNav(leading = " ", trailing = " ")
+                    AppleShellTitle("More")
                     AppearanceSegmentedRow()
                     AppleSectionHeader("Account")
                     AppleInset {
+                        AppleCell("Lost & Found", onClick = onLostFound, showDivider = true)
                         AppleCell("Sign out", showChevron = false, showDivider = false, onClick = onLogout)
                     }
                 }
@@ -221,7 +192,7 @@ fun GateTodayScreen(
                 fontFamily = KioskFont,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
-            StepperDots(active = 0, total = 4)
+            StepperDots(active = 0, total = 3)
             AppleSectionHeader("Type")
             val types = listOf(
                 "Parent / Guardian" to "Parent",
@@ -256,31 +227,36 @@ fun GateTodayScreen(
 }
 
 @Composable
-private fun WaitingRow(
+private fun CompactPendingRow(
     initials: String,
     title: String,
     subtitle: String,
-    trailing: String,
-    showDivider: Boolean,
+    pill: String? = null,
+    trailing: String? = null,
+    showDivider: Boolean = false,
 ) {
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 14.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AppleAvatar(initials = initials, size = 36.dp)
-            Spacer(Modifier.width(12.dp))
+            AppleAvatar(initials = initials, size = 40.dp)
+            Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, color = KioskColors.text, fontSize = 17.sp, fontFamily = KioskFont)
-                Text(subtitle, color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
+                Text(title, color = KioskColors.text, fontSize = 16.sp, fontFamily = KioskFont)
+                Text(subtitle, color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
             }
-            Text(trailing, color = KioskColors.textMuted, fontSize = 17.sp, fontFamily = KioskFont)
+            if (pill != null) {
+                AppleStatusPill(pill)
+            } else if (!trailing.isNullOrBlank()) {
+                Text(trailing, color = KioskColors.textMuted, fontSize = 15.sp, fontFamily = KioskFont)
+            }
         }
         if (showDivider) {
             HorizontalDivider(
-                modifier = Modifier.padding(start = 16.dp),
+                modifier = Modifier.padding(start = 14.dp),
                 thickness = 0.33.dp,
                 color = KioskColors.border,
             )
