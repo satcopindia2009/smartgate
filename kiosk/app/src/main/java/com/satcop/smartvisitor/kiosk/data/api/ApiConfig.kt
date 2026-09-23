@@ -6,7 +6,7 @@ package com.satcop.smartvisitor.kiosk.data.api
  * falls back to fixtures — login itself is still required.
  */
 object ApiConfig {
-    const val BASE_URL = "https://valley-questions-poultry-kid.trycloudflare.com/v1"
+    const val BASE_URL = "https://unnecessary-bid-catch-accuracy.trycloudflare.com/v1"
     const val CONNECT_TIMEOUT_MS = 12_000L
     const val CALL_TIMEOUT_MS = 20_000L
 

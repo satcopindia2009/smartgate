@@ -50,7 +50,7 @@ class NativeHostPickupTest {
         assertEquals("media/live_photo/abc", visit.livePhotoKey)
         assertTrue(visit.afterHours)
         assertEquals(
-            "https://valley-questions-poultry-kid.trycloudflare.com/v1/media/media/live_photo/abc",
+            "https://unnecessary-bid-catch-accuracy.trycloudflare.com/v1/media/media/live_photo/abc",
             ApiConfig.mediaUrl(visit.livePhotoKey!!),
         )
     }

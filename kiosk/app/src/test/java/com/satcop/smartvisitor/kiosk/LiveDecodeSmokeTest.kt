@@ -15,7 +15,7 @@ class LiveDecodeSmokeTest {
 
     @Test
     fun pranayGateLoginAndDirectoryDecode() {
-        val base = "https://valley-questions-poultry-kid.trycloudflare.com/v1"
+        val base = "https://unnecessary-bid-catch-accuracy.trycloudflare.com/v1"
         val loginBody = """{"username":"pranay.gate","password":"PranayGate@2026"}"""
         val loginRaw = post(base + "/auth/login", loginBody, null)
         val login = json.decodeFromString(LoginResponse.serializer(), loginRaw)

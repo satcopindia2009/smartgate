@@ -10,18 +10,20 @@ class PhoneLayoutTest {
     @Test
     fun liveApiStaysOnReplacingSpywareTunnel() {
         assertEquals(
-            "https://valley-questions-poultry-kid.trycloudflare.com/v1",
+            "https://unnecessary-bid-catch-accuracy.trycloudflare.com/v1",
             ApiConfig.BASE_URL,
         )
         assertFalse(ApiConfig.BASE_URL.contains("weed-pumps"))
         assertFalse(ApiConfig.BASE_URL.contains("pensions-usb"))
         assertFalse(ApiConfig.BASE_URL.contains("gate123"))
+        assertFalse(ApiConfig.BASE_URL.contains("male-newton"))
+        assertFalse(ApiConfig.BASE_URL.contains("valley-questions"))
     }
 
     @Test
     fun mediaUrlUsesApiBaseAndKey() {
         assertEquals(
-            "https://valley-questions-poultry-kid.trycloudflare.com/v1/media/media/live_photo/abc",
+            "https://unnecessary-bid-catch-accuracy.trycloudflare.com/v1/media/media/live_photo/abc",
             ApiConfig.mediaUrl("media/live_photo/abc"),
         )
     }
@@ -49,6 +51,6 @@ class PhoneLayoutTest {
             }
         }
         assertFalse(ApiConfig.BASE_URL.contains("england-content-resulting-heavily"))
-        assertTrue(ApiConfig.BASE_URL.startsWith("https://valley-questions-poultry-kid.trycloudflare.com"))
+        assertTrue(ApiConfig.BASE_URL.startsWith("https://unnecessary-bid-catch-accuracy.trycloudflare.com"))
     }
 }

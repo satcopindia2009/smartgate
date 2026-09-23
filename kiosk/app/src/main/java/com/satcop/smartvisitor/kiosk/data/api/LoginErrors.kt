@@ -6,7 +6,7 @@ object LoginErrors {
     const val INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
     const val INVALID_MESSAGE = "Invalid username or password"
     const val TUNNEL_MESSAGE =
-        "API tunnel down (Cloudflare 1033/530). Retry in a minute — not a bad password. Base: valley-questions-poultry-kid"
+        "API tunnel down (Cloudflare 1033/530). Retry in a minute — not a bad password. Base: unnecessary-bid-catch-accuracy"
 
     fun message(error: ApiException): String {
         if (error.code == INVALID_CREDENTIALS) return INVALID_MESSAGE
