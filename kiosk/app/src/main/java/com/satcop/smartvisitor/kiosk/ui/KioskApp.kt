@@ -283,7 +283,6 @@ fun KioskApp(
                                             .padding(horizontal = FormTokens.ScreenHPad)
                                             .padding(bottom = FormTokens.SectionGap),
                                     ) {
-                                        StepDots(current = state.step)
                                         KioskStep(
                                             step = state.step,
                                             state = state,
