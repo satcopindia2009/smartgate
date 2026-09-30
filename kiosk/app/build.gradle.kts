@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -31,6 +33,15 @@ android {
             isMinifyEnabled = false
             applicationIdSuffix = ".demo"
             versionNameSuffix = "-DEMO"
+        }
+        // 1064 QA-ONLY build: fake front camera for emulators. Own applicationId, own source set (src/debugqa),
+        // never signed/published as a release. Release/debug source sets carry a no-op QaHooks only.
+        create("debugqa") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".debugqa"
+            versionNameSuffix = "-DEBUG-QA-ONLY"
+            matchingFallbacks += listOf("debug")
+            isDebuggable = true
         }
     }
 
@@ -84,8 +95,71 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    add("debugqaImplementation", "androidx.compose.ui:ui-tooling")
+    add("debugqaImplementation", "androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// 1064 release guard: the QA-only fake camera / bypass must never reach a release build.
+//  1) verifyNoQaBypassSources: runs BEFORE release compilation; fails if src/main or src/release mention any QA symbol
+//     or if src/release QaHooks is not the constant-false no-op.
+//  2) verifyNoQaBypassInReleaseApk: runs AFTER packageRelease (finalizer); fails if any release dex / manifest
+//     contains a QA class name, the debugqa applicationId or the switch action.
+// ---------------------------------------------------------------------------------------------------------------
+val qaForbiddenSymbols = listOf("DebugQaTestPattern", "QaSwitchReceiver", "debugqa", "FAKE_CAMERA", "QA TEST IMAGE", "TEST CAMERA (QA build)")
+
+val verifyNoQaBypassSources = tasks.register("verifyNoQaBypassSources") {
+    group = "verification"
+    description = "Fails if QA-only bypass symbols appear in src/main or src/release."
+    val roots = listOf(file("src/main"), file("src/release"))
+    val releaseHooks = file("src/release/java/com/satcop/smartvisitor/kiosk/qa/QaHooks.kt")
+    doLast {
+        val bad = mutableListOf<String>()
+        roots.filter { it.exists() }.forEach { root ->
+            root.walkTopDown().filter { it.isFile }.forEach { f ->
+                val text = f.readText()
+                qaForbiddenSymbols.filter { text.contains(it) }.forEach { bad += "${f.relativeTo(projectDir)}: $it" }
+            }
+        }
+        if (!releaseHooks.exists() || !releaseHooks.readText().contains("const val fakeCamera: Boolean = false")) {
+            bad += "src/release QaHooks must be the constant-false no-op"
+        }
+        if (bad.isNotEmpty()) throw GradleException("QA bypass code found in release sources:\n" + bad.joinToString("\n"))
+    }
+}
+
+val verifyNoQaBypassInReleaseApk = tasks.register("verifyNoQaBypassInReleaseApk") {
+    group = "verification"
+    description = "Fails if the packaged release APK contains QA-only bypass symbols."
+    val apkDir = layout.buildDirectory.dir("outputs/apk/release")
+    doLast {
+        val apks = apkDir.get().asFile.walkTopDown().filter { it.isFile && it.extension == "apk" }.toList()
+        if (apks.isEmpty()) throw GradleException("No release APK found to verify in ${apkDir.get().asFile}")
+        val bad = mutableListOf<String>()
+        apks.forEach { apk ->
+            ZipFile(apk).use { zip ->
+                zip.entries().asSequence().filter { it.name.endsWith(".dex") || it.name == "AndroidManifest.xml" }.forEach { e ->
+                    val raw = zip.getInputStream(e).readBytes()
+                    val latin = String(raw, Charsets.ISO_8859_1)
+                    // AndroidManifest.xml is UTF-16LE inside binary XML
+                    val utf16 = if (e.name.endsWith(".xml")) String(raw, Charsets.UTF_16LE) else ""
+                    qaForbiddenSymbols.forEach { s ->
+                        if (latin.contains(s) || (utf16.isNotEmpty() && utf16.contains(s))) bad += "${apk.name}!${e.name}: $s"
+                    }
+                }
+            }
+        }
+        if (bad.isNotEmpty()) throw GradleException("QA bypass symbols found in RELEASE APK:\n" + bad.joinToString("\n"))
+        println("verifyNoQaBypassInReleaseApk: OK (${apks.size} apk, 0 QA symbols)")
+    }
+}
+
+afterEvaluate {
+    tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(verifyNoQaBypassSources) }
+    tasks.matching { it.name == "packageRelease" }.configureEach { finalizedBy(verifyNoQaBypassInReleaseApk) }
+    tasks.matching { it.name == "assembleRelease" }.configureEach { dependsOn(verifyNoQaBypassInReleaseApk) }
 }

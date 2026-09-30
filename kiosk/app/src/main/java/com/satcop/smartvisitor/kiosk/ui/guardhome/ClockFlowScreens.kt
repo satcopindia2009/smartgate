@@ -455,7 +455,7 @@ fun SelfieScreen(
                         modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
                     )
                     cameraError != null -> Text(cameraError!!, color = Color.White, fontSize = 14.sp, fontFamily = KioskFont, textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
-                    fake -> Text("TEST CAMERA (QA build)", color = Color.White, fontSize = 14.sp, fontFamily = KioskFont)
+                    fake -> Text(QaHooks.bannerText, color = Color.White, fontSize = 14.sp, fontFamily = KioskFont)
                     else -> AndroidView(
                         factory = { ctx ->
                             PreviewView(ctx).also { pv ->

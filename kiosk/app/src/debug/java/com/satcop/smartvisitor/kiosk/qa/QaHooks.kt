@@ -1,0 +1,16 @@
+package com.satcop.smartvisitor.kiosk.qa
+
+import android.graphics.Bitmap
+
+/**
+ * NO-OP seam. This is the ONLY version of QaHooks that exists in the normal debug and release builds:
+ * there is no fake camera and nothing can turn one on. The real implementation lives solely in the separate
+ * QA-only source set and is never on the release source path.
+ */
+object QaHooks {
+    const val fakeCamera: Boolean = false
+    const val bannerText: String = ""
+
+    @Suppress("UNUSED_PARAMETER")
+    fun frame(label: String): Bitmap? = null
+}

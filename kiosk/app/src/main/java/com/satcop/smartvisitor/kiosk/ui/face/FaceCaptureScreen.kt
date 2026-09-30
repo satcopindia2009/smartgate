@@ -1,5 +1,6 @@
 package com.satcop.smartvisitor.kiosk.ui.face
 
+import com.satcop.smartvisitor.kiosk.qa.QaHooks
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -96,7 +97,7 @@ fun FaceCaptureScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     fun hasPermission() = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
         PackageManager.PERMISSION_GRANTED
-    var granted by remember { mutableStateOf(hasPermission()) }
+    var granted by remember { mutableStateOf(QaHooks.fakeCamera || hasPermission()) }
     var asked by remember { mutableStateOf(false) }
     var permanentlyDenied by remember { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
@@ -108,7 +109,7 @@ fun FaceCaptureScreen(
             !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(act, Manifest.permission.CAMERA)
     }
     LaunchedEffect(Unit) {
-        if (!granted) permission.launch(Manifest.permission.CAMERA)
+        if (!granted && !QaHooks.fakeCamera) permission.launch(Manifest.permission.CAMERA)
     }
     // Coming back from Settings: pick up a newly granted permission.
     DisposableEffect(lifecycleOwner) {
@@ -231,6 +232,7 @@ fun FaceCaptureScreen(
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     )
                 }
+                QaHooks.fakeCamera -> Text(QaHooks.bannerText, color = KioskColors.text, fontFamily = KioskFont, fontSize = 14.sp)
                 else -> key(cameraKey) {
                     AndroidView(
                         factory = { ctx ->
@@ -310,6 +312,7 @@ fun FaceCaptureScreen(
                 },
                 onClick = {
                     if (previewBmp == null) {
+                        QaHooks.frame("Face")?.let { previewBmp = it; return@KioskPrimaryButton }
                         val cap = imageCapture ?: return@KioskPrimaryButton
                         if (capturing) return@KioskPrimaryButton
                         capturing = true
@@ -336,7 +339,7 @@ fun FaceCaptureScreen(
                         onCaptured(FaceImage.prepareJpeg(previewBmp!!))
                     }
                 },
-                enabled = !busy && granted && (previewBmp != null || imageCapture != null),
+                enabled = !busy && granted && (previewBmp != null || imageCapture != null || QaHooks.fakeCamera),
                 modifier = Modifier.weight(1f).heightIn(min = 52.dp),
             )
         }

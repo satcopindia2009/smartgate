@@ -1,5 +1,6 @@
 package com.satcop.smartvisitor.kiosk.ui.steps
 
+import com.satcop.smartvisitor.kiosk.qa.QaHooks
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -105,6 +106,10 @@ fun PhotoIdStep(
     }
     fun captureWithCamera(target: String) {
         pendingCapture = target
+        QaHooks.frame(if (target == "id") "ID photo" else "Visitor photo")?.let { f ->
+            if (target == "id") onIdImage(f) else onLivePhoto(f)
+            return
+        }
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
         if (granted) camera.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)

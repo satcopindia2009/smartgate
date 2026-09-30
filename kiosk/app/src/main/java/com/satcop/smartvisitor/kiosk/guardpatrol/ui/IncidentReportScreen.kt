@@ -1,5 +1,6 @@
 package com.satcop.smartvisitor.kiosk.guardpatrol.ui
 
+import com.satcop.smartvisitor.kiosk.qa.QaHooks
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -222,7 +223,12 @@ fun IncidentReportScreen(
                 .clip(shape)
                 .background(KioskColors.card)
                 .border(1.dp, KioskColors.orange.copy(alpha = 0.55f), shape)
-                .clickable(enabled = !state.incidentBusy) { takePicture.launch(null) },
+                .clickable(enabled = !state.incidentBusy) {
+                    val qa = QaHooks.frame("Incident")
+                    if (qa != null) {
+                        val st = ByteArrayOutputStream(); qa.compress(Bitmap.CompressFormat.JPEG, 85, st); onPhoto(st.toByteArray())
+                    } else takePicture.launch(null)
+                },
             contentAlignment = Alignment.Center,
         ) {
             if (preview != null) {

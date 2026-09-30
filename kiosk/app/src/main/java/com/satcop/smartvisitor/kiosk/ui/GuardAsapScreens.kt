@@ -1,5 +1,6 @@
 package com.satcop.smartvisitor.kiosk.ui
 
+import com.satcop.smartvisitor.kiosk.qa.QaHooks
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -249,7 +250,12 @@ fun CourierLogScreen(
                 .clip(ControlShape)
                 .background(KioskColors.sidebar)
                 .border(1.dp, KioskColors.cyan.copy(alpha = 0.45f), ControlShape)
-                .clickable(enabled = !busy) { takePicture.launch(null) },
+                .clickable(enabled = !busy) {
+                    val qa = QaHooks.frame("Package")
+                    if (qa != null) {
+                        val st = ByteArrayOutputStream(); qa.compress(Bitmap.CompressFormat.JPEG, 85, st); onPackagePhoto(st.toByteArray())
+                    } else takePicture.launch(null)
+                },
             contentAlignment = Alignment.Center,
         ) {
             if (preview != null) {
@@ -432,6 +438,7 @@ fun LostFoundCreateScreen(
         if (granted) camera.launch(null) else onPhoto(null)
     }
     fun capturePhoto() {
+        QaHooks.frame("Lost & found")?.let { onPhoto(it); return }
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
         if (granted) camera.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)

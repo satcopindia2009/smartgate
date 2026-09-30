@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <!-- QA-ONLY build: this manifest exists only in the debugqa source set and can never merge into release. -->
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
+    <application android:label="SmartGate QA (DEBUG)" tools:replace="android:label">
+        <receiver android:name="com.satcop.smartvisitor.kiosk.qa.QaSwitchReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="com.satcop.smartvisitor.kiosk.debugqa.FAKE_CAMERA" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
