@@ -116,6 +116,13 @@ val qaForbiddenSymbols = listOf(
     "QaOtpRepository", "QaOtpState", "QA_OTP", "qa-otp-", "qa-reset-token",
 )
 
+// Dev/scaffolding copy and fixture data must never ship in a release APK (see ForbiddenDevStringsTest).
+val devForbiddenInApk = listOf(
+    "under shell", "tabs stay", "compact home", "no long scroll", "Demo host approve", "Enroll face (stub)",
+    "ID captured (demo)", "Sample parent visit loaded", "Block sample", "Alert sample", "Prefill sample",
+    "Load P-4F21", "not a real government ID", "demo seed", "FIXTURES \u00b7", "Demo story",
+)
+
 val verifyNoQaBypassSources = tasks.register("verifyNoQaBypassSources") {
     group = "verification"
     description = "Fails if QA-only bypass symbols appear in src/main or src/release."
@@ -148,6 +155,11 @@ val verifyNoQaBypassInReleaseApk = tasks.register("verifyNoQaBypassInReleaseApk"
         val bad = mutableListOf<String>()
         apks.forEach { apk ->
             ZipFile(apk).use { zip ->
+                zip.entries().asSequence().filter { it.name.startsWith("assets/fixtures") }.forEach { bad += "${apk.name}!${it.name}: fixture asset in release" }
+                zip.entries().asSequence().filter { it.name.endsWith(".dex") }.forEach { e ->
+                    val latin = String(zip.getInputStream(e).readBytes(), Charsets.ISO_8859_1)
+                    devForbiddenInApk.forEach { d -> if (latin.contains(d)) bad += "${apk.name}!${e.name}: dev text \"$d\"" }
+                }
                 zip.entries().asSequence().filter { it.name.endsWith(".dex") || it.name == "AndroidManifest.xml" }.forEach { e ->
                     val raw = zip.getInputStream(e).readBytes()
                     val latin = String(raw, Charsets.ISO_8859_1)

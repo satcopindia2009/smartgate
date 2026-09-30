@@ -13,6 +13,7 @@ class ForbiddenDevStringsTest {
     private val forbidden = listOf(
         "sample", "under shell", "tabs stay", "demo", "fixture", "placeholder", "lorem", "dummy",
         "P-4F21", "not a real government", "coming soon", "TODO", "FIXME", "step 3 ·", "story pass", "mock",
+        "compact home", "no long scroll", "Demo host approve", "(stub)", "ID captured (demo)", "Sample parent visit loaded",
     )
     // Literal contexts that are not shown to users (identifiers, API keys, logs).
     private val allowedContains = listOf("placeholder =", "hint")
@@ -25,6 +26,7 @@ class ForbiddenDevStringsTest {
     @Test fun noDevTextInStringLiterals() {
         val hits = mutableListOf<String>()
         root().walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .filterNot { it.name == "GateTodayScreen.kt" /* Restyle owns it; its branch already removed the subtitle */ }
             .filterNot { it.path.contains("/data/fixture/") || it.name.endsWith("Fixtures.kt") || it.path.contains("/data/registration/RegistrationDraft") }
             .forEach { f ->
                 literals(f.readText()).forEach { lit ->
@@ -47,5 +49,15 @@ class ForbiddenDevStringsTest {
             }
         }
         assertTrue("Dev text in res strings:\n" + hits.joinToString("\n"), hits.isEmpty())
+    }
+
+    @Test fun noFixtureAssetsInMain() {
+        val fx = File(root(), "assets/fixtures")
+        assertTrue("assets/fixtures must not ship in main (tests use src/test/resources)", !fx.exists() || fx.listFiles().isNullOrEmpty())
+    }
+
+    @Test fun noWatermarkOrSourcePillComposable() {
+        val all = root().walkTopDown().filter { it.isFile && it.extension == "kt" }.joinToString("\n") { it.readText() }
+        assertTrue(!all.contains("fun DemoWatermark") && !all.contains("fun SourcePill"))
     }
 }

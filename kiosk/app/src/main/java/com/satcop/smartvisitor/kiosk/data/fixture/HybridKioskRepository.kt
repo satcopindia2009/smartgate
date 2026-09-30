@@ -229,7 +229,7 @@ class HybridKioskRepository(
 
     override suspend fun storyPass(): VisitOut = withContext(Dispatchers.IO) {
         if (SchoolIds.hidesDemoStory(signedIn?.schoolId)) {
-            throw ApiException("NOT_FOUND", "Demo story is off for this school", 404)
+            throw ApiException("NOT_FOUND", "Not available", 404)
         }
         if (dataSource == DataSource.LIVE) {
             runCatching { live.getVisit(DemoFixtures.STORY_VISIT_ID) }.getOrNull()
