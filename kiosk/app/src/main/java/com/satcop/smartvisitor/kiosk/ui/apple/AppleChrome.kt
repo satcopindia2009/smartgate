@@ -43,6 +43,9 @@ import com.satcop.smartvisitor.kiosk.ui.theme.CardShape
 import com.satcop.smartvisitor.kiosk.ui.theme.HeroShape
 import com.satcop.smartvisitor.kiosk.ui.theme.InsetShape
 import com.satcop.smartvisitor.kiosk.ui.theme.PillShape
+import com.satcop.smartvisitor.kiosk.ui.components.SgBottomNav
+import com.satcop.smartvisitor.kiosk.ui.components.SgNavItem
+import com.satcop.smartvisitor.kiosk.ui.components.SgNavSets
 import com.satcop.smartvisitor.kiosk.ui.theme.SgSize
 import com.satcop.smartvisitor.kiosk.ui.theme.SgType
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
@@ -320,55 +323,33 @@ fun ApplePillButton(
 
 data class AppleTabItem(val label: String, val icon: ImageVector)
 
-/** AC-APP1: real Material3 NavigationBar — compact ~56–64dp, never inside verticalScroll. */
+/**
+ * Bottom navigation for every role. Delegates to [SgBottomNav] (teal restyle, filled-active icons).
+ * Host and Guard pass 4 tabs and no centre; Gate passes [centerLabel] + [onCenter] for the raised centre button
+ * (five slots). Tab callers keep their existing state: [selectedIndex] indexes [tabs] and the centre is never selected.
+ */
 @Composable
 fun AppleTabBar(
     tabs: List<AppleTabItem>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
+    centerLabel: String? = null,
+    onCenter: () -> Unit = {},
+    visible: Boolean = true,
 ) {
-    NavigationBar(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = SgSize.BottomNavHeight) // grows with large font scale instead of clipping
-            .navigationBarsPadding(),
-        containerColor = KioskColors.tabBarBg,
-        contentColor = KioskColors.primary,
-        tonalElevation = 0.dp,
-        windowInsets = WindowInsets(0, 0, 0, 0),
-    ) {
-        tabs.forEachIndexed { index, tab ->
-            val on = index == selectedIndex
-            NavigationBarItem(
-                selected = on,
-                onClick = { onSelect(index) },
-                icon = {
-                    Icon(
-                        imageVector = tab.icon,
-                        contentDescription = tab.label,
-                        modifier = Modifier.size(24.dp),
-                    )
-                },
-                label = {
-                    Text(
-                        text = tab.label,
-                        fontSize = 11.sp,
-                        fontFamily = KioskFont,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                alwaysShowLabel = true,
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = KioskColors.primary,
-                    selectedTextColor = KioskColors.primary,
-                    unselectedIconColor = KioskColors.textMuted,
-                    unselectedTextColor = KioskColors.textMuted,
-                    indicatorColor = Color.Transparent,
-                ),
-            )
-        }
+    val known = SgNavSets.Gate + SgNavSets.Host + SgNavSets.Guard
+    val items = tabs.map { t ->
+        val label = if (t.label == "Settings") "Profile" else t.label
+        known.firstOrNull { it.label == label } ?: SgNavItem(label, t.icon, t.icon)
     }
+    SgBottomNav(
+        items = items,
+        selectedIndex = selectedIndex,
+        onSelect = onSelect,
+        centerLabel = centerLabel,
+        onCenter = onCenter,
+        visible = visible,
+    )
 }
 
 @Composable

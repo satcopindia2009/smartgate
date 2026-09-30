@@ -2,24 +2,22 @@ package com.satcop.smartvisitor.kiosk.ui.apple
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Inbox
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,26 +28,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.data.model.AfterHoursCopy
 import com.satcop.smartvisitor.kiosk.data.model.RejectReasons
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
+import com.satcop.smartvisitor.kiosk.ui.components.SgDangerOutlineButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgNavSets
+import com.satcop.smartvisitor.kiosk.ui.components.SgPillStyle
+import com.satcop.smartvisitor.kiosk.ui.components.SgSmallPill
+import com.satcop.smartvisitor.kiosk.ui.components.SgStatusChip
+import com.satcop.smartvisitor.kiosk.ui.components.SgStatusKind
+import com.satcop.smartvisitor.kiosk.ui.components.SgVisitCard
+import com.satcop.smartvisitor.kiosk.ui.components.sgCardSurface
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
-import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
+import com.satcop.smartvisitor.kiosk.ui.theme.SgSpacing
+import com.satcop.smartvisitor.kiosk.ui.theme.SgType
 
-/** AC-APP1 bottomnav SoT: Inbox · Done · Inside · More */
-private val hostTabs = listOf(
-    AppleTabItem("Inbox", Icons.Filled.Inbox),
-    AppleTabItem("Done", Icons.Filled.CheckCircle),
-    AppleTabItem("Inside", Icons.Filled.Person),
-    AppleTabItem("Settings", Icons.Filled.Settings),
-)
+/** Host tabs: Inbox · Done · Inside · Profile (4 tabs, no centre button). */
+private val hostTabs = SgNavSets.Host.map { AppleTabItem(it.label, it.outlined) }
 
 /**
- * Host shell from phone-apple-bottomnav (host-home / host-done).
- * Approve/Decline above fold · pinned tab bar · no long-scroll home.
+ * Host shell (teal restyle): Inbox with visit cards (Reject outline + Approve solid pills),
+ * Done, Inside, Profile. Same parameters and callbacks as before.
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -84,154 +85,118 @@ fun HostInboxScreen(
     androidx.compose.runtime.LaunchedEffect(focusVisitId) { if (focusVisitId != null) tab = 0 }
     val ordered = if (focusVisitId == null) pending
     else pending.sortedByDescending { it.id == focusVisitId }
-    val topPending = ordered.take(1)
-    val approvedToday = active.size
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(KioskColors.bg),
-    ) {
+    Column(Modifier.fillMaxSize().background(KioskColors.bg)) {
         androidx.compose.material3.pulltorefresh.PullToRefreshBox(
             isRefreshing = refreshing,
             onRefresh = onPullRefresh,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(androidx.compose.foundation.rememberScrollState()),
-        ) {
-            when (tab) {
-                0 -> { // Inbox home — host-home.png
-                    AppleShellNav(leading = "Roles", trailing = "Edit", onTrailing = onRefresh)
-                    AppleShellTitle("Host")
-                    AppleShellSub("Needs you · ${pending.size}" + if (pending.size > 1) " · pull to refresh" else "")
-                    if (afterHours) {
-                        Text(
-                            AfterHoursCopy.HOST_NO_OP,
-                            color = KioskColors.systemOrange,
-                            fontSize = 13.sp,
-                            fontFamily = KioskFont,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                        )
-                    }
-                    if (topPending.isEmpty()) {
-                        AppleInset {
-                            AppleCell("No pending visits", showChevron = false, showDivider = false)
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(horizontal = SgSpacing.ScreenMargin).padding(top = 16.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(SgSpacing.GapBetweenCards),
+            ) {
+                when (tab) {
+                    0 -> {
+                        Text("Needs you · ${pending.size}", style = SgType.ScreenTitle, color = KioskColors.text)
+                        if (afterHours) Text(AfterHoursCopy.HOST_NO_OP, style = SgType.Label, color = KioskColors.warning)
+                        if (ordered.isEmpty()) {
+                            Text("No pending visits", style = SgType.Body, color = KioskColors.textMuted)
                         }
-                    } else {
-                        val visit = topPending.first()
-                        CompactApproveCard(
-                            visit = visit,
-                            photo = photos[visit.id],
-                            busy = busy,
-                            rejecting = rejectingVisitId == visit.id,
-                            rejectReason = rejectReason,
-                            onApprove = onApprove,
-                            onStartReject = onStartReject,
-                            onPickRejectReason = onPickRejectReason,
-                            onCancelReject = onCancelReject,
-                            onConfirmReject = onConfirmReject,
-                        )
+                        ordered.forEach { visit ->
+                            InboxCard(
+                                visit = visit,
+                                photo = photos[visit.id],
+                                busy = busy,
+                                rejecting = rejectingVisitId == visit.id,
+                                rejectReason = rejectReason,
+                                onApprove = onApprove,
+                                onStartReject = onStartReject,
+                                onPickRejectReason = onPickRejectReason,
+                                onCancelReject = onCancelReject,
+                                onConfirmReject = onConfirmReject,
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(10.dp))
-                    AppleGrid2 {
-                        AppleTile(
-                            icon = "✅",
-                            label = "Approved",
-                            detail = "Today $approvedToday",
-                            onClick = { tab = 1 },
-                        )
-                        AppleTile(
-                            icon = "👤",
-                            label = "Inside",
-                            detail = "With you ${active.size}",
-                            onClick = { tab = 2 },
-                        )
+                    1 -> {
+                        Text("Done", style = SgType.ScreenTitle, color = KioskColors.text)
+                        if (active.isEmpty()) Text("None yet", style = SgType.Body, color = KioskColors.textMuted)
+                        active.forEach { visit ->
+                            HostVisitCard(
+                                visit, photos[visit.id],
+                                chip = { SgStatusChip("Approved", SgStatusKind.COMPLETED) },
+                                onClick = { if (!busy) onMeetingDone(visit.id) },
+                            )
+                        }
+                        if (showingAfterHours) Text(AfterHoursCopy.HOST_NO_OP, style = SgType.Body, color = KioskColors.textMuted)
                     }
-                }
-                1 -> { // Done — host-done.png
-                    AppleShellNav(leading = " ", trailing = "Filter")
-                    AppleShellTitle("Done")
-                    AppleShellSub("Today")
-                    AppleInset {
-                        if (active.isEmpty()) {
-                            AppleCell("None yet", showChevron = false, showDivider = false)
-                        } else {
-                            active.take(5).forEachIndexed { i, visit ->
-                                AppleCell(
-                                    title = visit.visitorName ?: "Visitor",
-                                    subtitle = "Approved · ${visit.status}",
-                                    trailing = "OK",
-                                    showChevron = false,
-                                    showDivider = i < active.take(5).lastIndex,
-                                    onClick = { if (!busy) onMeetingDone(visit.id) },
-                                )
+                    2 -> {
+                        Text("Inside · ${active.size}", style = SgType.ScreenTitle, color = KioskColors.text)
+                        if (active.isEmpty()) Text("None right now", style = SgType.Body, color = KioskColors.textMuted)
+                        active.forEach { visit ->
+                            HostVisitCard(
+                                visit, photos[visit.id],
+                                chip = { SgStatusChip("With you", SgStatusKind.IN_PROGRESS) },
+                                actions = { SgSmallPill("Done", onClick = { onMeetingDone(visit.id) }, enabled = !busy, modifier = Modifier.weight(1f)) },
+                            )
+                        }
+                    }
+                    else -> {
+                        Text("Profile", style = SgType.ScreenTitle, color = KioskColors.text)
+                        val identity = listOf(displayName, schoolId, staffId).filter { it.isNotBlank() }.joinToString(" · ")
+                        Row(
+                            Modifier.fillMaxWidth().sgCardSurface().padding(SgSpacing.CardPadding),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                Modifier.size(56.dp).clip(CircleShape).background(KioskColors.brandSoft),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(initialsOf(displayName), style = SgType.SectionTitle, color = KioskColors.primary) }
+                            Spacer(Modifier.width(14.dp))
+                            Column {
+                                Text(identity.ifBlank { "Host" }, style = SgType.SectionTitle, color = KioskColors.text)
+                                Text("Host", style = SgType.Caption, color = KioskColors.textMuted)
                             }
                         }
-                    }
-                    if (showingAfterHours) {
-                        Text(
-                            AfterHoursCopy.HOST_NO_OP,
-                            color = KioskColors.textMuted,
-                            fontSize = 14.sp,
-                            fontFamily = KioskFont,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
-                }
-                2 -> { // Inside
-                    AppleShellNav(leading = " ", trailing = " ")
-                    AppleShellTitle("Inside")
-                    AppleShellSub("With you · ${active.size}")
-                    AppleInset {
-                        if (active.isEmpty()) {
-                            AppleCell("None right now", showChevron = false, showDivider = false)
-                        } else {
-                            active.take(5).forEachIndexed { i, visit ->
-                                AppleCell(
-                                    title = visit.visitorName ?: "Visitor",
-                                    subtitle = visit.purpose ?: visit.status,
-                                    trailing = "Done",
-                                    showChevron = false,
-                                    showDivider = i < active.take(5).lastIndex,
-                                    onClick = { if (!busy) onMeetingDone(visit.id) },
-                                )
-                            }
+                        AppearanceSegmentedRow()
+                        com.satcop.smartvisitor.kiosk.ui.otp.StaffVerifyEntry()
+                        Column(Modifier.fillMaxWidth().sgCardSurface()) {
+                            AppleCell(title = "After-hours info", onClick = onShowAfterHours, showDivider = true)
+                            AppleCell(title = "Refresh inbox", onClick = onRefresh, showDivider = false)
                         }
-                    }
-                }
-                else -> { // More
-                    AppleShellNav(leading = " ", trailing = " ")
-                    AppleShellTitle("Settings")
-                    val identity = listOf(displayName, schoolId, staffId)
-                        .filter { it.isNotBlank() }
-                        .joinToString(" · ")
-                    AppleSectionHeader("Host")
-                    AppleInset {
-                        AppleCell(title = identity.ifBlank { "Host" }, showChevron = false, showDivider = true)
-                        AppleCell(title = "After-hours info", onClick = onShowAfterHours, showDivider = true)
-                        AppleCell(title = "Refresh inbox", onClick = onRefresh, showDivider = false)
-                    }
-                    AppearanceSegmentedRow()
-                    AppleSectionHeader("Account")
-                    com.satcop.smartvisitor.kiosk.ui.otp.StaffVerifyEntry()
-                    AppleInset {
-                        AppleCell("Sign out", showChevron = false, showDivider = false, onClick = onLogout)
+                        SgDangerOutlineButton("Sign out", onClick = onLogout, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
-        }
         }
         AppleTabBar(tabs = hostTabs, selectedIndex = tab, onSelect = { tab = it })
     }
 }
 
 @Composable
-private fun CompactApproveCard(
+private fun HostVisitCard(
+    visit: VisitOut,
+    photo: Bitmap?,
+    chip: @Composable () -> Unit,
+    onClick: (() -> Unit)? = null,
+    actions: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)? = null,
+) {
+    val name = visit.visitorName ?: "Visitor"
+    SgVisitCard(
+        name = name,
+        initials = initialsOf(name),
+        subtitle = visit.purpose?.takeIf { it.isNotBlank() },
+        timeText = whenText(visit.createdAt ?: visit.timeIn),
+        avatar = photo?.let { bmp -> { Image(bitmap = bmp.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize()) } },
+        status = chip,
+        onClick = onClick,
+        actions = actions,
+    )
+}
+
+@Composable
+private fun InboxCard(
     visit: VisitOut,
     photo: Bitmap?,
     busy: Boolean,
@@ -243,96 +208,35 @@ private fun CompactApproveCard(
     onCancelReject: () -> Unit,
     onConfirmReject: () -> Unit,
 ) {
-    val name = visit.visitorName ?: "Visitor"
-    val initials = name.split(" ")
-        .mapNotNull { it.firstOrNull()?.toString() }
-        .take(2)
-        .joinToString("")
-        .ifBlank { "?" }
-    AppleInset {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            if (photo != null) {
-                Image(
-                    bitmap = photo.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape),
-                )
-            } else {
-                AppleAvatar(initials = initials, size = 40.dp)
-            }
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    name,
-                    color = KioskColors.text,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = KioskFont,
-                )
-                Text(
-                    listOfNotNull(visit.visitorType, visit.purpose, visit.gateId)
-                        .filter { it.isNotBlank() }
-                        .joinToString(" · ")
-                        .ifBlank { "Awaiting approval" },
-                    color = KioskColors.textMuted,
-                    fontSize = 12.sp,
-                    fontFamily = KioskFont,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                if (rejecting) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Decline reason", color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
-                    RejectReasons.chips.forEach { reason ->
-                        AppleCell(
-                            title = reason,
-                            trailing = if (rejectReason == reason) "✓" else null,
-                            showChevron = false,
-                            showDivider = true,
-                            onClick = { onPickRejectReason(reason) },
-                        )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        HostVisitCard(
+            visit, photo,
+            chip = { SgStatusChip("Pending", SgStatusKind.PENDING) },
+            actions = if (rejecting) null else ({
+                SgSmallPill("Reject", onClick = { onStartReject(visit.id) }, style = SgPillStyle.OUTLINE_DANGER, enabled = !busy, modifier = Modifier.weight(1f))
+                SgSmallPill("Approve", onClick = { onApprove(visit.id) }, enabled = !busy, modifier = Modifier.weight(1f))
+            }),
+        )
+        if (rejecting) {
+            Column(
+                Modifier.fillMaxWidth().sgCardSurface().padding(SgSpacing.CardPadding),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Reason for rejecting", style = SgType.SectionTitle, color = KioskColors.text)
+                RejectReasons.chips.forEach { reason ->
+                    val on = rejectReason == reason
+                    Box(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                            .background(if (on) KioskColors.primary else KioskColors.secondaryFill)
+                            .clickable(role = Role.RadioButton) { onPickRejectReason(reason) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        Text(reason, style = SgType.Body, color = if (on) KioskColors.onPrimary else KioskColors.text)
                     }
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        ApplePillButton(
-                            text = "Cancel",
-                            onClick = onCancelReject,
-                            positive = false,
-                            modifier = Modifier.weight(1f),
-                            enabled = !busy,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        ApplePillButton(
-                            text = "Confirm decline",
-                            onClick = onConfirmReject,
-                            positive = true,
-                            modifier = Modifier.weight(1f),
-                            enabled = !busy && !rejectReason.isNullOrBlank(),
-                        )
-                    }
-                } else {
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        ApplePillButton(
-                            text = "Decline",
-                            onClick = { onStartReject(visit.id) },
-                            positive = false,
-                            modifier = Modifier.weight(1f),
-                            enabled = !busy,
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        ApplePillButton(
-                            text = "Approve",
-                            onClick = { onApprove(visit.id) },
-                            positive = true,
-                            modifier = Modifier.weight(1f),
-                            enabled = !busy,
-                        )
-                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SgSmallPill("Cancel", onClick = onCancelReject, style = SgPillStyle.SOFT, enabled = !busy, modifier = Modifier.weight(1f))
+                    SgSmallPill("Confirm reject", onClick = onConfirmReject, enabled = !busy && !rejectReason.isNullOrBlank(), modifier = Modifier.weight(1f))
                 }
             }
         }

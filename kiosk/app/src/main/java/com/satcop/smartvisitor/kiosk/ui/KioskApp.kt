@@ -83,11 +83,14 @@ fun KioskApp(
             activity?.finishAffinity()
         }
     }
+    // Login draws its own full-bleed teal header under the status bar.
+    val onPasswordLogin = !(state.signedIn && FaceGateMachine.canShowData(state.gateStage)) &&
+        state.screen != KioskScreen.FACE_LOGIN && state.gateStage != GateStage.FACE_PENDING
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(KioskColors.bg)
-            .statusBarsPadding()
+            .then(if (onPasswordLogin) Modifier else Modifier.statusBarsPadding())
             .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
             .imePadding(),
     ) {
@@ -117,10 +120,9 @@ fun KioskApp(
                         else Modifier,
                     )
                     .then(
-                        if (signedIn) Modifier
+                        if (signedIn || !faceLogin) Modifier // login owns its full-bleed teal header
                         else Modifier.padding(horizontal = hPad, vertical = vPad),
                     )
-                    .padding(bottom = if (outerPhoneScroll) 36.dp else 0.dp),
             ) {
                 val faceCtx = LocalContext.current
                 if (!signedIn) {
@@ -273,6 +275,19 @@ fun KioskApp(
                             onLostFound = viewModel::openLostFound,
                             onPickup = viewModel::openPickup,
                             onLogout = viewModel::logout,
+                            displayName = state.meDisplayName,
+                            insideList = state.checkoutInside,
+                            historyEvents = state.historyEvents,
+                            hostNames = state.hosts.associate { it.id to it.name },
+                            onRefreshLists = {
+                                viewModel.refreshCheckoutInside()
+                                viewModel.refreshHistory()
+                            },
+                            onSelectHistory = viewModel::selectHistory,
+                            onCheckoutVisit = { id ->
+                                viewModel.selectCheckout(id)
+                                viewModel.confirmCheckout()
+                            },
                             registrationStep = state.step,
                             registrationContent = if (state.step > 1) {
                                 {
@@ -447,8 +462,8 @@ fun KioskApp(
                     } // end non-guard
                 }
             }
-            // Keep watermark/toast above pinned M3 NavigationBar (~60dp + system inset)
-            val aboveNav = if (signedIn) 72.dp else 0.dp
+            // Keep toast above the pinned bottom nav (64dp + raised centre + system inset)
+            val aboveNav = if (signedIn) 96.dp else 0.dp
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)

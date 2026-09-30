@@ -424,7 +424,7 @@ object SgNavSets {
  * Host/Guard pass no centre. [visible] = false hides it on full-screen steps (camera, OTP, Add Visitor, clock-in).
  * [selectedIndex] indexes [items] (the centre button is never "selected").
  *
- * NOT wired into the shell yet (KioskApp/GateToday/... still use AppleTabBar); drop-in ready.
+ * Wired into the shell via AppleTabBar (Gate 5 slots, Host and Guard 4 tabs).
  */
 @Composable
 fun SgBottomNav(
