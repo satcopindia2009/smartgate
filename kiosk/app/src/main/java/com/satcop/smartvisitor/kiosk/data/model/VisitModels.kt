@@ -77,6 +77,9 @@ data class VisitCreate(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val idNumber: String? = null,
     val idImageKey: String? = null,
+    /** Required by the server when idType is "Other" and a new ID number is sent (400 VALIDATION otherwise). */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val idTypeName: String? = null,
     val vehicleNumber: String? = null,
     val accompanyingCount: Int? = null,
     val notes: String? = null,

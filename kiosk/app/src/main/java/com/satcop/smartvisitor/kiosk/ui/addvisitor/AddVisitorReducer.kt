@@ -42,6 +42,7 @@ object AddVisitorReducer {
             )
             LookupOutcome.Blocked -> base.copy(stage = AvStage.NUMBER, notice = AvNotice.Blocked)
             is LookupOutcome.AlreadyInside -> base.copy(stage = AvStage.NUMBER, notice = AvNotice.Inside(outcome.active))
+            is LookupOutcome.OpenVisit -> base.copy(stage = AvStage.NUMBER, notice = AvNotice.Open(outcome.open))
             LookupOutcome.InvalidNumber -> base.copy(
                 stage = AvStage.NUMBER, mobileError = AddVisitorLogic.INVALID_MOBILE, notice = null,
             )
@@ -86,6 +87,7 @@ object AddVisitorReducer {
             purpose = k?.lastPurpose.orEmpty(),
             hostId = host,
             idNumber = "",
+            idTypeName = "",
             savedId = k?.idRef,
             useSavedId = k?.idRef != null,
             scheduledAtMs = null,

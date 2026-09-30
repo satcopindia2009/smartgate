@@ -25,6 +25,8 @@ data class RegistrationDraft(
     val livePhotoKey: String? = null,
     val idType: String = IdType.Aadhaar.apiValue,
     val idNumber: String = "",
+    /** Free-text name of the document when [idType] is "Other". */
+    val idTypeName: String = "",
     val idImageCaptured: Boolean = false,
     val idImageKey: String? = null,
     val signatureCaptured: Boolean = false,

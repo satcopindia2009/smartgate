@@ -21,6 +21,16 @@ data class ActiveVisit(
     val isInside: Boolean get() = status.equals("inside", true) || status.equals("checked_in", true)
 }
 
+/** D15: same-day visit that is waiting for the host (pending) or approved but not yet checked in. */
+data class OpenVisitInfo(
+    val visitId: String,
+    val status: String,
+    val hostName: String? = null,
+    val hostId: String? = null,
+) {
+    val isApproved: Boolean get() = status.equals("approved", true)
+}
+
 /** What the server knows about the mobile number (already deduped across visitor + vendor). */
 data class KnownProfile(
     val kind: ProfileKind,
@@ -51,6 +61,8 @@ sealed interface LookupOutcome {
     /** Blacklisted number (or ID): red block screen, no form, no reason for the guard. */
     data object Blocked : LookupOutcome
     data class AlreadyInside(val active: ActiveVisit) : LookupOutcome
+    /** D15 (AC-AV7): pending / approved visit exists. No second visit is ever created. */
+    data class OpenVisit(val open: OpenVisitInfo) : LookupOutcome
     data object InvalidNumber : LookupOutcome
     /** Network/server problem. There is NO fallback to a blank form (it would create duplicates). */
     data class Failed(val message: String) : LookupOutcome

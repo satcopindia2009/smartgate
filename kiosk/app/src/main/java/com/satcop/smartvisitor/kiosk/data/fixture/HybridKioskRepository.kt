@@ -551,6 +551,17 @@ class HybridKioskRepository(
             GuardAsapFixtures.createLostFound(normalized, normalized.gateId)
         }
 
+    override suspend fun checkInVisit(visitId: String, gateId: String?): VisitOut =
+        withContext(Dispatchers.IO) {
+            try {
+                live.checkInVisit(visitId, gateId).also { local.put(it) }
+            } catch (e: ApiException) {
+                throw e
+            } catch (e: Exception) {
+                throw asApi(e, "Check-in failed")
+            }
+        }
+
     override suspend fun checkoutInsideVisit(visitId: String, gateId: String?): VisitOut =
         withContext(Dispatchers.IO) {
             if (dataSource == DataSource.LIVE) {

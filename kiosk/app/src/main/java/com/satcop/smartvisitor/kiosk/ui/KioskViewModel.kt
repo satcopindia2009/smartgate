@@ -1117,13 +1117,9 @@ class KioskViewModel(
 
     fun updateIdNumber(value: String) = patchDraft { copy(idNumber = value) }
 
+    fun updateIdTypeName(value: String) = patchDraft { copy(idTypeName = value.take(30)) }
+
     fun setLivePhoto(bitmap: Bitmap?) {
-        if (!_state.value.draft.consentAgreed) {
-            _state.update {
-                it.copy(toast = "Agree to visitor notice before photo", toastKind = ToastKind.WARNING)
-            }
-            return
-        }
         if (bitmap == null) {
             // No camera picture = no photo. Nothing is invented; the guard must try again.
             _state.update { it.copy(toast = "The photo could not be taken. Please try again.", toastKind = ToastKind.WARNING) }
@@ -1134,19 +1130,12 @@ class KioskViewModel(
                 livePhoto = bitmap,
                 draft = it.draft.copy(livePhotoCaptured = true),
                 fieldErrors = it.fieldErrors - "livePhotoKey",
-                toast = "Visitor photo saved",
-                toastKind = ToastKind.SUCCESS,
+                toast = null,
             )
         }
     }
 
     fun setIdImage(bitmap: Bitmap?) {
-        if (!_state.value.draft.consentAgreed) {
-            _state.update {
-                it.copy(toast = "Agree to visitor notice before ID capture", toastKind = ToastKind.WARNING)
-            }
-            return
-        }
         if (bitmap == null) {
             _state.update { it.copy(toast = "The ID photo could not be taken. Please try again.", toastKind = ToastKind.WARNING) }
             return
@@ -1156,8 +1145,8 @@ class KioskViewModel(
             it.copy(
                 idImage = bitmap,
                 draft = it.draft.copy(idImageCaptured = true),
-                toast = "ID photo saved",
-                toastKind = ToastKind.INFO,
+                fieldErrors = it.fieldErrors - "idImageKey",
+                toast = null,
             )
         }
     }
@@ -1336,7 +1325,7 @@ class KioskViewModel(
                 return true
             }
             "INVALID_ID_FORMAT" -> {
-                _state.update { it.copy(submitting = false, step = 3, fieldErrors = it.fieldErrors + (com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID to ErrorCopy.INVALID_ID_FORMAT)) }
+                _state.update { it.copy(submitting = false, step = 2, fieldErrors = it.fieldErrors + (com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID to ErrorCopy.INVALID_ID_FORMAT)) }
                 return true
             }
             "VENDOR_NO_SCHEDULE" -> {
@@ -1346,9 +1335,23 @@ class KioskViewModel(
             }
             "VALIDATION" -> {
                 val f = e.details["field"]?.takeIf { it in setOf(com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.HOST_ID, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID_IMAGE, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.PURPOSE, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.COMPANY, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.VISITOR_NAME) } ?: return false
-                val step = if (f == com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID || f == com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID_IMAGE) 3 else 2
+                val step = 2
                 val msg = if (f == com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.HOST_ID) ErrorCopy.HOST_INACTIVE else e.message?.takeIf { it.isNotBlank() && !it.contains('_') } ?: ErrorCopy.GENERIC
                 _state.update { it.copy(submitting = false, step = step, fieldErrors = it.fieldErrors + (f to msg)) }
+                return true
+            }
+            "OPEN_VISIT_EXISTS" -> {
+                // D15 / AC-AV7: nothing was created. Show the card for the EXISTING visit; never a second one.
+                val open = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.openVisitFromDetails(e.details) ?: return false
+                val mobile = _state.value.draft.mobile
+                _state.update { s ->
+                    s.copy(
+                        submitting = false, step = 2,
+                        addVisitor = reducer.backToNumber(s.addVisitor.copy(mobileInput = com.satcop.smartvisitor.kiosk.data.registration.MobileIndia.tenDigit(mobile) ?: mobile.filter { it.isDigit() }))
+                            .copy(notice = com.satcop.smartvisitor.kiosk.ui.addvisitor.AvNotice.Open(open)),
+                        toast = null,
+                    )
+                }
                 return true
             }
             "ALREADY_INSIDE" -> {
@@ -1374,6 +1377,31 @@ class KioskViewModel(
         _state.update { s ->
             val (av, d) = reducer.switchKind(s.addVisitor, s.draft)
             s.copy(addVisitor = av, draft = d, fieldErrors = emptyMap())
+        }
+    }
+
+    /** D15: "Check in now" checks in THAT approved visit (POST /visits/{id}/check-in). No new visit. */
+    fun avCheckInOpen(open: com.satcop.smartvisitor.kiosk.data.addvisitor.OpenVisitInfo) {
+        if (_state.value.addVisitor.checkoutBusy) return
+        _state.update { it.copy(addVisitor = it.addVisitor.copy(checkoutBusy = true)) }
+        viewModelScope.launch {
+            try {
+                val gateId = _state.value.selectedGate?.id ?: _state.value.draft.gateId
+                repository.checkInVisit(open.visitId, gateId)
+                _state.update {
+                    it.copy(
+                        addVisitor = it.addVisitor.copy(checkoutBusy = false, notice = null),
+                        toast = "Checked in", toastKind = ToastKind.SUCCESS,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        addVisitor = it.addVisitor.copy(checkoutBusy = false),
+                        toast = ErrorCopy.forThrowable(e), toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
         }
     }
 
@@ -1461,7 +1489,14 @@ class KioskViewModel(
 
     fun submitRegistration() {
         val current = _state.value
-        val errors = RegistrationValidator.validateStep3(current.draft)
+        if (current.submitting) return
+        // Single-form Add Visitor: the notice line above Submit is the consent; submitting = notice given.
+        val now = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Kolkata"))
+            .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        _state.update {
+            it.copy(draft = it.draft.copy(consentAgreed = true, consentVersion = GateConsent.VERSION, consentAt = now))
+        }
+        val errors = RegistrationValidator.validateForm(_state.value.draft)
         if (errors.isNotEmpty()) {
             _state.update {
                 it.copy(
@@ -1483,7 +1518,7 @@ class KioskViewModel(
             _state.update {
                 it.copy(
                     submitting = false,
-                    toast = "Visitor notice consent required",
+                    toast = "Please try again.",
                     toastKind = ToastKind.WARNING,
                 )
             }
@@ -1491,7 +1526,7 @@ class KioskViewModel(
         }
         try {
             val liveBmp = snap.livePhoto ?: run {
-                _state.update { it.copy(submitting = false, step = 3, toast = "Take the visitor photo first.", toastKind = ToastKind.WARNING) }
+                _state.update { it.copy(submitting = false, step = 2, fieldErrors = it.fieldErrors + (com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.LIVE_PHOTO to com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.LIVE_PHOTO_REQUIRED)) }
                 return
             }
             val consentAt = draft.consentAt
@@ -1552,6 +1587,7 @@ class KioskViewModel(
                 hostId = draft.hostId.orEmpty(),
                 livePhotoKey = photo.key,
                 idType = draft.idType,
+                idTypeName = if (draft.idType == "Other" && !(draft.useSavedId && draft.savedId != null)) draft.idTypeName.trim().ifEmpty { null } else null,
                 // Only a newly typed full number is sent; the saved ID (masked) is never echoed back.
                 idNumber = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.idNumberToSend(draft.useSavedId && draft.savedId != null, draft.idNumber),
                 idImageKey = idKey,
