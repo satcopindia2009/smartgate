@@ -48,6 +48,8 @@ import com.satcop.smartvisitor.kiosk.ui.LocalKioskCompact
 import com.satcop.smartvisitor.kiosk.ui.theme.ChipShape
 import com.satcop.smartvisitor.kiosk.ui.theme.ControlShape
 import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
+import com.satcop.smartvisitor.kiosk.ui.theme.PillShape
+import com.satcop.smartvisitor.kiosk.ui.theme.SgSize
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
@@ -100,11 +102,11 @@ fun KioskPrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val brush = Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))
+    val brush = Brush.linearGradient(listOf(KioskColors.primary, KioskColors.primary))
     Box(
         modifier = modifier
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .heightIn(min = SgSize.ButtonHeight)
+            .clip(PillShape)
             .background(if (enabled) brush else Brush.linearGradient(listOf(KioskColors.border, KioskColors.border)))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 24.dp),
@@ -112,9 +114,9 @@ fun KioskPrimaryButton(
     ) {
         Text(
             text = text,
-            color = Color.White,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Medium,
+            color = KioskColors.onPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
             fontFamily = KioskFont,
             maxLines = 2,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -130,11 +132,11 @@ fun KioskCyanButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val brush = Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))
+    val brush = Brush.linearGradient(listOf(KioskColors.primary, KioskColors.primary))
     Box(
         modifier = modifier
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .heightIn(min = SgSize.ButtonHeight)
+            .clip(PillShape)
             .background(if (enabled) brush else Brush.linearGradient(listOf(KioskColors.border, KioskColors.border)))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 24.dp),
@@ -142,9 +144,9 @@ fun KioskCyanButton(
     ) {
         Text(
             text = text,
-            color = if (enabled) Color.White else KioskColors.textDim,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Medium,
+            color = if (enabled) KioskColors.onPrimary else KioskColors.textDim,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
             fontFamily = KioskFont,
             maxLines = 2,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -162,18 +164,18 @@ fun KioskGhostButton(
 ) {
     Box(
         modifier = modifier
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(RadiusSm))
-            .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusSm))
+            .heightIn(min = SgSize.ButtonHeight)
+            .clip(PillShape)
+            .background(KioskColors.secondaryFill)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
-            color = KioskColors.textMuted,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
+            color = KioskColors.text,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
             fontFamily = KioskFont,
             maxLines = 2,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -209,7 +211,7 @@ fun KioskField(
         Text(
             text = label,
             color = KioskColors.inputLabel,
-            fontSize = 12.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
             modifier = Modifier.padding(bottom = FormTokens.LabelToField),
@@ -231,7 +233,7 @@ fun KioskField(
             textStyle = TextStyle(
                 color = KioskColors.inputText,
                 fontFamily = KioskFont,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
             ),
             placeholder = {
                 Text(placeholder, color = KioskColors.inputHint, fontFamily = KioskFont)
@@ -259,7 +261,7 @@ fun KioskField(
                 {
                     Text(
                         text = if (shown) "Hide" else "Show",
-                        color = KioskColors.systemBlue,
+                        color = KioskColors.primary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         fontFamily = KioskFont,
@@ -410,7 +412,7 @@ fun ShieldMark() {
         modifier = Modifier
             .size(36.dp)
             .clip(RoundedCornerShape(RadiusLg))
-            .background(Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))),
+            .background(Brush.linearGradient(listOf(KioskColors.primary, KioskColors.primary))),
         contentAlignment = Alignment.Center,
     ) {
         Text("🛡", fontSize = 16.sp)
