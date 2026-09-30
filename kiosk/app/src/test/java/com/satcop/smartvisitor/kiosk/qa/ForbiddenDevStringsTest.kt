@@ -26,7 +26,6 @@ class ForbiddenDevStringsTest {
     @Test fun noDevTextInStringLiterals() {
         val hits = mutableListOf<String>()
         root().walkTopDown().filter { it.isFile && it.extension == "kt" }
-            .filterNot { it.name == "GateTodayScreen.kt" /* Restyle owns it; its branch already removed the subtitle */ }
             .filterNot { it.path.contains("/data/fixture/") || it.name.endsWith("Fixtures.kt") || it.path.contains("/data/registration/RegistrationDraft") }
             .forEach { f ->
                 literals(f.readText()).forEach { lit ->

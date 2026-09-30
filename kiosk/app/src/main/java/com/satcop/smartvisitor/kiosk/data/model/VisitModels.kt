@@ -223,7 +223,7 @@ enum class IdType(val apiValue: String) {
     }
 }
 
-enum class DataSource { LIVE, FIXTURES }
+enum class DataSource { LIVE, OFFLINE }
 
 class ApiException(
     val code: String,

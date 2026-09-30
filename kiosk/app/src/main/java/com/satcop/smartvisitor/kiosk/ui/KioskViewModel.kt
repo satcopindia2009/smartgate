@@ -93,7 +93,7 @@ data class KioskUiState(
     val timezone: String = DemoFixtures.SCHOOL_TZ,
     val clockLabel: String = "",
     val watermark: String = "",
-    val dataSource: DataSource = DataSource.FIXTURES,
+    val dataSource: DataSource = DataSource.OFFLINE,
     val meDisplayName: String = "",
     val meRole: String = "",
     val meStaffId: String = "",
@@ -1595,7 +1595,7 @@ class KioskViewModel(
                         hit?.severity == "Alert" -> "Alert hit · visit pending · host notified"
                         visit.isVendor && visit.status == "inside" -> "Vendor checked in · host informed"
                         after -> "After hours · ${AfterHoursCopy.HOST_NO_OP}"
-                        source == DataSource.FIXTURES -> "Host notified · waiting for approval"
+                        source == DataSource.OFFLINE -> "Host notified · waiting for approval"
                         else -> "Host notified · waiting for approval"
                     },
                     toastKind = when {

@@ -40,7 +40,7 @@ class HybridKioskRepository(
 ) : KioskRepository {
 
     @Volatile
-    override var dataSource: DataSource = DataSource.FIXTURES
+    override var dataSource: DataSource = DataSource.OFFLINE
         private set
 
     @Volatile
@@ -57,12 +57,12 @@ class HybridKioskRepository(
             } catch (e: ApiException) {
                 live.logout()
                 signedIn = null
-                dataSource = DataSource.FIXTURES
+                dataSource = DataSource.OFFLINE
                 throw e
             } catch (e: Exception) {
                 live.logout()
                 signedIn = null
-                dataSource = DataSource.FIXTURES
+                dataSource = DataSource.OFFLINE
                 throw ApiException("UNAVAILABLE", e.message ?: "Live login failed", 0)
             }
         }
@@ -70,19 +70,19 @@ class HybridKioskRepository(
     override suspend fun logout() = withContext(Dispatchers.IO) {
         live.logout()
         signedIn = null
-        dataSource = DataSource.FIXTURES
+        dataSource = DataSource.OFFLINE
     }
 
     override suspend fun warmup() = withContext(Dispatchers.IO) {
         if (live.accessToken.isNullOrBlank()) {
-            dataSource = DataSource.FIXTURES
+            dataSource = DataSource.OFFLINE
             return@withContext
         }
         dataSource = try {
             signedIn = live.me()
             DataSource.LIVE
         } catch (e: Exception) {
-            if (shouldFallback(e)) DataSource.FIXTURES else DataSource.LIVE
+            if (shouldFallback(e)) DataSource.OFFLINE else DataSource.LIVE
         }
     }
 
@@ -578,7 +578,7 @@ class HybridKioskRepository(
         }
 
     private fun markFixtures() {
-        dataSource = DataSource.FIXTURES
+        dataSource = DataSource.OFFLINE
     }
 
     private fun shouldFallback(e: Exception): Boolean {
