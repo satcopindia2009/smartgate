@@ -33,6 +33,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -59,9 +70,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
-import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
-import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
+import com.satcop.smartvisitor.kiosk.ui.theme.AppleDark
+import com.satcop.smartvisitor.kiosk.ui.theme.PillShape
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
 import java.nio.ByteBuffer
@@ -76,6 +86,43 @@ object FaceCaptureCopy {
             "Outside the school campus may block. Denying location is OK — coordinates are never invented."
     const val LOCATION_HINT_HI =
         "स्कूल ड्यूटी पर फेस फोटो के साथ समय और अनुमानित GPS दर्ज हो सकता है। जियो-फेंस के बाहर कार्रवाई ब्लॉक हो सकती है।"
+}
+
+/** Board 04 is always dark teal, whatever the app theme is (same palette as the DARK boards). */
+private val D get() = AppleDark
+
+@Composable
+private fun FacePill(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+) {
+    Row(
+        modifier = modifier.heightIn(min = 52.dp).clip(PillShape)
+            .background(if (enabled) D.primary else D.primary.copy(alpha = 0.45f))
+            .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = D.onPrimary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+        }
+        Text(text, color = D.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, maxLines = 2)
+    }
+}
+
+@Composable
+private fun FaceGhost(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Box(
+        modifier = modifier.heightIn(min = 48.dp).clip(PillShape).border(1.dp, D.separator, PillShape)
+            .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = if (enabled) D.label else D.secondaryLabel, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+    }
 }
 
 private fun Context.findActivity(): Activity? {
@@ -151,39 +198,50 @@ fun FaceCaptureScreen(
         }
     }
 
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        Modifier.fillMaxSize().background(D.bg).navigationBarsPadding(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Board 04: back circle, centred "Face" pill, big title, plain sentence. Dark, teal accents.
+        Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.align(Alignment.CenterStart).size(40.dp).clip(CircleShape).background(D.secondaryFill)
+                    .clickable(enabled = !busy, onClick = onCancel),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back", tint = D.label, modifier = Modifier.size(22.dp))
+            }
+            Text(
+                text = "Face",
+                color = D.primary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = KioskFont,
+                modifier = Modifier.clip(PillShape).border(1.dp, D.separator, PillShape).padding(horizontal = 14.dp, vertical = 6.dp),
+            )
+        }
         Text(
-            text = if (mode == FaceCaptureMode.ENROLL) "Enroll face" else "Face verification",
-            color = KioskColors.text,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
+            text = if (mode == FaceCaptureMode.ENROLL) "Enroll your face" else "Verify your face",
+            color = D.label,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
             fontFamily = KioskFont,
         )
         Text(
-            text = "Look at the front camera, then tap Capture. Staff only.",
-            color = KioskColors.textMuted,
-            fontSize = 13.sp,
-            fontFamily = KioskFont,
-        )
-        Text(
-            text = FaceCaptureCopy.LOCATION_HINT_EN,
-            color = KioskColors.textMuted,
-            fontSize = 10.sp,
-            fontFamily = KioskFont,
-        )
-        Text(
-            text = FaceCaptureCopy.LOCATION_HINT_HI,
-            color = KioskColors.textMuted,
-            fontSize = 10.sp,
+            text = if (mode == FaceCaptureMode.ENROLL) "Take a clear photo to enroll your face."
+            else "Face verification required. Please verify your face to continue.",
+            color = D.secondaryLabel,
+            fontSize = 14.sp,
             fontFamily = KioskFont,
         )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(280.dp)
+                .weight(1f)
+                .heightIn(min = 200.dp)
                 .clip(RoundedCornerShape(RadiusLg))
-                .background(KioskColors.secondaryFill)
-                .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusLg)),
+                .background(D.secondaryFill)
+                .border(1.dp, D.separator, RoundedCornerShape(RadiusLg)),
             contentAlignment = Alignment.Center,
         ) {
             when {
@@ -198,24 +256,24 @@ fun FaceCaptureScreen(
                         } else {
                             "Camera permission is needed to take your face photo for sign-in."
                         },
-                        color = KioskColors.text,
+                        color = D.label,
                         fontFamily = KioskFont,
                         fontSize = 14.sp,
                     )
                     if (permanentlyDenied) {
-                        KioskPrimaryButton(
+                        FacePill(
                             text = "Open settings",
                             onClick = { openAppSettings(context) },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         )
                     } else {
-                        KioskPrimaryButton(
+                        FacePill(
                             text = "Allow camera",
                             onClick = { permission.launch(Manifest.permission.CAMERA) },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                         )
                         if (asked) {
-                            KioskGhostButton(
+                            FaceGhost(
                                 text = "Open settings",
                                 onClick = { openAppSettings(context) },
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
@@ -226,7 +284,7 @@ fun FaceCaptureScreen(
                 previewBmp != null -> Image(
                     bitmap = previewBmp!!.asImageBitmap(),
                     contentDescription = "Captured face",
-                    modifier = Modifier.fillMaxWidth().height(280.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
                 cameraError != null -> Column(
@@ -234,14 +292,14 @@ fun FaceCaptureScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(cameraError!!, color = KioskColors.text, fontFamily = KioskFont, fontSize = 14.sp)
-                    KioskGhostButton(
+                    Text(cameraError!!, color = D.label, fontFamily = KioskFont, fontSize = 14.sp)
+                    FaceGhost(
                         text = "Retry camera",
                         onClick = { cameraError = null; cameraKey++ },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     )
                 }
-                QaHooks.fakeCamera -> Text(QaHooks.bannerText, color = KioskColors.text, fontFamily = KioskFont, fontSize = 14.sp)
+                QaHooks.fakeCamera -> Text(QaHooks.bannerText, color = D.label, fontFamily = KioskFont, fontSize = 14.sp)
                 else -> key(cameraKey) {
                     AndroidView(
                         factory = { ctx ->
@@ -283,35 +341,63 @@ fun FaceCaptureScreen(
                                 }, ContextCompat.getMainExecutor(ctx))
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().height(280.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+            if (granted && cameraError == null) {
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                    val w = size.width * 0.66f
+                    val h = size.height * 0.80f
+                    drawOval(
+                        color = D.primary,
+                        topLeft = androidx.compose.ui.geometry.Offset((size.width - w) / 2f, (size.height - h) / 2f),
+                        size = androidx.compose.ui.geometry.Size(w, h),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 3.dp.toPx(),
+                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(14.dp.toPx(), 10.dp.toPx())),
+                        ),
                     )
                 }
             }
         }
+
         if (!message.isNullOrBlank()) {
             Text(
                 message,
-                color = if (messageIsError) KioskColors.errorText else KioskColors.systemBlue,
+                color = if (messageIsError) D.errorText else D.primary,
                 fontSize = 14.sp,
                 fontWeight = if (messageIsError) FontWeight.Medium else FontWeight.Normal,
                 fontFamily = KioskFont,
             )
         }
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(D.brandSoft).padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Outlined.Security, contentDescription = null, tint = D.primary, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(12.dp))
+            Text(
+                "Your photo is used only to confirm it is you and is stored securely for attendance.",
+                color = D.label, fontSize = 13.sp, fontFamily = KioskFont,
+            )
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            KioskGhostButton(
+            FaceGhost(
                 text = "Cancel",
                 onClick = onCancel,
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp),
             )
             if (previewBmp != null) {
-                KioskGhostButton(
+                FaceGhost(
                     text = "Retake",
                     onClick = { previewBmp = null },
                     enabled = !busy,
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                 )
             }
-            KioskPrimaryButton(
+            FacePill(
+                icon = Icons.Outlined.CameraAlt,
                 text = when {
                     busy -> "Working…"
                     previewBmp == null -> "Capture"
@@ -321,9 +407,9 @@ fun FaceCaptureScreen(
                 },
                 onClick = {
                     if (previewBmp == null) {
-                        QaHooks.frame("Face")?.let { previewBmp = it; return@KioskPrimaryButton }
-                        val cap = imageCapture ?: return@KioskPrimaryButton
-                        if (capturing) return@KioskPrimaryButton
+                        QaHooks.frame("Face")?.let { previewBmp = it; return@FacePill }
+                        val cap = imageCapture ?: return@FacePill
+                        if (capturing) return@FacePill
                         capturing = true
                         cap.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
                             override fun onCaptureSuccess(image: ImageProxy) {
@@ -352,6 +438,8 @@ fun FaceCaptureScreen(
                 modifier = Modifier.weight(1f).heightIn(min = 52.dp),
             )
         }
+        Text(text = FaceCaptureCopy.LOCATION_HINT_EN, color = D.secondaryLabel, fontSize = 11.sp, fontFamily = KioskFont)
+        Text(text = FaceCaptureCopy.LOCATION_HINT_HI, color = D.secondaryLabel, fontSize = 11.sp, fontFamily = KioskFont)
         Spacer(Modifier.height(4.dp))
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -58,8 +59,7 @@ fun FaceLoginScreen(
         phase == FaceLoginPhase.CAPTURE_ENROLL || phase == FaceLoginPhase.CAPTURE_VERIFY
     // Crashfix 1046: scroll HUB/CONSENT only — never scroll CameraX preview.
     Column(
-        Modifier
-            .fillMaxWidth()
+        (if (capturePhase) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
             .then(
                 if (capturePhase) Modifier
                 else Modifier.verticalScroll(rememberScrollState()),

@@ -61,6 +61,7 @@ import com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorNumberStep
 import com.satcop.smartvisitor.kiosk.ui.addvisitor.AvStage
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorTypeStep
 import com.satcop.smartvisitor.kiosk.ui.theme.CardShape
+import com.satcop.smartvisitor.kiosk.ui.face.FaceLoginPhase
 import com.satcop.smartvisitor.kiosk.ui.face.FaceLoginScreen
 import com.satcop.smartvisitor.kiosk.ui.apple.GateTodayScreen
 import com.satcop.smartvisitor.kiosk.ui.apple.HostInboxScreen
@@ -84,10 +85,14 @@ fun KioskApp(
     // Login draws its own full-bleed teal header under the status bar.
     val onPasswordLogin = !(state.signedIn && FaceGateMachine.canShowData(state.gateStage)) &&
         state.screen != KioskScreen.FACE_LOGIN && state.gateStage != GateStage.FACE_PENDING
+    // Board 04: while the face capture step is up the whole screen (incl. status bar area) is dark teal.
+    val faceCaptureUp = !(state.signedIn && FaceGateMachine.canShowData(state.gateStage)) &&
+        (state.screen == KioskScreen.FACE_LOGIN || state.gateStage == GateStage.FACE_PENDING) &&
+        (state.facePhase == FaceLoginPhase.CAPTURE_VERIFY || state.facePhase == FaceLoginPhase.CAPTURE_ENROLL)
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(KioskColors.bg)
+            .background(if (faceCaptureUp) com.satcop.smartvisitor.kiosk.ui.theme.AppleDark.bg else KioskColors.bg)
             .then(if (onPasswordLogin) Modifier else Modifier.statusBarsPadding())
             .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
             .imePadding(),
@@ -125,14 +130,24 @@ fun KioskApp(
                 val faceCtx = LocalContext.current
                 if (!signedIn) {
                     if (state.screen == KioskScreen.FACE_LOGIN || faceStage) {
+                        // Board 04: the capture step is a full-bleed dark teal screen, not a card. HUB/CONSENT keep the card.
+                        val faceCapture = state.facePhase == FaceLoginPhase.CAPTURE_VERIFY ||
+                            state.facePhase == FaceLoginPhase.CAPTURE_ENROLL
                         Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .shadow(24.dp, CardShape, ambientColor = androidx.compose.ui.graphics.Color(0x59000000))
-                                .clip(CardShape)
-                                .background(KioskColors.card)
-                                .border(1.dp, KioskColors.border, CardShape)
-                                .padding(horizontal = if (compact) 16.dp else 32.dp, vertical = if (compact) 16.dp else 28.dp),
+                            modifier = if (faceCapture) {
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(com.satcop.smartvisitor.kiosk.ui.theme.AppleDark.bg)
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                            } else {
+                                Modifier
+                                    .fillMaxWidth()
+                                    .shadow(24.dp, CardShape, ambientColor = androidx.compose.ui.graphics.Color(0x59000000))
+                                    .clip(CardShape)
+                                    .background(KioskColors.card)
+                                    .border(1.dp, KioskColors.border, CardShape)
+                                    .padding(horizontal = if (compact) 16.dp else 32.dp, vertical = if (compact) 16.dp else 28.dp)
+                            },
                         ) {
                             FaceLoginScreen(
                                 phase = state.facePhase,

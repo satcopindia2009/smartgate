@@ -15,8 +15,8 @@ android {
         applicationId = "com.satcop.smartvisitor.kiosk"
         minSdk = 23
         targetSdk = 35
-        versionCode = 1067
-        versionName = "1.0.15-1role-PREVIEW-TEAL-3"
+        versionCode = 1068
+        versionName = "1.0.16-1role-PREVIEW-TEAL-4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
