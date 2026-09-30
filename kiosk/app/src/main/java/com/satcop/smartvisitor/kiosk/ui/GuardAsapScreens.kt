@@ -522,7 +522,7 @@ fun LostFoundCreateScreen(
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Tap to capture photo", color = KioskColors.text, fontSize = 13.sp, fontFamily = KioskFont)
-                    Text("Camera only · required (AC-LF1)", color = KioskColors.textDim, fontSize = 11.sp, fontFamily = KioskFont)
+                    Text("Camera only · required", color = KioskColors.textDim, fontSize = 11.sp, fontFamily = KioskFont)
                 }
             }
         }
@@ -546,10 +546,10 @@ fun LostFoundCreateScreen(
 fun FaceLoginScaffoldScreen(enrolled: Boolean, consentAgreed: Boolean, busy: Boolean, message: String?, onToggleConsent: () -> Unit, onEnroll: () -> Unit, onFaceLogin: () -> Unit, onUsePassword: () -> Unit) {
     Column(Modifier.fillMaxWidth()) {
         Text("Guard face login", color = KioskColors.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
-        Text("UNLOCK scaffold · visitor face OUT · password always available", color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
+        Text("Unlock with your face, or use your password.", color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
         Spacer(Modifier.height(12.dp))
         Column(Modifier.fillMaxWidth().clip(ControlShape).background(KioskColors.sidebar).border(1.dp, KioskColors.border, ControlShape).padding(14.dp)) {
-            Text(if (enrolled) "Template: enrolled (local stub)" else "Template: not enrolled", color = if (enrolled) KioskColors.greenBright else KioskColors.orange, fontFamily = KioskFont, fontWeight = FontWeight.Medium)
+            Text(if (enrolled) "Face template: enrolled" else "Face template: not enrolled", color = if (enrolled) KioskColors.greenBright else KioskColors.orange, fontFamily = KioskFont, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(8.dp))
             Text("Consent (EN+HI): I agree to enroll my face for gate duty login only. मैं गेट ड्यूटी लॉगिन के लिए सहमत हूँ।", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
             Spacer(Modifier.height(8.dp))
@@ -558,9 +558,9 @@ fun FaceLoginScaffoldScreen(enrolled: Boolean, consentAgreed: Boolean, busy: Boo
             }
         }
         Spacer(Modifier.height(12.dp))
-        KioskPrimaryButton(text = if (busy) "Working…" else if (enrolled) "Re-enroll face (stub)" else "Enroll face (stub)", onClick = onEnroll, enabled = !busy && consentAgreed, modifier = Modifier.fillMaxWidth())
+        KioskPrimaryButton(text = if (busy) "Working…" else if (enrolled) "Re-enroll face" else "Enroll face", onClick = onEnroll, enabled = !busy && consentAgreed, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        KioskGhostButton(text = "Unlock with face (stub)", onClick = onFaceLogin, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp))
+        KioskGhostButton(text = "Unlock with face", onClick = onFaceLogin, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp))
         Spacer(Modifier.height(8.dp))
         KioskGhostButton(text = "Use password instead", onClick = onUsePassword, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp))
         if (!message.isNullOrBlank()) { Spacer(Modifier.height(8.dp)); Text(message, color = KioskColors.cyanBright, fontSize = 12.sp, fontFamily = KioskFont) }
