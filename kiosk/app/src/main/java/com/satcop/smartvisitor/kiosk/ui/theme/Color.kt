@@ -7,8 +7,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 
 /**
- * Apple HIG LIGHT + DARK paint tokens (TOKENS-FOR-MOBILE.md / Hub GO LIVE).
- * Soft Blue / Orange SoT parked — do not ship.
+ * SmartGate TEAL palette (approved restyle 2026-09-30, tokens.json).
+ *
+ * The class keeps its historical name and the historical "systemX" field names so every existing
+ * `KioskColors.x` / `AppleThemeState.palette.x` call site recolours without edits:
+ *   systemBlue -> primary teal, systemGreen -> success, systemRed -> danger,
+ *   systemOrange -> warning, systemPurple -> brand teal, searchFill -> inputFill, tabBarBg -> surface.
+ * New semantic fields (brand, primary, *Soft, onPrimary...) are the preferred names for new code.
  */
 data class ApplePalette(
     val bg: Color,
@@ -33,54 +38,102 @@ data class ApplePalette(
     val inputBorder: Color,
     val inputCursor: Color,
     val errorText: Color,
+    // Teal restyle semantic tokens
+    val primary: Color,
+    val onPrimary: Color,
+    val primaryPressed: Color,
+    val brand: Color,
+    val brandSoft: Color,
+    val surfaceAlt: Color,
+    val danger: Color,
+    val dangerSoft: Color,
+    val success: Color,
+    val successSoft: Color,
+    val warning: Color,
+    val warningSoft: Color,
+    val info: Color,
+    val infoSoft: Color,
+    val scrim: Color,
 )
 
 val AppleLight = ApplePalette(
-    bg = Color(0xFFF2F2F7),
+    bg = Color(0xFFF5F7F9),
     card = Color(0xFFFFFFFF),
-    secondaryFill = Color(0xFFE5E5EA),
-    label = Color(0xFF000000),
-    secondaryLabel = Color(0xFF8E8E93),
-    separator = Color(0x4A3C3C43),
-    systemBlue = Color(0xFF007AFF),
-    systemGreen = Color(0xFF34C759),
-    systemRed = Color(0xFFFF3B30),
-    systemOrange = Color(0xFFFF9500),
-    systemPurple = Color(0xFFAF52DE),
-    tabBarBg = Color(0xFFF9F9F9),
-    searchFill = Color(0xFFE3E3E8),
+    secondaryFill = Color(0xFFEEF2F1),
+    label = Color(0xFF14201D),
+    secondaryLabel = Color(0xFF5F6B67),
+    separator = Color(0xFFE6ECEA),
+    systemBlue = Color(0xFF1E806A),
+    systemGreen = Color(0xFF1D7A4F),
+    systemRed = Color(0xFFC9403D),
+    systemOrange = Color(0xFFB45309),
+    systemPurple = Color(0xFF4FB69C),
+    tabBarBg = Color(0xFFFFFFFF),
+    searchFill = Color(0xFFF1F4F6),
     isDark = false,
-    inputBg = Color(0xFFF2F2F7),
-    inputText = Color(0xFF000000),
-    inputHint = Color(0xFF636366),
-    inputLabel = Color(0xFF636366),
-    inputBorder = Color(0xFFC6C6C8),
-    inputCursor = Color(0xFF007AFF),
-    errorText = Color(0xFFD70015),
+    inputBg = Color(0xFFF1F4F6),
+    inputText = Color(0xFF14201D),
+    inputHint = Color(0xFF5F6B67),
+    inputLabel = Color(0xFF5F6B67),
+    // tokens.json says #E1E7E5; that is only 1.1:1 on the input fill, InputContrastTest requires >= 1.2.
+    inputBorder = Color(0xFFD3DBD8),
+    inputCursor = Color(0xFF1E806A),
+    // #C9403D is 4.44:1 on the input fill (< 4.5 for small text); slightly deeper red for error TEXT only.
+    errorText = Color(0xFFBC3A37),
+    primary = Color(0xFF1E806A),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryPressed = Color(0xFF186A58),
+    brand = Color(0xFF4FB69C),
+    brandSoft = Color(0xFFE3F4EF),
+    surfaceAlt = Color(0xFFEEF2F1),
+    danger = Color(0xFFC9403D),
+    dangerSoft = Color(0xFFFDECEC),
+    success = Color(0xFF1D7A4F),
+    successSoft = Color(0xFFE6F5EC),
+    warning = Color(0xFFB45309),
+    warningSoft = Color(0xFFFEF3E2),
+    info = Color(0xFF2563EB),
+    infoSoft = Color(0xFFE8F0FE),
+    scrim = Color(0x66000000),
 )
 
 val AppleDark = ApplePalette(
-    bg = Color(0xFF000000),
-    card = Color(0xFF1C1C1E),
-    secondaryFill = Color(0xFF2C2C2E),
-    label = Color(0xFFFFFFFF),
-    secondaryLabel = Color(0xFF8E8E93),
-    separator = Color(0xA6545458),
-    systemBlue = Color(0xFF0A84FF),
-    systemGreen = Color(0xFF30D158),
-    systemRed = Color(0xFFFF453A),
-    systemOrange = Color(0xFFFF9F0A),
-    systemPurple = Color(0xFFBF5AF2),
-    tabBarBg = Color(0xFF1C1C1E),
-    searchFill = Color(0xFF2C2C2E),
+    bg = Color(0xFF0E1513),
+    card = Color(0xFF17211E),
+    secondaryFill = Color(0xFF1F2B27),
+    label = Color(0xFFF2F6F5),
+    secondaryLabel = Color(0xFF9AA8A3),
+    separator = Color(0xFF2A3733),
+    systemBlue = Color(0xFF4FB69C),
+    systemGreen = Color(0xFF5BD68E),
+    systemRed = Color(0xFFFF7B78),
+    systemOrange = Color(0xFFF5B14C),
+    systemPurple = Color(0xFF4FB69C),
+    tabBarBg = Color(0xFF17211E),
+    searchFill = Color(0xFF1F2B27),
     isDark = true,
-    inputBg = Color(0xFF000000),
-    inputText = Color(0xFFFFFFFF),
-    inputHint = Color(0xFF98989D),
-    inputLabel = Color(0xFF98989D),
-    inputBorder = Color(0xFF48484A),
-    inputCursor = Color(0xFF0A84FF),
-    errorText = Color(0xFFFF453A),
+    inputBg = Color(0xFF1F2B27),
+    inputText = Color(0xFFF2F6F5),
+    inputHint = Color(0xFF9AA8A3),
+    inputLabel = Color(0xFF9AA8A3),
+    inputBorder = Color(0xFF33413D),
+    inputCursor = Color(0xFF4FB69C),
+    errorText = Color(0xFFFF7B78),
+    primary = Color(0xFF4FB69C),
+    onPrimary = Color(0xFF062018),
+    primaryPressed = Color(0xFF5CC7AC),
+    brand = Color(0xFF4FB69C),
+    brandSoft = Color(0xFF173029),
+    surfaceAlt = Color(0xFF1F2B27),
+    danger = Color(0xFFFF7B78),
+    dangerSoft = Color(0xFF3A1E1E),
+    success = Color(0xFF5BD68E),
+    successSoft = Color(0xFF153224),
+    warning = Color(0xFFF5B14C),
+    warningSoft = Color(0xFF3A2C14),
+    info = Color(0xFF7DA8FF),
+    infoSoft = Color(0xFF1A2740),
+    scrim = Color(0xAA000000),
 )
 
 /** Marker string retained in DEX for Hub verify (Appearance / Apple tokens). */
@@ -151,6 +204,29 @@ object KioskColors {
     val inputBorder: Color get() = AppleThemeState.palette.inputBorder
     val inputCursor: Color get() = AppleThemeState.palette.inputCursor
     val errorText: Color get() = AppleThemeState.palette.errorText
+
+    // Teal restyle semantic tokens (preferred names for new code)
+    val primary: Color get() = AppleThemeState.palette.primary
+    val onPrimary: Color get() = AppleThemeState.palette.onPrimary
+    val primaryPressed: Color get() = AppleThemeState.palette.primaryPressed
+    val brand: Color get() = AppleThemeState.palette.brand
+    val brandSoft: Color get() = AppleThemeState.palette.brandSoft
+    val surfaceAlt: Color get() = AppleThemeState.palette.surfaceAlt
+    val danger: Color get() = AppleThemeState.palette.danger
+    val dangerSoft: Color get() = AppleThemeState.palette.dangerSoft
+    val success: Color get() = AppleThemeState.palette.success
+    val successSoft: Color get() = AppleThemeState.palette.successSoft
+    val warning: Color get() = AppleThemeState.palette.warning
+    val warningSoft: Color get() = AppleThemeState.palette.warningSoft
+    val info: Color get() = AppleThemeState.palette.info
+    val infoSoft: Color get() = AppleThemeState.palette.infoSoft
+    val scrim: Color get() = AppleThemeState.palette.scrim
+
+    /** Readable content colour (white or the dark on-primary ink) for a solid [fill]. */
+    fun onFill(fill: Color): Color {
+        val ink = Color(0xFF062018)
+        return if (Contrast.ratio(Color.White, fill) >= Contrast.ratio(ink, fill)) Color.White else ink
+    }
 }
 
 /** WCAG 2.x contrast helper (pure, unit tested). */
