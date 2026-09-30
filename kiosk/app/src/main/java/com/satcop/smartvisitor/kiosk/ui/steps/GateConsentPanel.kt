@@ -1,53 +1,44 @@
 package com.satcop.smartvisitor.kiosk.ui.steps
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.data.model.GateConsent
-import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
-import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgFilterChipRow
+import com.satcop.smartvisitor.kiosk.ui.components.SgPrimaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgSecondaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.sgCardSurface
 import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
-import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
 
+/** Visitor notice: teal language chips (English / हिन्दी), notice in a card, Agree (primary) and Decline (secondary). Copy is unchanged. */
 @Composable
 fun GateConsentPanel(
     onAgree: () -> Unit,
     onDecline: () -> Unit,
 ) {
-    var langHi by remember { mutableStateOf(false) }
+    var lang by remember { mutableIntStateOf(0) }
+    val langHi = lang == 1
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(RadiusLg))
-            .background(KioskColors.card)
-            .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusLg))
+            .sgCardSurface()
             .padding(FormTokens.ScreenHPad),
         verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LangChip("English", selected = !langHi) { langHi = false }
-            LangChip("हिन्दी", selected = langHi) { langHi = true }
-        }
+        SgFilterChipRow(options = listOf("English", "हिन्दी"), selectedIndex = lang, onSelect = { lang = it })
         Text(
             text = if (langHi) GateConsent.TITLE_HI else GateConsent.TITLE_EN,
             color = KioskColors.text,
@@ -62,33 +53,13 @@ fun GateConsentPanel(
             fontFamily = KioskFont,
             lineHeight = 18.sp,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap), modifier = Modifier.fillMaxWidth()) {
-            KioskGhostButton(
-                text = GateConsent.DECLINE,
-                onClick = onDecline,
-                modifier = Modifier.weight(1f).heightIn(min = FormTokens.MinTouch),
-            )
-            KioskPrimaryButton(
+        Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap)) {
+            SgPrimaryButton(
                 text = if (langHi) GateConsent.AGREE_HI else GateConsent.AGREE_EN,
                 onClick = onAgree,
-                modifier = Modifier.weight(1f).heightIn(min = FormTokens.MinTouch),
+                modifier = Modifier.fillMaxWidth(),
             )
+            SgSecondaryButton(text = GateConsent.DECLINE, onClick = onDecline, modifier = Modifier.fillMaxWidth())
         }
     }
-}
-
-@Composable
-private fun LangChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Text(
-        text = label,
-        color = if (selected) KioskColors.cyanBright else KioskColors.textMuted,
-        fontSize = 12.sp,
-        fontFamily = KioskFont,
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(if (selected) KioskColors.cyanDim else KioskColors.bg)
-            .border(1.dp, if (selected) KioskColors.cyan else KioskColors.border, RoundedCornerShape(999.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-    )
 }
