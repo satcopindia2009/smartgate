@@ -211,7 +211,7 @@ fun AddVisitorNumberStep(
         AvTopBar("Add visitor", onBack = onCancel)
         when (val n = state.notice) {
             AvNotice.Blocked -> BlockedPanel(onClose = onCloseNotice)
-            is AvNotice.Open -> OpenVisitCard(n.open, state.checkoutBusy, onCheckInOpen, onCloseNotice)
+            is AvNotice.Open -> OpenVisitCard(n.open, state.referencePhoto, state.mobileInput, state.checkoutBusy, onCheckInOpen, onCloseNotice)
             is AvNotice.CheckedIn -> CheckedInCard(n.hostName, onCloseNotice)
             is AvNotice.Inside -> InsideCard(n.active, state.checkoutBusy, onCheckout, onCloseNotice)
             else -> {
@@ -305,22 +305,38 @@ private fun CheckedInCard(hostName: String?, onClose: () -> Unit) {
  * approved: "Approved for {host}" + "Check in now" (checks in THAT visit) + Close. Never a second visit.
  */
 @Composable
-private fun OpenVisitCard(open: OpenVisitInfo, busy: Boolean, onCheckIn: (OpenVisitInfo) -> Unit, onClose: () -> Unit) {
+private fun OpenVisitCard(open: OpenVisitInfo, photo: Bitmap?, typedMobile: String, busy: Boolean, onCheckIn: (OpenVisitInfo) -> Unit, onClose: () -> Unit) {
     val host = open.hostName?.takeIf { it.isNotBlank() }
+    // The guard just typed this number, so a masked form of it is known even if the server sent none.
+    val masked = open.mobileMasked ?: AddVisitorLogic.maskedMobileForForm(typedMobile).takeIf { it.isNotBlank() }
+    val line = listOfNotNull(masked, open.purpose).joinToString(" · ")
     Column(Modifier.padding(top = FormTokens.FieldToField), verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField)) {
         InfoBar(
             text = if (open.isApproved) AddVisitorLogic.APPROVED_FOR + (host ?: "the host") else AddVisitorLogic.WAITING_HOST,
             bg = KioskColors.infoSoft, fg = KioskColors.info,
         )
+        Row(
+            Modifier.fillMaxWidth().sgCardSurface().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(Modifier.size(48.dp).clip(CircleShape).background(KioskColors.brandSoft), contentAlignment = Alignment.Center) {
+                if (photo != null) {
+                    Image(photo.asImageBitmap(), null, Modifier.size(48.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                } else {
+                    Text(
+                        initials(open.visitorName), color = KioskColors.primary, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont,
+                    )
+                }
+            }
+            Column(Modifier.weight(1f)) {
+                open.visitorName?.let { Text(it, color = KioskColors.text, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont) }
+                if (line.isNotBlank()) Text(line, color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
+            }
+            if (open.isApproved) SgStatusChip("Approved", SgStatusKind.COMPLETED) else SgStatusChip("Pending approval", SgStatusKind.PENDING)
+        }
         Column(Modifier.fillMaxWidth().sgCardSurface().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Host", color = KioskColors.textMuted, fontSize = 14.sp, fontFamily = KioskFont)
-                Text(host ?: "—", color = KioskColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Status", color = KioskColors.textMuted, fontSize = 14.sp, fontFamily = KioskFont)
-                if (open.isApproved) SgStatusChip("Approved", SgStatusKind.COMPLETED) else SgStatusChip("Pending approval", SgStatusKind.PENDING)
-            }
+            OpenRow("Host", host ?: "—")
+            open.askedAtLabel?.let { OpenRow("Asked at", it) }
         }
         if (open.isApproved) {
             SgPrimaryButton(text = if (busy) "Checking in…" else "Check in now", enabled = !busy, onClick = { onCheckIn(open) }, modifier = Modifier.fillMaxWidth())
@@ -328,6 +344,17 @@ private fun OpenVisitCard(open: OpenVisitInfo, busy: Boolean, onCheckIn: (OpenVi
         SgSecondaryButton(text = "Close", onClick = onClose, modifier = Modifier.fillMaxWidth())
     }
 }
+
+@Composable
+private fun OpenRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = KioskColors.textMuted, fontSize = 14.sp, fontFamily = KioskFont)
+        Text(value, color = KioskColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+    }
+}
+
+private fun initials(name: String?): String =
+    name.orEmpty().trim().split(Regex("\\s+")).filter { it.isNotBlank() }.take(2).joinToString("") { it.first().uppercase() }.ifBlank { "V" }
 
 // ───────────────────────── boards 17 / 18 / 18b / 19 / 20: ONE form ─────────────────────────
 

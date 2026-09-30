@@ -1260,6 +1260,7 @@ class KioskViewModel(
             // Reference photo: the URL exactly as the lookup returned it (signed ?t= intact, Bearer only for API media).
             // An expired token just means no thumbnail: the lookup is re-run (Continue) to get a fresh URL.
             val url = (outcome as? com.satcop.smartvisitor.kiosk.data.addvisitor.LookupOutcome.Found)?.profile?.photoUrl
+                ?: (outcome as? com.satcop.smartvisitor.kiosk.data.addvisitor.LookupOutcome.OpenVisit)?.open?.photoUrl
             if (!url.isNullOrBlank()) {
                 val bmp = runCatching { repository.loadMediaUrl(url) }.getOrNull()
                     ?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
@@ -1339,8 +1340,12 @@ class KioskViewModel(
             }
             "OPEN_VISIT_EXISTS" -> {
                 // D15 / AC-AV7: nothing was created. Show the card for the EXISTING visit; never a second one.
-                val open = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.openVisitFromDetails(e.details) ?: return false
                 val mobile = _state.value.draft.mobile
+                val open = (com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.openVisitFromDetails(e.details) ?: return false).copy(
+                    visitorName = _state.value.draft.visitorName.takeIf { it.isNotBlank() },
+                    mobileMasked = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.maskedMobileForForm(mobile).takeIf { it.isNotBlank() },
+                    purpose = _state.value.draft.purpose.takeIf { it.isNotBlank() },
+                )
                 _state.update { s ->
                     s.copy(
                         submitting = false, step = 2,

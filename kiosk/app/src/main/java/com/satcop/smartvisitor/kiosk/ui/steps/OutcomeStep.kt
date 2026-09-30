@@ -57,6 +57,8 @@ fun OutcomeStep(
     blacklistHit: BlacklistEntry?,
     dataSource: DataSource,
     afterHoursHint: Boolean = false,
+    /** The photo the guard just captured (memory only, never re-uploaded). Initial letter when null. */
+    photo: android.graphics.Bitmap? = null,
     onNewVisitor: () -> Unit,
 ) {
     val host = hosts.firstOrNull { it.id == (visit?.hostId ?: draft.hostId) }
@@ -90,10 +92,18 @@ fun OutcomeStep(
                 modifier = Modifier.size(72.dp).clip(CircleShape).background(KioskColors.brandSoft),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.take(2).joinToString("") { it.first().uppercase() }.ifBlank { "V" },
-                    color = KioskColors.primary, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont,
-                )
+                if (photo != null) {
+                    Image(
+                        bitmap = photo.asImageBitmap(), contentDescription = "Visitor photo",
+                        modifier = Modifier.size(72.dp).clip(CircleShape),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    )
+                } else {
+                    Text(
+                        name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.take(2).joinToString("") { it.first().uppercase() }.ifBlank { "V" },
+                        color = KioskColors.primary, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont,
+                    )
+                }
             }
             Text(name, color = KioskColors.text, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont, textAlign = TextAlign.Center)
             Text("Host: ${host?.name ?: visit?.hostId ?: "Host"}", color = KioskColors.textMuted, fontSize = 14.sp, fontFamily = KioskFont)

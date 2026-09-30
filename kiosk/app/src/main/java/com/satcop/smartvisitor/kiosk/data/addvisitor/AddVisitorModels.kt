@@ -27,6 +27,13 @@ data class OpenVisitInfo(
     val status: String,
     val hostName: String? = null,
     val hostId: String? = null,
+    /** Extra rows for the card (boards 22/23). Only what the lookup returned; null when the server sent nothing. */
+    val visitorName: String? = null,
+    val mobileMasked: String? = null,
+    val purpose: String? = null,
+    /** "10:15 am" from the server's `since`, IST. */
+    val askedAtLabel: String? = null,
+    val photoUrl: String? = null,
 ) {
     val isApproved: Boolean get() = status.equals("approved", true)
 }
