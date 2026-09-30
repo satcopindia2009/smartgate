@@ -81,13 +81,37 @@ import com.satcop.smartvisitor.kiosk.qa.QaHooks
 import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import com.satcop.smartvisitor.kiosk.ui.components.SgPillStyle
+import com.satcop.smartvisitor.kiosk.ui.components.SgPrimaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgSmallPill
+import com.satcop.smartvisitor.kiosk.ui.components.SgStatusChip
+import com.satcop.smartvisitor.kiosk.ui.components.SgStatusKind
+import com.satcop.smartvisitor.kiosk.ui.theme.SgSize
+import com.satcop.smartvisitor.kiosk.ui.theme.SgSpacing
+import com.satcop.smartvisitor.kiosk.ui.theme.SgType
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.time.LocalTime
 import java.util.concurrent.Executors
 
-private val LockGreen get() = KioskColors.green
-private val DarkGreen = Color(0xFF1E7B3A)
 
 private fun openAppSettings(context: Context) {
     runCatching {
@@ -122,6 +146,7 @@ fun GuardClockInGate(
     }
 
     val lock = ClockInLogic.lockState(state.attendance, state.attendanceLoaded)
+    val lockGateLabel = state.attendance?.gateName?.takeIf { it.isNotBlank() } ?: ""
     val result = state.result
     val panel = state.panel
     BackHandler(enabled = panel != null || result != null) {
@@ -131,6 +156,8 @@ fun GuardClockInGate(
     when {
         result != null -> ClockResultScreen(
             result = result, displayName = displayName, schoolName = schoolName, selfie = lastSelfie,
+            checkInTime = ClockInLogic.time12h(state.attendance?.attendance?.let { it.checkInAt ?: it.timestamp })
+                .takeIf { result.mode == AttendanceMode.CLOCK_OUT && it != "—" },
             onDone = { controller.clearResult(); lastSelfie = null; controller.refresh() },
         )
         panel != null && state.step == ClockStep.INFO -> ClockInfoScreen(
@@ -156,18 +183,25 @@ fun GuardClockInGate(
                 )
             }
         }
-        lock == LockState.SHIFT_COMPLETE -> ShiftCompleteScreen(displayName, schoolName, onLogout)
+        lock == LockState.SHIFT_COMPLETE -> ShiftCompleteScreen(
+            displayName, schoolName, onLogout,
+            detail = ClockInLogic.statusCard(state.attendance).detail,
+        )
         lock == LockState.UNKNOWN -> LockScreen(
             displayName = displayName, schoolName = schoolName, loading = true, error = null,
-            onClockIn = {}, onSignOut = onLogout,
+            onClockIn = {}, onSignOut = onLogout, gateLabel = lockGateLabel,
         )
         else -> LockScreen(
             displayName = displayName, schoolName = schoolName, loading = false, error = state.attendanceError,
-            onClockIn = { controller.openPanel(AttendanceMode.CHECK_IN) }, onSignOut = onLogout,
+            onClockIn = { controller.openPanel(AttendanceMode.CHECK_IN) }, onSignOut = onLogout, gateLabel = lockGateLabel,
         )
     }
 }
 
+private fun hasPerm(context: Context, perm: String) =
+    ContextCompat.checkSelfPermission(context, perm) == PackageManager.PERMISSION_GRANTED
+
+/** Clock-in lock screen (picture 40): greeting, status card (location, camera, lock), Check in, Sign out. */
 @Composable
 fun LockScreen(
     displayName: String,
@@ -177,129 +211,75 @@ fun LockScreen(
     onClockIn: () -> Unit,
     onSignOut: () -> Unit,
     now: LocalTime = LocalTime.now(),
+    gateLabel: String = "",
 ) {
+    val context = LocalContext.current
+    val locationOk = hasPerm(context, Manifest.permission.ACCESS_FINE_LOCATION) || hasPerm(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+    val cameraOk = hasPerm(context, Manifest.permission.CAMERA)
+    val date = LocalDate.now(ZoneId.of("Asia/Kolkata")).format(DateTimeFormatter.ofPattern("EEEE, d MMM yyyy", Locale.ENGLISH))
+    val place = listOf(gateLabel, schoolName).firstOrNull { it.isNotBlank() }
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(LockGreen)
-            .statusBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = FormTokens.ScreenHPad, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize().background(KioskColors.bg).statusBarsPadding().navigationBarsPadding()
+            .padding(horizontal = SgSpacing.ScreenMargin, vertical = 24.dp),
     ) {
-        Box(
-            modifier = Modifier.size(72.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.2f)),
-            contentAlignment = Alignment.Center,
-        ) { Text("🛡", fontSize = 36.sp) }
-        Spacer(Modifier.height(20.dp))
-        Text(
-            ClockInLogic.greeting(displayName, now), color = Color.White, fontSize = 26.sp,
-            fontWeight = FontWeight.Bold, fontFamily = KioskFont, textAlign = TextAlign.Center,
-        )
-        Text(
-            listOf("Security Guard", schoolName).filter { it.isNotBlank() }.joinToString(" · "),
-            color = Color.White.copy(alpha = 0.9f), fontSize = 15.sp, fontFamily = KioskFont, textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        Spacer(Modifier.height(24.dp))
-        Text(
-            "🔒  " + ClockInLogic.LOCK_CHIP, color = Color.White, fontSize = 14.sp, fontFamily = KioskFont,
-            modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.22f)).padding(horizontal = 16.dp, vertical = 8.dp),
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            ClockInLogic.LOCK_TEXT, color = Color.White.copy(alpha = 0.95f), fontSize = 14.sp, fontFamily = KioskFont,
-            textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp),
-        )
-        if (!error.isNullOrBlank()) {
-            Text(error, color = Color.White, fontSize = 13.sp, fontFamily = KioskFont, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 10.dp))
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
+            Text(ClockInLogic.greeting(displayName, now), color = KioskColors.text, style = SgType.ScreenTitle.copy(fontSize = 26.sp, lineHeight = 32.sp))
+            Text(
+                listOf(date, place).filter { !it.isNullOrBlank() }.joinToString(" · "),
+                color = KioskColors.textMuted, style = SgType.Body, modifier = Modifier.padding(top = 4.dp),
+            )
+            GuardGap(SgSpacing.SectionGap)
+            GuardCard {
+                GuardInfoRow(Icons.Outlined.LocationOn, "Location", if (locationOk) "Allowed" else "Needed to check in", trailingCheck = locationOk)
+                GuardInfoRow(Icons.Outlined.CameraAlt, "Camera", if (cameraOk) "Allowed" else "Needed to check in", trailingCheck = cameraOk)
+                GuardInfoRow(Icons.Outlined.Lock, "Attendance", ClockInLogic.LOCK_CHIP, divider = false)
+            }
+            Text(ClockInLogic.LOCK_TEXT, color = KioskColors.textMuted, style = SgType.Label, modifier = Modifier.padding(top = 12.dp, start = 4.dp))
+            if (!error.isNullOrBlank()) {
+                GuardGap()
+                GuardBanner(error, GuardBannerKind.WARNING)
+            }
         }
-        Spacer(Modifier.height(32.dp))
-        Text(
-            text = if (loading) "…" else ClockInLogic.LOCK_BUTTON,
-            color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont, textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth().heightIn(min = 56.dp)
-                .clip(RoundedCornerShape(16.dp)).background(Color.White)
-                .let { if (loading) it else it.clickableNoRipple(onClockIn) }
-                .padding(horizontal = 16.dp, vertical = 16.dp)
-                .semantics { contentDescription = ClockInLogic.LOCK_BUTTON },
+        Spacer(Modifier.height(16.dp))
+        SgPrimaryButton(
+            text = if (loading) "Please wait…" else GuardCopy.CHECK_IN,
+            onClick = onClockIn, enabled = !loading,
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = ClockInLogic.LOCK_BUTTON },
         )
-        Text(
-            ClockInLogic.SIGN_OUT, color = Color.White, fontSize = 16.sp, fontFamily = KioskFont, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickableNoRipple(onSignOut).padding(vertical = 14.dp),
-        )
+        GuardTextButton(GuardCopy.SIGN_OUT, onSignOut, Modifier.fillMaxWidth())
     }
 }
 
+/** Shift complete (picture 48). */
 @Composable
-fun ShiftCompleteScreen(displayName: String, schoolName: String, onSignOut: () -> Unit) {
+fun ShiftCompleteScreen(displayName: String, schoolName: String, onSignOut: () -> Unit, detail: String? = null) {
     Column(
-        modifier = Modifier.fillMaxSize().background(LockGreen).statusBarsPadding()
-            .verticalScroll(rememberScrollState()).padding(horizontal = FormTokens.ScreenHPad, vertical = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize().background(KioskColors.bg).statusBarsPadding().navigationBarsPadding()
+            .padding(horizontal = SgSpacing.ScreenMargin, vertical = 24.dp),
     ) {
-        Text("✓", color = Color.White, fontSize = 48.sp)
-        Text(
-            ClockInLogic.SHIFT_COMPLETE, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold,
-            fontFamily = KioskFont, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp),
-        )
-        Text(
-            listOf(ClockInLogic.firstName(displayName), schoolName).filter { it.isNotBlank() }.joinToString(" · "),
-            color = Color.White.copy(alpha = 0.9f), fontSize = 14.sp, fontFamily = KioskFont, textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 6.dp),
-        )
-        Spacer(Modifier.height(32.dp))
-        Text(
-            ClockInLogic.SIGN_OUT, color = DarkGreen, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(RoundedCornerShape(16.dp)).background(Color.White)
-                .clickableNoRipple(onSignOut).padding(16.dp),
-        )
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
+            GuardCard {
+                Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    GuardHeroIcon(Icons.Filled.Check, KioskColors.brandSoft, KioskColors.success)
+                    Spacer(Modifier.height(16.dp))
+                    Text(ClockInLogic.SHIFT_COMPLETE, color = KioskColors.text, style = SgType.ScreenTitle, textAlign = TextAlign.Center)
+                    val sub = detail?.takeIf { it.isNotBlank() }
+                        ?: listOf(ClockInLogic.firstName(displayName), schoolName).filter { it.isNotBlank() }.joinToString(" · ")
+                    if (sub.isNotBlank()) {
+                        Text(sub, color = KioskColors.textMuted, style = SgType.Body, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        SgPrimaryButton(GuardCopy.SIGN_OUT, onSignOut, Modifier.fillMaxWidth())
     }
 }
 
 private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
     this.then(Modifier.clickable(onClick = onClick))
 
-@Composable
-private fun FlowHeader(title: String, schoolName: String, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().background(DarkGreen).statusBarsPadding()
-            .padding(horizontal = FormTokens.ScreenHPad, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            "←", color = Color.White, fontSize = 24.sp,
-            modifier = Modifier.heightIn(min = 48.dp).clickableNoRipple(onBack).padding(end = 4.dp)
-                .semantics { contentDescription = "Back" },
-        )
-        Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont)
-            Text(
-                listOf("Security Guard", schoolName).filter { it.isNotBlank() }.joinToString(" · "),
-                color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp, fontFamily = KioskFont,
-            )
-        }
-    }
-}
-
-@Composable
-private fun Card(label: String, content: @Composable () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(KioskColors.card)
-            .border(1.dp, KioskColors.border, RoundedCornerShape(14.dp)).padding(FormTokens.ScreenHPad),
-        verticalArrangement = Arrangement.spacedBy(FormTokens.LabelToField),
-    ) {
-        Text(label, color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
-        content()
-    }
-}
-
-/** Self Check In / Self Check Out info screen (ref-2). */
+/** Self check in / out info screen (picture 41). Status card (ruling R1) is kept, restyled. */
 @Composable
 fun ClockInfoScreen(
     mode: AttendanceMode,
@@ -310,61 +290,45 @@ fun ClockInfoScreen(
     onProceed: () -> Unit,
 ) {
     val card = ClockInLogic.statusCard(today)
+    val word = if (mode == AttendanceMode.CHECK_IN) "check-in" else "check-out"
     Column(Modifier.fillMaxSize().background(KioskColors.bg)) {
-        FlowHeader(ClockInLogic.headerTitle(mode), schoolName, onBack)
+        GuardTopBar(GuardCopy.flowTitle(mode), onBack)
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
-                .padding(horizontal = FormTokens.ScreenHPad, vertical = FormTokens.FieldToField),
-            verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
+                .padding(horizontal = SgSpacing.ScreenMargin, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(SgSpacing.GapBetweenCards),
         ) {
-            Card("Current Status") {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GuardCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("● " + card.title, color = KioskColors.text, fontSize = 17.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont)
-                        Text(card.detail, color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
+                        Text(card.title, color = KioskColors.text, style = SgType.SectionTitle)
+                        Text(card.detail, color = KioskColors.textMuted, style = SgType.Label.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Normal))
+                        val where = listOf(gateLabel, schoolName).filter { it.isNotBlank() }.joinToString(" · ")
+                        if (where.isNotBlank()) Text(where, color = KioskColors.textMuted, style = SgType.Caption, modifier = Modifier.padding(top = 2.dp))
                     }
-                    val on = card.chip == "On duty"
-                    Text(
-                        card.chip, color = if (on) Color.White else KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clip(RoundedCornerShape(50))
-                            .background(if (on) KioskColors.green else KioskColors.secondaryFill)
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
+                    Spacer(Modifier.width(8.dp))
+                    SgStatusChip(card.chip, if (card.chip == "On duty") SgStatusKind.IN_PROGRESS else if (card.canProceed) SgStatusKind.NEUTRAL else SgStatusKind.COMPLETED)
                 }
             }
-            Card("Guard Details") {
-                Text("Security Guard", color = KioskColors.text, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont)
-                Text("📍 " + listOf(gateLabel, schoolName).filter { it.isNotBlank() }.joinToString(" · "), color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
-            }
+            Text("What we record", color = KioskColors.text, style = SgType.SectionTitle, modifier = Modifier.padding(top = 4.dp))
             Text(
-                "Your front camera will open to take a selfie for " + (if (mode == AttendanceMode.CHECK_IN) "check-in" else "check-out") +
-                    " verification. Make sure your face is clearly visible and well-lit.",
-                color = KioskColors.text, fontSize = 13.sp, fontFamily = KioskFont,
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(KioskColors.greenDim).padding(14.dp),
+                if (mode == AttendanceMode.CHECK_IN) "To start your shift we take:" else "To end your shift we take:",
+                color = KioskColors.textMuted, style = SgType.Body,
             )
-            Card("How it works") {
-                listOf(
-                    "📷" to "Camera opens — position your face in the oval",
-                    "☁" to "Selfie is securely uploaded to the server",
-                    "✓" to "Attendance is recorded with time & location",
-                ).forEach { (icon, text) ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Box(Modifier.size(36.dp).clip(CircleShape).background(KioskColors.greenDim), contentAlignment = Alignment.Center) { Text(icon, fontSize = 16.sp) }
-                        Text(text, color = KioskColors.text, fontSize = 14.sp, fontFamily = KioskFont, modifier = Modifier.weight(1f))
-                    }
-                }
+            GuardCard {
+                GuardInfoRow(Icons.Outlined.CameraAlt, "A selfie", "Taken now with the front camera. Make sure your face is clearly visible and well lit.")
+                GuardInfoRow(Icons.Outlined.LocationOn, "Your location", "Used only to confirm you are inside the school campus.")
+                GuardInfoRow(Icons.Outlined.Schedule, "The time", "Saved in school time as your $word.", divider = false)
             }
-            card.note?.let { Text(it, color = KioskColors.textMuted, fontSize = 14.sp, fontFamily = KioskFont) }
+            card.note?.let { Text(it, color = KioskColors.textMuted, style = SgType.Body) }
         }
-        Text(
-            ClockInLogic.proceedLabel(mode).uppercase(), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
-            fontFamily = KioskFont, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(FormTokens.ScreenHPad).heightIn(min = 56.dp)
-                .clip(RoundedCornerShape(14.dp)).background(if (card.canProceed) DarkGreen else KioskColors.border)
-                .let { if (card.canProceed) it.clickableNoRipple(onProceed) else it }
-                .padding(16.dp),
-        )
+        Column(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(SgSpacing.ScreenMargin),
+            verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
+        ) {
+            SgPrimaryButton(GuardCopy.CONTINUE, onProceed, Modifier.fillMaxWidth(), enabled = card.canProceed)
+            GuardOutlineButton(GuardCopy.BACK, onBack, Modifier.fillMaxWidth())
+        }
     }
 }
 
@@ -433,29 +397,44 @@ fun SelfieScreen(
     }
 
     val showLocationNotice = asked && !locationGranted && mode == AttendanceMode.CHECK_IN
-    Column(Modifier.fillMaxSize().background(Color.Black)) {
-        FlowHeader(ClockInLogic.headerTitle(mode), "", onBack = { if (!state.panelBusy) controller.closePanel() })
+    val msg = state.panelMessage
+    val showErrorCard = state.panelError && !msg.isNullOrBlank() && !state.panelBusy
+    val needsSettings = state.settingsHint != null || !cameraGranted
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Column(Modifier.fillMaxSize()) {
+        // Top bar: close, title (picture 42)
+        Box(
+            Modifier.fillMaxWidth().statusBarsPadding().heightIn(min = SgSize.TopBarHeight).padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.align(Alignment.CenterStart).size(48.dp).clip(CircleShape)
+                    .clickableNoRipple { if (!state.panelBusy) controller.closePanel() }
+                    .semantics { contentDescription = "Close" },
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Outlined.Close, contentDescription = null, tint = Color.White) }
+            Text(GuardCopy.selfieTitle(mode), color = Color.White, style = SgType.SectionTitle)
+        }
         Column(
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(FormTokens.ScreenHPad),
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = SgSpacing.ScreenMargin),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
         ) {
-            Text(ClockInLogic.cameraLabel(mode), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
             Box(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 380.dp).aspectRatio(3f / 4f).clip(RoundedCornerShape(16.dp)).background(Color(0xFF111111)),
+                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp).aspectRatio(3f / 4f).clip(RoundedCornerShape(24.dp)).background(Color(0xFF111111)),
                 contentAlignment = Alignment.Center,
             ) {
                 when {
                     !cameraGranted -> Text(
-                        ClockInLogic.CAMERA_OFF, color = Color.White, fontSize = 14.sp, fontFamily = KioskFont,
+                        ClockInLogic.CAMERA_OFF, color = Color.White, style = SgType.Body,
                         textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp),
                     )
                     selfie != null -> Image(
                         bitmap = selfie!!.asImageBitmap(), contentDescription = "Your selfie",
                         modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
                     )
-                    cameraError != null -> Text(cameraError!!, color = Color.White, fontSize = 14.sp, fontFamily = KioskFont, textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
-                    fake -> Text(QaHooks.bannerText, color = Color.White, fontSize = 14.sp, fontFamily = KioskFont)
+                    cameraError != null -> Text(cameraError!!, color = Color.White, style = SgType.Body, textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
+                    fake -> Text(QaHooks.bannerText, color = Color.White, style = SgType.Body)
                     else -> AndroidView(
                         factory = { ctx ->
                             PreviewView(ctx).also { pv ->
@@ -485,42 +464,29 @@ fun SelfieScreen(
                 }
                 if (cameraGranted && selfie == null) FaceGuide()
             }
-            Text(ClockInLogic.SELFIE_HINT, color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp, fontFamily = KioskFont, textAlign = TextAlign.Center)
+            Text(GuardCopy.LOOK_AT_CAMERA, color = Color.White, style = SgType.SectionTitle, textAlign = TextAlign.Center)
+            Text(ClockInLogic.SELFIE_HINT, color = Color.White.copy(alpha = 0.8f), style = SgType.Label, textAlign = TextAlign.Center)
             if (showLocationNotice) {
-                Text(ClockInLogic.LOCATION_OFF_SOFT, color = Color(0xFFFFD60A), fontSize = 13.sp, fontFamily = KioskFont, textAlign = TextAlign.Center)
+                GuardBanner(ClockInLogic.LOCATION_OFF_SOFT, GuardBannerKind.WARNING, Icons.Outlined.LocationOn)
             }
-            val msg = state.panelMessage
-            if (!msg.isNullOrBlank()) {
-                Text(
-                    msg, color = if (state.panelError) Color(0xFFFF6B6B) else Color.White, fontSize = 14.sp, fontFamily = KioskFont,
-                    fontWeight = FontWeight.Medium, textAlign = TextAlign.Center,
-                    modifier = Modifier.semantics { contentDescription = msg },
-                )
+            if (!showErrorCard && !msg.isNullOrBlank()) {
+                Text(msg, color = Color.White, style = SgType.Label, textAlign = TextAlign.Center, modifier = Modifier.semantics { contentDescription = msg })
             }
-            if (state.settingsHint != null || !cameraGranted || (mode == AttendanceMode.CLOCK_OUT && !locationGranted && asked)) {
-                Text(
-                    "Open Settings", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, Color.White, RoundedCornerShape(12.dp))
-                        .clickableNoRipple { openAppSettings(context) }.padding(12.dp),
-                )
+            if (mode == AttendanceMode.CLOCK_OUT && !locationGranted && asked) {
+                SgSmallPill(GuardCopy.OPEN_SETTINGS, { openAppSettings(context) }, style = SgPillStyle.SOFT)
             }
         }
+        val canCapture = cameraGranted && !state.panelBusy && (fake || imageCapture != null)
         Column(
-            modifier = Modifier.fillMaxWidth().padding(FormTokens.ScreenHPad),
-            verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
+            modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            val canCapture = cameraGranted && !state.panelBusy && (fake || imageCapture != null)
-            Text(
-                text = when {
-                    state.panelBusy -> "Please wait…"
-                    state.panelError && state.attemptNo > 0 -> "Retry"
-                    else -> "Capture Selfie"
-                },
-                color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(RoundedCornerShape(14.dp))
-                    .background(if (canCapture) DarkGreen else Color(0xFF444444))
+            if (state.panelBusy) Text("Please wait…", color = Color.White, style = SgType.Label, modifier = Modifier.padding(bottom = 8.dp))
+            // Shutter: one tap = one attempt (selfie + location + time together).
+            Box(
+                Modifier.size(72.dp).clip(CircleShape).border(4.dp, Color.White, CircleShape).padding(6.dp).clip(CircleShape)
+                    .background(if (canCapture) Color.White else Color(0xFF666666))
+                    .semantics { contentDescription = "Capture selfie"; role = Role.Button }
                     .let {
                         if (!canCapture) it else it.clickableNoRipple {
                             selfie = null
@@ -541,41 +507,67 @@ fun SelfieScreen(
                                 })
                             }
                         }
-                    }
-                    .padding(16.dp),
-            )
-            Text(
-                "Back", color = Color.White, fontSize = 16.sp, fontFamily = KioskFont, textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(14.dp))
-                    .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
-                    .clickableNoRipple { if (!state.panelBusy) controller.closePanel() }.padding(14.dp),
+                    },
             )
         }
     }
+    if (showErrorCard) {
+        // Errors (pictures 45-47): warning card + Retry / Open Settings + Back. Copy is exactly what the controller produced.
+        Column(
+            Modifier.fillMaxSize().background(KioskColors.bg).statusBarsPadding().navigationBarsPadding()
+                .padding(horizontal = SgSpacing.ScreenMargin, vertical = 24.dp),
+        ) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.Center) {
+                GuardCard {
+                    Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        val icon = when {
+                            state.settingsHint == SettingsHint.CAMERA || !cameraGranted -> Icons.Outlined.CameraAlt
+                            state.settingsHint == SettingsHint.LOCATION || msg.orEmpty().contains("campus", true) || msg.orEmpty().contains("location", true) -> Icons.Outlined.LocationOn
+                            else -> Icons.Outlined.Warning
+                        }
+                        GuardHeroIcon(icon, KioskColors.warningSoft, KioskColors.warning)
+                        Spacer(Modifier.height(16.dp))
+                        Text(msg.orEmpty(), color = KioskColors.text, style = SgType.SectionTitle, textAlign = TextAlign.Center, modifier = Modifier.semantics { contentDescription = msg })
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            if (needsSettings) {
+                SgPrimaryButton(GuardCopy.OPEN_SETTINGS, { openAppSettings(context) }, Modifier.fillMaxWidth())
+            } else {
+                // Retry always recaptures: clear the message and go back to the camera (attemptNo already dropped the held selfie).
+                SgPrimaryButton(GuardCopy.RETRY, { controller.onPhotoRetaken() }, Modifier.fillMaxWidth())
+            }
+            Spacer(Modifier.height(FormTokens.ButtonGap))
+            GuardOutlineButton(GuardCopy.BACK, { if (!state.panelBusy) controller.closePanel() }, Modifier.fillMaxWidth())
+        }
+    }
+    }
 }
 
+/** Dashed round face guide (picture 42). */
 @Composable
 private fun FaceGuide() {
     Canvas(Modifier.fillMaxSize()) {
-        val w = size.width * 0.62f
-        val h = size.height * 0.62f
-        val tl = Offset((size.width - w) / 2, (size.height - h) / 2 - size.height * 0.04f)
-        drawOval(Color.White.copy(alpha = 0.9f), tl, GSize(w, h), style = Stroke(width = 4f))
-        val m = 40f
-        val c = Color.White
-        fun corner(x: Float, y: Float, dx: Float, dy: Float) {
-            drawLine(c, Offset(x, y), Offset(x + dx * m, y), strokeWidth = 6f)
-            drawLine(c, Offset(x, y), Offset(x, y + dy * m), strokeWidth = 6f)
-        }
-        val pad = 24f
-        corner(pad, pad, 1f, 1f); corner(size.width - pad, pad, -1f, 1f)
-        corner(pad, size.height - pad, 1f, -1f); corner(size.width - pad, size.height - pad, -1f, -1f)
+        val d = minOf(size.width, size.height) * 0.72f
+        val tl = Offset((size.width - d) / 2, (size.height - d) / 2 - size.height * 0.04f)
+        drawOval(
+            Color.White.copy(alpha = 0.95f), tl, GSize(d, d),
+            style = Stroke(width = 4f, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(22f, 16f))),
+        )
     }
 }
 
-/** "Checked In!" / "Checked Out!" (ref-4) with header "Self Check In" / "Self Check Out". */
+/** "Checked In!" / "Checked Out!" (pictures 43-44). */
 @Composable
-fun ClockResultScreen(result: ClockResult, displayName: String, schoolName: String, selfie: Bitmap?, onDone: () -> Unit) {
+fun ClockResultScreen(
+    result: ClockResult,
+    displayName: String,
+    schoolName: String,
+    selfie: Bitmap?,
+    onDone: () -> Unit,
+    checkInTime: String? = null,
+) {
     // guardPhotoUrl: the signed URL exactly as the server returned it (MediaUrl keeps ?t=, bearer only for the API host).
     var serverSelfie by remember(result.guardPhotoUrl) { mutableStateOf<Bitmap?>(null) }
     androidx.compose.runtime.LaunchedEffect(result.guardPhotoUrl) {
@@ -591,73 +583,57 @@ fun ClockResultScreen(result: ClockResult, displayName: String, schoolName: Stri
         }
     }
     val shownSelfie = selfie ?: serverSelfie
-    Column(Modifier.fillMaxSize().background(KioskColors.bg)) {
-        FlowHeader(ClockInLogic.headerTitle(result.mode), schoolName, onBack = onDone)
+    val out = result.mode == AttendanceMode.CLOCK_OUT
+    Column(Modifier.fillMaxSize().background(KioskColors.bg).statusBarsPadding().navigationBarsPadding()) {
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
-                .padding(horizontal = FormTokens.ScreenHPad, vertical = FormTokens.HeaderToForm),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
+                .padding(horizontal = SgSpacing.ScreenMargin, vertical = 24.dp),
+            verticalArrangement = Arrangement.Center,
         ) {
-            Box(Modifier.size(112.dp)) {
-                Box(
-                    Modifier.fillMaxSize().clip(CircleShape).border(4.dp, KioskColors.green, CircleShape).background(KioskColors.secondaryFill),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (shownSelfie != null) {
-                        Image(shownSelfie.asImageBitmap(), "Your selfie", Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
-                    } else {
-                        Text(ClockInLogic.firstName(displayName).take(1).uppercase(), fontSize = 40.sp, color = KioskColors.textMuted)
+            GuardCard {
+                Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    GuardHeroIcon(Icons.Filled.Check, KioskColors.brandSoft, KioskColors.success)
+                    Spacer(Modifier.height(12.dp))
+                    Text(ClockInLogic.resultTitle(result.mode), color = KioskColors.text, style = SgType.BigNumber)
+                    Text(GuardCopy.resultBody(result.mode), color = KioskColors.textMuted, style = SgType.Body, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(16.dp))
+                    Box(
+                        Modifier.size(SgSize.AvatarDetail).clip(CircleShape).background(KioskColors.brandSoft),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (shownSelfie != null) {
+                            Image(shownSelfie.asImageBitmap(), "Your selfie", Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                        } else {
+                            Text(ClockInLogic.firstName(displayName).take(1).uppercase(), color = KioskColors.primary, style = SgType.BigNumber)
+                        }
+                    }
+                    Text(displayName.ifBlank { ClockInLogic.firstName(displayName) }, color = KioskColors.text, style = SgType.SectionTitle, modifier = Modifier.padding(top = 8.dp))
+                    SgStatusChip(GuardCopy.resultChip(result.mode), if (out) SgStatusKind.COMPLETED else SgStatusKind.IN_PROGRESS, Modifier.padding(top = 6.dp))
+                    result.flaggedNote?.let {
+                        Spacer(Modifier.height(10.dp))
+                        SgStatusChip("Flagged for review", SgStatusKind.IN_PROGRESS)
+                        Text(it, color = KioskColors.warning, style = SgType.Label, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(thickness = 1.dp, color = KioskColors.border)
+                    Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        if (out && !checkInTime.isNullOrBlank()) {
+                            GuardKeyValueRow("In", checkInTime)
+                            GuardKeyValueRow("Out", result.time)
+                        } else {
+                            GuardKeyValueRow("Time", result.time)
+                        }
+                        GuardKeyValueRow("Gate", result.gate)
+                        if (!result.selfieUploaded) GuardKeyValueRow("Selfie", "Not uploaded", KioskColors.warning)
+                        GuardKeyValueRow("Record ID", result.recordId, KioskColors.primary)
                     }
                 }
-                Text(
-                    "✓", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
-                    modifier = Modifier.align(Alignment.BottomEnd).size(32.dp).clip(CircleShape).background(KioskColors.green).padding(top = 5.dp),
-                )
-            }
-            Text(ClockInLogic.resultTitle(result.mode), color = KioskColors.text, fontSize = 28.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont)
-            Text(ClockInLogic.resultBody(result.mode), color = KioskColors.textMuted, fontSize = 15.sp, fontFamily = KioskFont, textAlign = TextAlign.Center)
-            result.flaggedNote?.let {
-                Text(
-                    "⚑ Flagged for review", color = KioskColors.orange, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont,
-                    modifier = Modifier.clip(RoundedCornerShape(50)).background(KioskColors.orangeDim).padding(horizontal = 12.dp, vertical = 5.dp),
-                )
-                Text(it, color = KioskColors.orange, fontSize = 13.sp, fontFamily = KioskFont, textAlign = TextAlign.Center)
-            }
-            Column(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(KioskColors.card)
-                    .border(1.dp, KioskColors.border, RoundedCornerShape(14.dp)).padding(FormTokens.ScreenHPad),
-                verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
-            ) {
-                ResultRow("Action", result.action)
-                ResultRow("Time", result.time)
-                ResultRow("Gate", result.gate)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("Selfie", color = KioskColors.textMuted, fontSize = 14.sp, fontFamily = KioskFont)
-                    Text(
-                        if (result.selfieUploaded) "Uploaded ✓" else "Not uploaded", color = if (result.selfieUploaded) KioskColors.green else KioskColors.orange,
-                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont,
-                        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (result.selfieUploaded) KioskColors.greenDim else KioskColors.orangeDim).padding(horizontal = 12.dp, vertical = 4.dp),
-                    )
-                }
-                ResultRow("Record ID", result.recordId, valueColor = KioskColors.green)
             }
         }
-        Text(
-            "DONE", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(FormTokens.ScreenHPad).heightIn(min = 56.dp).clip(RoundedCornerShape(14.dp))
-                .background(DarkGreen).clickableNoRipple(onDone).padding(16.dp),
-        )
+        SgPrimaryButton(GuardCopy.DONE, onDone, Modifier.fillMaxWidth().padding(SgSpacing.ScreenMargin))
     }
 }
 
-@Composable
-private fun ResultRow(label: String, value: String, valueColor: Color = KioskColors.text) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(label, color = KioskColors.textMuted, fontSize = 14.sp, fontFamily = KioskFont)
-        Text(value, color = valueColor, fontSize = 15.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
-    }
-}
 
 private fun proxyToBitmap(image: ImageProxy): Bitmap {
     val buffer: ByteBuffer = image.planes[0].buffer
