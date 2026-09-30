@@ -231,8 +231,9 @@ fun LockScreen(
             GuardGap(SgSpacing.SectionGap)
             GuardCard {
                 GuardInfoRow(Icons.Outlined.LocationOn, "Location", if (locationOk) "Allowed" else "Needed to check in", trailingCheck = locationOk)
-                GuardInfoRow(Icons.Outlined.CameraAlt, "Camera", if (cameraOk) "Allowed" else "Needed to check in", trailingCheck = cameraOk)
-                GuardInfoRow(Icons.Outlined.Lock, "Attendance", ClockInLogic.LOCK_CHIP, divider = false)
+                GuardInfoRow(Icons.Outlined.CameraAlt, "Camera", if (cameraOk) "Allowed" else "Needed to check in", trailingCheck = cameraOk, divider = false)
+                // Board 40 has a third "Shift" row. The app has no shift data (API gives no
+                // shift name or start time), so the row is hidden; nothing is invented.
             }
             Text(ClockInLogic.LOCK_TEXT, color = KioskColors.textMuted, style = SgType.Label, modifier = Modifier.padding(top = 12.dp, start = 4.dp))
             if (!error.isNullOrBlank()) {

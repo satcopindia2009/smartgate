@@ -16,7 +16,7 @@ data class RegistrationDraft(
     val mobile: String = "",
     val company: String = "",
     val purpose: String = "",
-    val hostId: String? = DemoFixtures.HOST_ANITA_ID,
+    val hostId: String? = null,
     val gateId: String = DemoFixtures.GATE_MAIN_ID,
     val vehicleNumber: String = "",
     val accompanyingCount: String = "",

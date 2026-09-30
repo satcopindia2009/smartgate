@@ -478,14 +478,7 @@ internal fun initialsOf(name: String): String =
     name.trim().split(" ").filter { it.isNotBlank() }.mapNotNull { it.firstOrNull()?.uppercase() }.take(2)
         .joinToString("").ifBlank { "•" }
 
-private fun greeting(): String {
-    val h = ZonedDateTime.now(IST).hour
-    return when {
-        h < 12 -> "Good Morning"
-        h < 17 -> "Good Afternoon"
-        else -> "Good Evening"
-    }
-}
+private fun greeting(): String = com.satcop.smartvisitor.kiosk.ui.Greeting.phrase()
 
 /** "Today, 09:50 am" / "30 Sep, 09:50 am" in IST; null when there is no timestamp. Unparseable text is shown as given. */
 internal fun whenText(iso: String?): String? {

@@ -58,16 +58,12 @@ object ClockInLogic {
     private val time12 = DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)
 
     /** Phone clock, display only, never sent: Morning 05:00-11:59, Afternoon 12:00-16:59, Evening 17:00-04:59. */
-    fun greetingWord(now: LocalTime): String = when {
-        now >= LocalTime.of(5, 0) && now < LocalTime.NOON -> "Morning"
-        now >= LocalTime.NOON && now < LocalTime.of(17, 0) -> "Afternoon"
-        else -> "Evening"
-    }
+    fun greetingWord(now: LocalTime): String = com.satcop.smartvisitor.kiosk.ui.Greeting.word(now)
 
     fun firstName(displayName: String): String =
         displayName.trim().split(Regex("\\s+")).firstOrNull().orEmpty().ifBlank { "Guard" }
 
-    fun greeting(displayName: String, now: LocalTime): String = "Good ${greetingWord(now)}, ${firstName(displayName)}"
+    fun greeting(displayName: String, now: LocalTime): String = com.satcop.smartvisitor.kiosk.ui.Greeting.line(firstName(displayName), now)
 
     fun lockState(today: TodayAttendance?, loaded: Boolean): LockState = when {
         today == null -> if (loaded) LockState.LOCKED else LockState.UNKNOWN

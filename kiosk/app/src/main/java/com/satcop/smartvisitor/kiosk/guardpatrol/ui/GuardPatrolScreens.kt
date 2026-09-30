@@ -194,18 +194,6 @@ fun GuardPatrolApp(
             }
         }
 
-        Text(
-            text = if (state.useLive) "LIVE" else "OFFLINE",
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 12.dp, bottom = 72.dp),
-            color = KioskColors.watermark,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.4.sp,
-            fontFamily = KioskFont,
-        )
-
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier

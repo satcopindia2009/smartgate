@@ -836,13 +836,16 @@ class KioskViewModel(
         val alerts: List<HostFeedItem>
         if (!feedUnsupported) {
             try {
-                val resp = repository.hostFeed(feedTracker.lastId(key))
-                alerts = feedTracker.ingest(
-                    hostKey = key,
-                    items = resp.data,
-                    metaLastId = resp.meta?.lastId,
-                    parseTime = { runCatching { java.time.OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() },
-                )
+                val resp = repository.hostFeed(io { feedTracker.lastId(key) })
+                // SharedPreferences commit() inside the tracker = disk write: keep it off the main thread.
+                alerts = io {
+                    feedTracker.ingest(
+                        hostKey = key,
+                        items = resp.data,
+                        metaLastId = resp.meta?.lastId,
+                        parseTime = { runCatching { java.time.OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() },
+                    )
+                }
             } catch (e: ApiException) {
                 if (e.httpStatus == 404 || e.httpStatus == 405) {
                     feedUnsupported = true // /notifications feed not live -> fall back to pending list diff
