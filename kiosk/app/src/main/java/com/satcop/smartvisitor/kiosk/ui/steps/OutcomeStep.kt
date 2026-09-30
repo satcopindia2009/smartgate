@@ -56,18 +56,15 @@ fun OutcomeStep(
     gates: List<Gate>,
     blacklistHit: BlacklistEntry?,
     dataSource: DataSource,
-    busy: Boolean,
     afterHoursHint: Boolean = false,
-    onRefresh: () -> Unit,
-    onCheckIn: () -> Unit,
-    onCheckOut: () -> Unit,
     onNewVisitor: () -> Unit,
 ) {
     val host = hosts.firstOrNull { it.id == (visit?.hostId ?: draft.hostId) }
     val gate = gates.firstOrNull { it.id == (visit?.gateId ?: draft.gateId) }
     val status = visit?.status ?: "pending"
     val qrPayload = visit?.qrToken?.takeIf { it.isNotBlank() } ?: visit?.passId?.takeIf { it.isNotBlank() }
-    val showQr = status in setOf("approved", "inside", "completed") && qrPayload != null
+    // Product ruling: the QR is display only and shows for every status, including pending.
+    val showQr = qrPayload != null
     val timeLabel = visit?.timeOut ?: visit?.timeIn
     val (chipLabel, chipKind) = when (status) {
         "approved" -> "Approved" to SgStatusKind.COMPLETED
@@ -83,7 +80,7 @@ fun OutcomeStep(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Visitor pass", color = KioskColors.text, fontSize = 22.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont)
+        com.satcop.smartvisitor.kiosk.ui.addvisitor.AvTopBar("Visitor pass", onClose = onNewVisitor)
         Column(
             modifier = Modifier.fillMaxWidth().sgCardSurface().padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -138,22 +135,7 @@ fun OutcomeStep(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(RadiusSm)).background(KioskColors.warningSoft).padding(12.dp),
             )
         }
-        Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (status == "approved") {
-                SgPrimaryButton(text = if (busy) "Please wait…" else "Check in", onClick = onCheckIn, enabled = !busy, modifier = Modifier.fillMaxWidth())
-            }
-            if (status == "inside") {
-                SgPrimaryButton(text = if (busy) "Please wait…" else "Check out", onClick = onCheckOut, enabled = !busy, modifier = Modifier.fillMaxWidth())
-            }
-            if (status == "pending") {
-                SgSecondaryButton(text = if (busy) "Refreshing…" else "Refresh status", onClick = onRefresh, enabled = !busy, modifier = Modifier.fillMaxWidth())
-            }
-            if (status == "approved" || status == "inside" || status == "pending") {
-                SgSecondaryButton(text = "Done", onClick = onNewVisitor, modifier = Modifier.fillMaxWidth())
-            } else {
-                SgPrimaryButton(text = "Done", onClick = onNewVisitor, modifier = Modifier.fillMaxWidth())
-            }
-        }
+        SgPrimaryButton(text = "Done", onClick = onNewVisitor, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
     }
 }
 

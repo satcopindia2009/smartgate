@@ -15,6 +15,7 @@ object FieldKeys {
     const val ID = "idNumber"
     const val ID_TYPE = "idType"
     const val ID_IMAGE = "idImageKey"
+    const val ID_TYPE_NAME = "idTypeName"
 }
 
 object MobileIndia {
@@ -49,7 +50,7 @@ object RegistrationValidator {
             errors[FieldKeys.VISITOR_TYPE] = "Select a visitor type"
         }
         if (draft.visitorName.trim().isEmpty()) {
-            errors[FieldKeys.VISITOR_NAME] = "Full name is required"
+            errors[FieldKeys.VISITOR_NAME] = "Name is required."
         }
         if (draft.mobile.trim().isEmpty()) {
             errors[FieldKeys.MOBILE] = "Mobile is required"
@@ -77,11 +78,14 @@ object RegistrationValidator {
         return errors
     }
 
+    /** Everything the single Add Visitor form needs before Submit. */
+    fun validateForm(draft: RegistrationDraft): Map<String, String> = validateStep2(draft) + validateStep3(draft)
+
     /** Live photo required; govt ID number ALWAYS compulsory (ID image never substitutes). */
     fun validateStep3(draft: RegistrationDraft): Map<String, String> {
         val errors = linkedMapOf<String, String>()
         if (!draft.livePhotoCaptured) {
-            errors[FieldKeys.LIVE_PHOTO] = "Live photo is required"
+            errors[FieldKeys.LIVE_PHOTO] = AddVisitorLogic.LIVE_PHOTO_REQUIRED
         }
         if (draft.idType.isBlank()) {
             errors[FieldKeys.ID_TYPE] = "Select an ID type"
@@ -90,6 +94,9 @@ object RegistrationValidator {
         val savedOk = draft.useSavedId && draft.savedId != null
         if (!savedOk && (draft.idNumber.trim().isEmpty() || MaskedDisplay.looksMasked(draft.idNumber))) {
             errors[FieldKeys.ID] = AddVisitorLogic.ID_REQUIRED
+        }
+        if (draft.idType == "Other" && !savedOk && draft.idTypeName.trim().isEmpty()) {
+            errors[FieldKeys.ID_TYPE_NAME] = AddVisitorLogic.ID_TYPE_NAME_REQUIRED
         }
         if (!draft.idImageCaptured) {
             errors[FieldKeys.ID_IMAGE] = AddVisitorLogic.ID_PHOTO_REQUIRED
@@ -100,7 +107,7 @@ object RegistrationValidator {
     fun toastMessage(errors: Map<String, String>): String {
         val required = listOf(FieldKeys.VISITOR_NAME, FieldKeys.MOBILE, FieldKeys.PURPOSE, FieldKeys.HOST_ID)
         return when {
-            FieldKeys.LIVE_PHOTO in errors -> "Please capture a live photo"
+            FieldKeys.LIVE_PHOTO in errors -> AddVisitorLogic.LIVE_PHOTO_REQUIRED
             FieldKeys.ID in errors -> AddVisitorLogic.ID_REQUIRED
             FieldKeys.ID_IMAGE in errors -> AddVisitorLogic.ID_PHOTO_REQUIRED
             required.any { it in errors } -> "Please fill name, mobile, purpose, and host"

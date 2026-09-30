@@ -10,6 +10,11 @@ object AddVisitorLogic {
     const val ID_REQUIRED = "ID number is required."
     const val ID_PHOTO_REQUIRED = "Take a photo of the ID."
     const val ID_HELPER = "Required for every entry."
+    const val ID_TYPE_NAME_REQUIRED = "Enter the name of the ID."
+    const val LIVE_PHOTO_REQUIRED = "Take a photo of the visitor."
+    const val CONSENT_NOTICE_EN = "Photo and ID are stored for campus safety and deleted after the retention period."
+    const val CONSENT_NOTICE_HI = "फ़ोटो और आईडी परिसर की सुरक्षा के लिए रखी जाती है और निर्धारित अवधि के बाद हटा दी जाती है।"
+    const val APPROVED_FOR = "Approved for "
     const val WAITING_HOST = "Waiting for host approval"
     const val ALERT_DEFAULT = "Alert: call the security head before entry."
     const val SWITCH_TYPE_LINK = "Register as different type"
@@ -31,6 +36,18 @@ object AddVisitorLogic {
         if (ten.first() !in '6'..'9') return INVALID_MOBILE
         if (d.length >= 10 && !MobileIndia.isValid(d)) return INVALID_MOBILE
         return null
+    }
+
+    /** 409 OPEN_VISIT_EXISTS details {visitId,status,hostName,hostId,profileId} -> the D15 card; null when unusable. */
+    fun openVisitFromDetails(details: Map<String, String>): OpenVisitInfo? {
+        val id = details["visitId"]?.takeIf { it.isNotBlank() } ?: return null
+        return OpenVisitInfo(id, details["status"].orEmpty().ifBlank { "pending" }, details["hostName"], details["hostId"])
+    }
+
+    /** "XXXXXX1234" for the read-only mobile row; never more than the last 4 digits. */
+    fun maskedMobileForForm(raw: String): String {
+        val d = digitsOnly(raw)
+        return if (d.length < 4) "" else "XXXXXX" + d.takeLast(4)
     }
 
     /** Header text per form. */

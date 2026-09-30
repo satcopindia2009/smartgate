@@ -34,6 +34,10 @@ class ContractLookup(private val api: LiveVisitorApi = LiveVisitorApi()) : AddVi
                     ),
                 )
             }
+            val open = r.openVisit
+            if (open != null) {
+                return LookupOutcome.OpenVisit(OpenVisitInfo(open.visitId, open.status.orEmpty().ifBlank { "pending" }, open.hostName, open.hostId))
+            }
             if (!r.found) return LookupOutcome.NotFound
             val kind = if ((r.kind ?: r.profileType).equals("vendor", true)) ProfileKind.VENDOR else ProfileKind.VISITOR
             val idRef = r.idReference?.takeIf { r.idOnFile && it.isNotBlank() }?.let { ref ->

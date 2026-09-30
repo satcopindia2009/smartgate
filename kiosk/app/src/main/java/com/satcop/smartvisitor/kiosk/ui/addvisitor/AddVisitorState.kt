@@ -10,6 +10,7 @@ enum class AvStage { NUMBER, FORM }
 sealed interface AvNotice {
     data object Blocked : AvNotice
     data class Inside(val active: ActiveVisit) : AvNotice
+    data class Open(val open: com.satcop.smartvisitor.kiosk.data.addvisitor.OpenVisitInfo) : AvNotice
     data class Failed(val message: String) : AvNotice
 }
 

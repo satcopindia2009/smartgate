@@ -84,4 +84,5 @@ interface KioskRepository : DirectoryRepository {
     suspend fun listCouriers(): List<CourierEvent>
     suspend fun createLostFound(body: LostFoundCreate): LostFoundItem
     suspend fun checkoutInsideVisit(visitId: String, gateId: String?): VisitOut
+    suspend fun checkInVisit(visitId: String, gateId: String?): VisitOut
 }

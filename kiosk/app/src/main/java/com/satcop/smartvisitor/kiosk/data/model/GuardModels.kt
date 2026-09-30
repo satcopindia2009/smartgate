@@ -298,6 +298,10 @@ data class ProfileLookupResponse(
     val alertMessage: String? = null,
     val skipTypeSelector: Boolean = false,
     val activeVisit: LookupActiveVisit? = null,
+    /** D15: a pending / approved (not yet inside) visit for the same business date, else null. */
+    val openVisit: LookupOpenVisit? = null,
+    val idTypeName: String? = null,
+    val department: String? = null,
     val approvedToday: LookupDecision? = null,
     val rejectedToday: LookupDecision? = null,
 )
@@ -309,6 +313,17 @@ data class LookupActiveVisit(
     val displayStatus: String? = null,
     val since: String? = null,
     val gateId: String? = null,
+)
+
+@Serializable
+data class LookupOpenVisit(
+    val visitId: String,
+    val status: String? = null,
+    val displayStatus: String? = null,
+    val hostId: String? = null,
+    val hostName: String? = null,
+    val purpose: String? = null,
+    val since: String? = null,
 )
 
 @Serializable

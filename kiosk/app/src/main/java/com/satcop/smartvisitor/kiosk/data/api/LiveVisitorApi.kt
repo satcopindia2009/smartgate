@@ -487,6 +487,12 @@ class LiveVisitorApi(
 
     fun getCourier(id: String): CourierEvent = get("/couriers/$id")
 
+    /** D15: check in an APPROVED visit (gate and guard). 409 INVALID_STATE otherwise. */
+    fun checkInVisit(visitId: String, gateId: String? = null): VisitOut {
+        val payload = if (gateId.isNullOrBlank()) "{}" else """{"gateId":"$gateId"}"""
+        return post("/visits/$visitId/check-in", payload)
+    }
+
     fun checkoutVisit(visitId: String, gateId: String? = null): VisitOut {
         val payload = if (gateId.isNullOrBlank()) "{}" else """{"gateId":"$gateId"}"""
         return post("/visits/$visitId/check-out", payload)
