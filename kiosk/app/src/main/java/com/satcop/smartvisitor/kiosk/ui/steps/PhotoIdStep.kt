@@ -96,26 +96,22 @@ fun PhotoIdStep(
     var strokes by remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
     // Pending capture target: live visitor photo vs govt ID document (camera only — no gallery).
     var pendingCapture by remember { mutableStateOf("live") }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp ->
-        when (pendingCapture) {
-            "id" -> onIdImage(bmp)
-            else -> onLivePhoto(bmp)
-        }
-    }
-    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) camera.launch(null)
-        else if (pendingCapture == "id") onIdImage(null)
-        else onLivePhoto(null)
-    }
+    // In-app camera (screens 24 / 25): null = the capture screen is closed.
+    var cameraTarget by remember { mutableStateOf<com.satcop.smartvisitor.kiosk.ui.addvisitor.AvCameraTarget?>(null) }
     fun captureWithCamera(target: String) {
-        pendingCapture = target
-        QaHooks.frame(if (target == "id") "ID photo" else "Visitor photo")?.let { f ->
-            if (target == "id") onIdImage(f) else onLivePhoto(f)
-            return
-        }
-        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-            PackageManager.PERMISSION_GRANTED
-        if (granted) camera.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)
+        cameraTarget = if (target == "id") com.satcop.smartvisitor.kiosk.ui.addvisitor.AvCameraTarget.ID
+        else com.satcop.smartvisitor.kiosk.ui.addvisitor.AvCameraTarget.PHOTO
+    }
+    cameraTarget?.let { t ->
+        com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorCamera(
+            target = t,
+            onCaptured = { bmp ->
+                if (t == com.satcop.smartvisitor.kiosk.ui.addvisitor.AvCameraTarget.ID) onIdImage(bmp) else onLivePhoto(bmp)
+                cameraTarget = null
+            },
+            onCancel = { cameraTarget = null },
+        )
+        return
     }
     if (!draft.consentAgreed) {
         Column(
