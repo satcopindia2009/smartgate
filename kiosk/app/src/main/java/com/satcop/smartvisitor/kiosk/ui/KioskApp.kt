@@ -531,8 +531,6 @@ private fun KioskStep(
             onIdImage = viewModel::setIdImage,
             onSignature = viewModel::setSignature,
             onClearSignature = viewModel::clearSignature,
-            onBlockSample = viewModel::applyBlockSample,
-            onAlertSample = viewModel::applyAlertSample,
             onAgreeConsent = viewModel::agreeGateConsent,
             onDeclineConsent = viewModel::declineGateConsent,
             onUseSavedId = viewModel::avUseSavedId,
@@ -549,12 +547,9 @@ private fun KioskStep(
             busy = state.outcomeBusy,
             afterHoursHint = state.afterHours,
             onRefresh = { viewModel.refreshVisit() },
-            onDemoApprove = viewModel::demoApprove,
             onCheckIn = viewModel::scanCheckIn,
             onCheckOut = viewModel::scanCheckOut,
-            onLoadStory = viewModel::loadStoryPass,
             onNewVisitor = viewModel::registerAnother,
-            showStory = !state.hideDemoStory,
         )
     }
 }
