@@ -134,14 +134,14 @@ fun SgPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         modifier = modifier
             .heightIn(min = SgSize.ButtonHeight)
             .clip(PillShape)
-            .background(if (enabled) KioskColors.primary else KioskColors.secondaryFill)
+            .background(if (enabled) KioskColors.primary else KioskColors.primary.copy(alpha = 0.45f))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text,
-            color = if (enabled) KioskColors.onPrimary else KioskColors.textMuted,
+            color = KioskColors.onPrimary,
             style = SgType.Button,
             maxLines = 2,
             textAlign = TextAlign.Center,

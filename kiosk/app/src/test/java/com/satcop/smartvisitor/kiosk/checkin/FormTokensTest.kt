@@ -14,8 +14,6 @@ class FormTokensTest {
     private val stepFiles = listOf(
         "steps/VisitorTypeStep.kt",
         "steps/VisitorDetailsStep.kt",
-        "steps/PhotoIdStep.kt",
-        "steps/GateConsentPanel.kt",
         "addvisitor/AddVisitorScreens.kt",
         "steps/HostDropdown.kt",
     )

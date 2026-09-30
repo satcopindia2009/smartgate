@@ -13,7 +13,7 @@ class ForbiddenDevStringsTest {
     private val forbidden = listOf(
         "sample", "under shell", "tabs stay", "demo", "fixture", "placeholder", "lorem", "dummy",
         "P-4F21", "not a real government", "coming soon", "TODO", "FIXME", "step 3 ·", "story pass", "mock",
-        "compact home", "no long scroll", "Demo host approve", "(stub)", "ID captured (demo)", "Sample parent visit loaded",
+        "compact home", "no long scroll", "Demo host approve", "(stub)", "ID captured (demo)", "Sample parent visit loaded", "Issue pass", "Contact name", "Step 2 of", "Step 3 of",
     )
     // Literal contexts that are not shown to users (identifiers, API keys, logs).
     private val allowedContains = listOf("placeholder =", "hint")

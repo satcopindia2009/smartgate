@@ -550,7 +550,7 @@ private fun CaptureTile(label: String, prompt: String, bmp: Bitmap?, error: Stri
             if (bmp != null) {
                 Image(
                     bmp.asImageBitmap(), label,
-                    Modifier.height(64.dp).let { if (isId) it.fillMaxWidth(0.8f) else it.size(64.dp) }.clip(if (isId) RoundedCornerShape(8.dp) else CircleShape),
+                    Modifier.height(72.dp).let { if (isId) it.fillMaxWidth(0.8f) else it.size(72.dp) }.clip(if (isId) RoundedCornerShape(8.dp) else CircleShape),
                     contentScale = ContentScale.Crop,
                 )
                 Text("Retake", color = KioskColors.primary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, modifier = Modifier.padding(top = 6.dp))

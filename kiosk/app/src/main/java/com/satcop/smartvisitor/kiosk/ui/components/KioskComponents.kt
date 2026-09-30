@@ -56,33 +56,6 @@ import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusSm
 
 @Composable
-fun StepDots(current: Int, total: Int = 4) {
-    val compact = LocalKioskCompact.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = if (compact) FormTokens.FieldToField else FormTokens.HeaderToForm),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        repeat(total) { index ->
-            val step = index + 1
-            val color = when {
-                step == current -> KioskColors.purple
-                step < current -> KioskColors.cyan
-                else -> KioskColors.border
-            }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(4.dp)
-                    .clip(ChipShape)
-                    .background(color),
-            )
-        }
-    }
-}
-
-@Composable
 fun KioskPrimaryButton(
     text: String,
     onClick: () -> Unit,
@@ -94,7 +67,7 @@ fun KioskPrimaryButton(
         modifier = modifier
             .heightIn(min = SgSize.ButtonHeight)
             .clip(PillShape)
-            .background(if (enabled) brush else Brush.linearGradient(listOf(KioskColors.border, KioskColors.border)))
+            .background(if (enabled) brush else Brush.linearGradient(listOf(KioskColors.primary.copy(alpha = 0.45f), KioskColors.primary.copy(alpha = 0.45f))))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center,
@@ -124,7 +97,7 @@ fun KioskCyanButton(
         modifier = modifier
             .heightIn(min = SgSize.ButtonHeight)
             .clip(PillShape)
-            .background(if (enabled) brush else Brush.linearGradient(listOf(KioskColors.border, KioskColors.border)))
+            .background(if (enabled) brush else Brush.linearGradient(listOf(KioskColors.primary.copy(alpha = 0.45f), KioskColors.primary.copy(alpha = 0.45f))))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center,
