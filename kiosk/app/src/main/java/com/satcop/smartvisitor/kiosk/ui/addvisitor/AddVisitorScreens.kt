@@ -51,11 +51,17 @@ import com.satcop.smartvisitor.kiosk.ui.components.KioskField
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.components.PanelDivider
+import com.satcop.smartvisitor.kiosk.ui.components.SgPrimaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgSecondaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgStatusChip
+import com.satcop.smartvisitor.kiosk.ui.components.SgStatusKind
+import com.satcop.smartvisitor.kiosk.ui.components.sgCardSurface
 import com.satcop.smartvisitor.kiosk.ui.steps.HostDropdown
 import com.satcop.smartvisitor.kiosk.ui.theme.ControlShape
 import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
+import com.satcop.smartvisitor.kiosk.ui.theme.PillShape
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -73,7 +79,7 @@ fun AddVisitorNumberStep(
     onCheckout: (ActiveVisit) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth()) {
-        FormHeader(title = "Mobile number", subtitle = "Enter the visitor or vendor mobile number to begin")
+        FormHeader(title = "Add visitor", subtitle = "Enter the mobile number of the visitor or vendor.")
         when (val n = state.notice) {
             AvNotice.Blocked -> BlockedPanel(onClose = onCloseNotice)
             else -> {
@@ -104,13 +110,13 @@ fun AddVisitorNumberStep(
                     modifier = Modifier.fillMaxWidth().padding(top = FormTokens.SectionGap),
                     verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
                 ) {
-                    KioskPrimaryButton(
+                    SgPrimaryButton(
                         text = if (state.busy) "Checking…" else "Continue",
                         enabled = !state.busy && AddVisitorLogic.canLookup(state.mobileInput),
                         onClick = onContinue,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    KioskGhostButton(text = "Cancel", onClick = onCancel, modifier = Modifier.fillMaxWidth())
+                    SgSecondaryButton(text = "Cancel", onClick = onCancel, modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -122,24 +128,28 @@ private fun BlockedPanel(onClose: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(FormTokens.ScreenHPad))
-            .background(KioskColors.redDim)
-            .border(2.dp, KioskColors.red, RoundedCornerShape(FormTokens.ScreenHPad))
-            .padding(FormTokens.ScreenHPad)
+            .padding(top = FormTokens.SectionGap)
             .semantics { contentDescription = AddVisitorLogic.BLOCKED },
-        verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
+        verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("⛔", fontSize = 40.sp)
+        Box(
+            modifier = Modifier.size(88.dp).clip(CircleShape).background(KioskColors.danger),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("✕", color = androidx.compose.ui.graphics.Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont)
+        }
         Text(
             AddVisitorLogic.BLOCKED,
-            color = KioskColors.red, fontSize = 18.sp, fontWeight = FontWeight.Bold,
+            color = KioskColors.text, fontSize = 20.sp, fontWeight = FontWeight.Bold,
             fontFamily = KioskFont, textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = FormTokens.ButtonGap),
         )
-        KioskGhostButton(text = "Close", onClick = onClose, modifier = Modifier.fillMaxWidth())
+        SgSecondaryButton(text = "Close", onClick = onClose, modifier = Modifier.fillMaxWidth().padding(top = FormTokens.SectionGap))
     }
 }
 
+/** Screens 22 / 23: blue info banner + visitor card + one action. */
 @Composable
 private fun InsideBanner(active: ActiveVisit, busy: Boolean, onCheckout: (ActiveVisit) -> Unit, onClose: () -> Unit) {
     val text = if (active.isInside) {
@@ -147,24 +157,32 @@ private fun InsideBanner(active: ActiveVisit, busy: Boolean, onCheckout: (Active
     } else {
         AddVisitorLogic.WAITING_HOST
     }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(ControlShape)
-            .background(KioskColors.orangeDim)
-            .padding(FormTokens.ScreenHPad),
-        verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
-    ) {
-        Text(text, color = KioskColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+    Column(verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField)) {
+        Text(
+            text, color = KioskColors.info, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont,
+            modifier = Modifier.fillMaxWidth().clip(ControlShape).background(KioskColors.infoSoft).padding(FormTokens.ScreenHPad),
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth().sgCardSurface().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(active.gateName ?: "Visit", color = KioskColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, modifier = Modifier.weight(1f))
+                SgStatusChip(
+                    label = if (active.isInside) "Checked in" else "Pending approval",
+                    kind = if (active.isInside) SgStatusKind.IN_PROGRESS else SgStatusKind.PENDING,
+                )
+            }
+        }
         if (active.isInside) {
-            KioskPrimaryButton(
+            SgPrimaryButton(
                 text = if (busy) "Checking out…" else "Check out",
                 enabled = !busy,
                 onClick = { onCheckout(active) },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        KioskGhostButton(text = "Close", onClick = onClose, modifier = Modifier.fillMaxWidth())
+        SgSecondaryButton(text = "Close", onClick = onClose, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -203,8 +221,8 @@ fun AddVisitorFormStep(
             if (AddVisitorLogic.showsTypeSelector(returning)) {
                 KindSelector(kind = kind, onKind = onKind)
             }
-            state.known?.alertMessage?.let { InfoBanner(it, KioskColors.orangeDim) }
-            state.known?.todayNote?.let { InfoBanner(it, KioskColors.orangeDim) }
+            state.known?.alertMessage?.let { InfoBanner(it, KioskColors.warningSoft, KioskColors.warning) }
+            state.known?.todayNote?.let { InfoBanner(it, KioskColors.infoSoft, KioskColors.info) }
             if (returning && state.referencePhoto != null) {
                 ReferencePhoto(state.referencePhoto)
             }
@@ -254,9 +272,7 @@ fun AddVisitorFormStep(
                 onSelect = onHost,
                 label = AddVisitorLogic.hostLabel(kind),
             )
-            if (AddVisitorLogic.showsSchedule(kind)) {
-                ScheduleField(scheduledAtMs = draft.scheduledAtMs, onScheduled = onScheduled)
-            }
+            // Product ruling 13: the scheduled date/time row is not shown on the form.
         }
         if (returning) {
             Text(
@@ -294,47 +310,44 @@ fun AddVisitorFormStep(
             modifier = Modifier.fillMaxWidth().padding(top = FormTokens.SectionGap),
             verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
         ) {
-            KioskPrimaryButton(text = "Continue to photo & ID", onClick = onContinue, enabled = otpMayContinue, modifier = Modifier.fillMaxWidth())
-            KioskGhostButton(text = "Back", onClick = onBack, modifier = Modifier.fillMaxWidth())
+            SgPrimaryButton(text = "Continue", onClick = onContinue, enabled = otpMayContinue, modifier = Modifier.fillMaxWidth())
+            SgSecondaryButton(text = "Cancel", onClick = onBack, modifier = Modifier.fillMaxWidth())
         }
     }
 }
 
 @Composable
-private fun InfoBanner(text: String, bg: androidx.compose.ui.graphics.Color) {
+private fun InfoBanner(text: String, bg: androidx.compose.ui.graphics.Color, fg: androidx.compose.ui.graphics.Color) {
     Text(
         text,
-        color = KioskColors.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont,
+        color = fg, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont,
         modifier = Modifier.fillMaxWidth().clip(ControlShape).background(bg).padding(FormTokens.ScreenHPad),
     )
 }
 
 @Composable
 private fun KindSelector(kind: ProfileKind, onKind: (ProfileKind) -> Unit) {
-    val stacked = LocalDensity.current.fontScale > 1.3f
-    Column(Modifier.fillMaxWidth()) {
-        FormLabel("Visitor Type")
-        val opts: @Composable (Modifier) -> Unit = { m ->
-            KindChip("Visitor", kind == ProfileKind.VISITOR, { onKind(ProfileKind.VISITOR) }, m)
-            KindChip("Vendor", kind == ProfileKind.VENDOR, { onKind(ProfileKind.VENDOR) }, m)
-        }
-        if (stacked) {
-            Column(verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap)) { opts(Modifier.fillMaxWidth()) }
-        } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap)) { opts(Modifier.weight(1f)) }
-        }
+    // Segmented Visitor | Vendor control (mock 18/19).
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(PillShape)
+            .background(KioskColors.secondaryFill)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        KindChip("Visitor", kind == ProfileKind.VISITOR, { onKind(ProfileKind.VISITOR) }, Modifier.weight(1f))
+        KindChip("Vendor", kind == ProfileKind.VENDOR, { onKind(ProfileKind.VENDOR) }, Modifier.weight(1f))
     }
 }
 
 @Composable
 private fun KindChip(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    val shape = ControlShape
     Box(
         modifier = modifier
             .heightIn(min = FormTokens.MinTouch)
-            .clip(shape)
-            .background(if (selected) KioskColors.purpleDim else KioskColors.inputBg)
-            .border(if (selected) 2.dp else 1.dp, if (selected) KioskColors.purple else KioskColors.inputBorder, shape)
+            .clip(PillShape)
+            .background(if (selected) KioskColors.primary else androidx.compose.ui.graphics.Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp)
             .semantics { contentDescription = "Visitor Type $label" + if (selected) ", selected" else "" },
@@ -342,8 +355,8 @@ private fun KindChip(label: String, selected: Boolean, onClick: () -> Unit, modi
     ) {
         Text(
             label,
-            color = if (selected) KioskColors.purple else KioskColors.inputText,
-            fontSize = 16.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, textAlign = TextAlign.Center,
+            color = if (selected) KioskColors.onPrimary else KioskColors.text,
+            fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, textAlign = TextAlign.Center,
         )
     }
 }
@@ -387,7 +400,7 @@ private fun SavedIdSection(draft: RegistrationDraft, onUseSavedId: (Boolean) -> 
             KindChip("Use saved ID", draft.useSavedId, { onUseSavedId(true) }, m)
             KindChip("Enter new ID", !draft.useSavedId, { onUseSavedId(false) }, m)
         }
-        Box(Modifier.padding(top = FormTokens.LabelToField)) {
+        Box(Modifier.padding(top = FormTokens.LabelToField).clip(PillShape).background(KioskColors.secondaryFill).padding(4.dp)) {
             if (stacked) {
                 Column(verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap)) { opts(Modifier.fillMaxWidth()) }
             } else {
