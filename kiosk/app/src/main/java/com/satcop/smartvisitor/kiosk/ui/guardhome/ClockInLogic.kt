@@ -36,6 +36,8 @@ data class ClockResult(
     val selfieUploaded: Boolean,
     val recordId: String,
     val flaggedNote: String?,
+    /** Signed URL exactly as the server returned it (?t= intact); loaded via MediaUrl, never built from a key. */
+    val guardPhotoUrl: String? = null,
 )
 
 /** Pure rules of the Guard clock-in / clock-out flow (Product final rulings 2026-09-30). Compose-free. */
@@ -108,17 +110,26 @@ object ClockInLogic {
         }
         return ClockResult(
             mode = mode,
-            action = actionLabel(mode),
-            time = time12h(whenIso),
+            action = row.action?.takeIf { it.isNotBlank() } ?: actionLabel(mode),
+            time = row.actionTimeDisplay?.takeIf { it.isNotBlank() } ?: time12h(row.actionAt ?: whenIso),
             gate = gateLabel(row, fallbackGateName),
             selfieUploaded = row.selfieUploaded ?: !(row.photoKey.isNullOrBlank() && row.photoUrl.isNullOrBlank()),
-            recordId = row.id?.takeIf { it.isNotBlank() } ?: "—",
+            recordId = (row.recordId ?: row.id)?.takeIf { it.isNotBlank() } ?: "—",
             flaggedNote = flagged,
+            guardPhotoUrl = row.guardPhotoUrl?.takeIf { it.isNotBlank() },
         )
     }
 
     /** Ruling R1: the three states of the Current Status card. */
     fun statusCard(today: TodayAttendance?): StatusCard {
+        // Addendum: the server sends the card. Show it as returned; derive only when it is absent.
+        today?.currentStatus?.let { c ->
+            val title = c.label?.takeIf { it.isNotBlank() }
+            val text = c.text?.takeIf { it.isNotBlank() }
+            if (title != null && text != null) {
+                return StatusCard(title, title, text, canProceed = !c.shiftComplete && c.nextAction != null, note = c.note?.takeIf { it.isNotBlank() })
+            }
+        }
         val row = today?.attendance
         return when (today?.state ?: AttendanceState.NONE) {
             AttendanceState.NONE -> StatusCard("Off duty", "Off duty", "Not checked in yet", canProceed = true)
@@ -140,7 +151,8 @@ object ClockInLogic {
     }
 
     /** Errors that mean "the location reading is the problem": retry recaptures selfie AND location. */
-    fun locationProblem(code: String): Boolean = AttendanceRules.needsFreshReading(code) || code.equals("GPS_REQUIRED", true)
+    fun locationProblem(code: String): Boolean =
+        AttendanceRules.needsFreshReading(code) || code.equals("GPS_REQUIRED", true) || code.equals("LOCATION_REQUIRED", true)
 
     /**
      * Location permission decision (Product ruling 6). The app cannot read the school fence mode (settings are
@@ -163,5 +175,5 @@ object ClockInLogic {
 
     /** Server refused a location-less check-in -> show the restrict-mode copy. */
     fun checkInRefusedWithoutLocation(code: String, sentWithoutLocation: Boolean): Boolean =
-        sentWithoutLocation && (locationProblem(code) || code.equals("FORBIDDEN", true))
+        sentWithoutLocation && (locationProblem(code) || code.equals("LOCATION_REQUIRED", true) || code.equals("FORBIDDEN", true))
 }

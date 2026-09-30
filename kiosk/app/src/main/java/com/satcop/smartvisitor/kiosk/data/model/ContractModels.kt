@@ -43,6 +43,11 @@ data class MeResponse(
     // OTP scope: mobileVerified / verifiedAt on /auth/me (additive; absent until Backend ships it).
     val mobileVerified: Boolean? = null,
     val verifiedAt: String? = null,
+    // Clock-in addendum: on /auth/me, login top level and login user. profilePhotoUrl is signed (?t=) or null.
+    val guardName: String? = null,
+    val schoolName: String? = null,
+    val profilePhotoUrl: String? = null,
+    val otpNoticeVersion: String? = null,
     val meta: Meta? = null,
 )
 

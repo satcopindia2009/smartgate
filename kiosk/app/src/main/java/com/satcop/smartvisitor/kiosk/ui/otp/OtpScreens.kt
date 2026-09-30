@@ -98,7 +98,7 @@ fun OtpEnterCode(
     headline: ((String) -> String)? = null,
 ) {
     val st by controller.state.collectAsState()
-    LaunchedEffect(Unit) { while (true) { delay(1000); controller.tick() } }
+    LaunchedEffect(Unit) { var n = 0; while (true) { delay(1000); controller.tick(); if (++n % 5 == 0) controller.pollStatus() } }
     LaunchedEffect(st.phase) { if (st.phase == OtpPhase.SUCCESS) { delay(1500); onDone(st.resetToken) } }
     val msg = st.message(strings)
     val isError = st.phase in setOf(OtpPhase.WRONG, OtpPhase.EXPIRED, OtpPhase.LOCKED, OtpPhase.RESEND_LIMIT, OtpPhase.SEND_FAILED)
@@ -116,12 +116,6 @@ fun OtpEnterCode(
             fontSize = 15.sp, fontFamily = KioskFont, color = KioskColors.textMuted,
         )
         OtpCodeBoxes(st.code, st.boxesEnabled, st.phase == OtpPhase.WRONG, st.shake, controller::setCode)
-        if (st.showDemoChip) {
-            Text(
-                strings.demoChip, fontSize = 13.sp, fontFamily = KioskFont, color = KioskColors.orange,
-                modifier = Modifier.clip(RoundedCornerShape(50)).background(KioskColors.orangeDim).padding(horizontal = 12.dp, vertical = 6.dp),
-            )
-        }
         if (msg != null) {
             Text(
                 msg, fontSize = 14.sp, fontFamily = KioskFont, fontWeight = FontWeight.Medium,
@@ -175,7 +169,7 @@ enum class ForgotStep { MOBILE, CODE, NEW_PASSWORD, DONE }
 fun ForgotPasswordFlow(
     controller: OtpController,
     strings: OtpStrings,
-    onSavePassword: suspend (resetToken: String, newPassword: String) -> Boolean,
+    onSavePassword: suspend (resetToken: String, newPassword: String) -> String?,
     onExit: () -> Unit,
 ) {
     var step by remember { mutableStateOf(ForgotStep.MOBILE) }
@@ -210,14 +204,14 @@ fun ForgotPasswordFlow(
             Text("New password", fontSize = 26.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont, color = KioskColors.text)
             KioskField(label = "New password", value = pw, onValueChange = { pw = it }, passwordToggle = true, modifier = Modifier.fillMaxWidth())
             KioskField(label = "Confirm password", value = pw2, onValueChange = { pw2 = it }, passwordToggle = true, error = pwError, modifier = Modifier.fillMaxWidth())
-            Text("Use at least 8 characters.", fontSize = 12.sp, fontFamily = KioskFont, color = KioskColors.textMuted)
-            OtpButton(if (saving) "…" else "Save password", enabled = !saving && pw.length >= 8 && pw == pw2) {
+            Text("Use at least 6 characters.", fontSize = 12.sp, fontFamily = KioskFont, color = KioskColors.textMuted)
+            OtpButton(if (saving) "…" else "Save password", enabled = !saving && pw.length >= 6 && pw == pw2) {
                 val t = token ?: return@OtpButton
                 saving = true
                 scope.launch {
-                    val ok = onSavePassword(t, pw)
+                    val err = onSavePassword(t, pw)
                     saving = false
-                    if (ok) step = ForgotStep.DONE else pwError = "Something went wrong. Please try again."
+                    if (err == null) step = ForgotStep.DONE else pwError = err
                 }
             }
         }

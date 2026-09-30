@@ -20,6 +20,10 @@ data class LoginResponse(
     /** IST cut-off of this token (guard: next 00:00 IST). */
     val sessionExpiresAt: String? = null,
     val mustChangePassword: Boolean = false,
+    // Clock-in addendum: login top level (also inside user).
+    val guardName: String? = null,
+    val schoolName: String? = null,
+    val profilePhotoUrl: String? = null,
     val meta: Meta? = null,
 )
 
@@ -95,6 +99,9 @@ data class VisitCreate(
     /** One id per submit; the same id returns the original entry (idempotentReplay). */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val attemptId: String? = null,
+    /** visitor_verify: the visitorVerifyId returned by POST /otp/verify. Omitted when OTP was not used/skipped. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val otpId: String? = null,
 )
 
 @Serializable

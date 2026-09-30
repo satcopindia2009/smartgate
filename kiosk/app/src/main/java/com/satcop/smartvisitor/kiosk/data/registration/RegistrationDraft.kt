@@ -44,6 +44,8 @@ data class RegistrationDraft(
     val profileId: String? = null,
     /** True only after the guard confirmed "Register as different type". */
     val confirmKindSwitch: Boolean = false,
+    /** visitorVerifyId of a verified visitor number (OTP); null = not verified / skipped. */
+    val otpId: String? = null,
 ) {
     companion object {
         fun fromStory(story: DemoStory): RegistrationDraft = RegistrationDraft(

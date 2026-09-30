@@ -281,6 +281,20 @@ class LiveVisitorApi(
         return json.decodeFromString(execute(req))
     }
 
+    /**
+     * OTP endpoints (contract 2026-09-30). [withAuth] false only for password_reset send and password-reset.
+     * Returns the raw JSON text; errors arrive as [ApiException] with the API's own code/message/details.
+     */
+    fun otpRequest(method: String, path: String, body: String?, withAuth: Boolean): String {
+        val b = Request.Builder().url("$baseUrl$path")
+        if (method == "GET") b.get() else b.post((body ?: "{}").toRequestBody(JSON))
+        val req = if (withAuth) authorized(b, allowUnverified = false) else b.header("Accept", "application/json").build()
+        return execute(req)
+    }
+
+    /** GET /schools/me (readable by every signed-in role; carries otpMode/otpChannel/visitorOtpEnabled/visitorOtpAllowSkip). */
+    fun schoolSettingsText(): String = execute(authorized(Request.Builder().url("$baseUrl/schools/me").get()))
+
     private inline fun <reified T> get(path: String, allowUnverified: Boolean = false): T {
         val req = authorized(Request.Builder().url("$baseUrl$path").get(), allowUnverified)
         return json.decodeFromString(execute(req))

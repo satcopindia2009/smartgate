@@ -44,6 +44,37 @@ data class AttendanceRow(
     val selfieUploaded: Boolean? = null,
     val guardPhotoUrl: String? = null,
     val geofenceMode: String? = null,
+    // Clock-in addendum 2026-09-30 (Backend, LIVE): result-screen + status fields, names exactly as the contract.
+    val recordId: String? = null,
+    val action: String? = null,
+    val actionAt: String? = null,
+    val actionTimeDisplay: String? = null,
+    val gateId: String? = null,
+    val gateSource: String? = null,
+    val checkInSelfieUploaded: Boolean? = null,
+    val currentStatus: CurrentStatus? = null,
+    val missedClockOut: Boolean = false,
+    val flags: List<String> = emptyList(),
+    val displayStatus: String? = null,
+    val profilePhotoUrl: String? = null,
+)
+
+/** currentStatus block (Current Status card). Shown as returned; the app derives nothing when it is present. */
+@Serializable
+data class CurrentStatus(
+    val state: String? = null,
+    val label: String? = null,
+    val text: String? = null,
+    val chipColor: String? = null,
+    val checkedInAt: String? = null,
+    val checkedOutAt: String? = null,
+    val checkedInAtDisplay: String? = null,
+    val checkedOutAtDisplay: String? = null,
+    val gateName: String? = null,
+    val nextAction: String? = null,
+    val actionLabel: String? = null,
+    val shiftComplete: Boolean = false,
+    val note: String? = null,
 )
 
 @Serializable
@@ -54,6 +85,14 @@ data class TodayAttendance(
     val dutyDate: String? = null,
     val canCheckIn: Boolean = false,
     val canClockOut: Boolean = false,
+    val schoolName: String? = null,
+    val guardName: String? = null,
+    val gateName: String? = null,
+    val gateId: String? = null,
+    val guardPhotoUrl: String? = null,
+    val selfieUploaded: Boolean? = null,
+    val currentStatus: CurrentStatus? = null,
+    val serverTime: String? = null,
 ) {
     val state: AttendanceState get() = AttendanceState.parse(attendanceStatus)
 }

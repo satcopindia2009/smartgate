@@ -41,7 +41,10 @@ class QaBypassGuardTest {
         }
         // OTP entry points in main may only be gated by OtpAvailability (constant-false in release unless CONTRACT_BOUND).
         val otpModels = src("src/main/java/com/satcop/smartvisitor/kiosk/data/otp/OtpModels.kt").readText()
-        assertTrue(otpModels.contains("const val CONTRACT_BOUND: Boolean = false"))
+        assertTrue(otpModels.contains("const val CONTRACT_BOUND: Boolean = true")) // OTP contract 2026-09-30 is bound
+        // The mock code is never in the app: no literal in main sources.
+        val mainText = File(System.getProperty("user.dir"), "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.joinToString("\n") { it.readText() }
+        assertFalse(mainText.contains("123456"))
         val gradle = src("build.gradle.kts").readText()
         assertTrue(gradle.contains("verifyNoQaBypassInReleaseApk"))
         assertTrue(gradle.contains("packageRelease"))

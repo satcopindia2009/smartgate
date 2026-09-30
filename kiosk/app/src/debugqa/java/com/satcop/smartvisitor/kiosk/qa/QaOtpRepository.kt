@@ -45,10 +45,13 @@ class QaOtpRepository : OtpRepository {
         val id = "qa-otp-${++counter}"
         tries[id] = 5
         resends++
-        return OtpSent(id, "\u2022\u2022\u2022\u2022\u2022\u20221234", req.channel ?: "sms", 300, 30, (3 - resends + 1).coerceAtLeast(0), mock = true)
+        return OtpSent(id, "\u2022\u2022\u2022\u2022\u2022\u20221234", req.channel ?: "sms", 300, 60, (3 - resends + 1).coerceAtLeast(0), mock = true, demo = true)
     }
 
-    override suspend fun verify(otpId: String, code: String): OtpVerified {
+    override suspend fun resend(otpId: String, mobile: String?, withAuth: Boolean): OtpSent =
+        send(OtpSendRequest(com.satcop.smartvisitor.kiosk.data.otp.OtpPurpose.STAFF_VERIFY, mobile, null, "qa-resend"))
+
+    override suspend fun verify(otpId: String, code: String, withAuth: Boolean): OtpVerified {
         delay(400)
         when (QaOtpState.verify.lowercase()) {
             "wrong" -> throw OtpApiException("OTP_INVALID", triesLeft = 3)
@@ -62,7 +65,7 @@ class QaOtpRepository : OtpRepository {
             tries[otpId] = left - 1
             throw OtpApiException("OTP_INVALID", triesLeft = left - 1)
         }
-        return OtpVerified("2026-09-30T19:00:00+05:30", "qa-reset-token")
+        return OtpVerified("2026-09-30T19:00:00+05:30", "qa-reset-token", visitorVerifyId = otpId)
     }
 
     override suspend fun resetPassword(resetToken: String, newPassword: String) {

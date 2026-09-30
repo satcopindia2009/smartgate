@@ -16,9 +16,16 @@ private class FakeOtp : OtpRepository {
     override suspend fun settings() = OtpSettings(visitorOtpEnabled = true, otpChannel = "sms_then_whatsapp")
     override suspend fun send(req: OtpSendRequest): OtpSent {
         sends += req; sendError?.let { throw it }
-        return OtpSent("otp-${sends.size}", "••••••1234", "sms", 300, 30, 3, mock)
+        return OtpSent("otp-${sends.size}", "••••••1234", "sms", 300, 60, 3, mock)
     }
-    override suspend fun verify(otpId: String, code: String): OtpVerified {
+    var status = OtpStatus(false)
+    val resends = mutableListOf<String>()
+    override suspend fun resend(otpId: String, mobile: String?, withAuth: Boolean): OtpSent {
+        resends += otpId; sendError?.let { throw it }
+        return OtpSent("otp-r${resends.size}", "••••••1234", "sms", 300, 60, 2, mock)
+    }
+    override suspend fun status(otpId: String, withAuth: Boolean) = status
+    override suspend fun verify(otpId: String, code: String, withAuth: Boolean): OtpVerified {
         verifies += otpId to code; verifyError?.let { throw it }
         return OtpVerified("2026-09-30T19:00:00+05:30", "reset-tok")
     }
@@ -34,7 +41,7 @@ class OtpControllerTest {
         val o = c(); o.start()
         assertNull(repo.sends.single().mobile)
         assertEquals("••••••1234", o.state.value.maskedMobile)
-        assertEquals(30, o.state.value.resendInSec)
+        assertEquals(60, o.state.value.resendInSec) // from the response (resendAfterSec), not a constant
         assertFalse(o.state.value.resendEnabled)
     }
 
@@ -71,7 +78,7 @@ class OtpControllerTest {
 
     @Test fun usedCodeLooksLikeWrongWithoutTries() {
         val o = c(); o.start(); o.setCode("111111")
-        repo.verifyError = OtpApiException("OTP_USED"); o.verify()
+        repo.verifyError = OtpApiException("OTP_USED", serverMessage = "That code is not right."); o.verify()
         assertEquals("That code is not right.", o.state.value.message(OtpCopy.EN))
     }
 
@@ -94,7 +101,7 @@ class OtpControllerTest {
 
     @Test fun resendCountdownThenEnabledAndLimit() {
         val o = c(); o.start()
-        repeat(30) { o.tick() }
+        repeat(60) { o.tick() } // cooldown is the server's resendAfterSec (60), not a constant in the app
         assertTrue(o.state.value.resendEnabled)
         repo.sendError = OtpApiException("OTP_RESEND_LIMIT"); o.resend()
         assertEquals(OtpPhase.RESEND_LIMIT, o.state.value.phase); assertFalse(o.state.value.resendVisible)
@@ -107,18 +114,38 @@ class OtpControllerTest {
         assertEquals("Could not send the code. Try again or use another option.", o.state.value.message(OtpCopy.EN))
     }
 
-    @Test fun noReceiptAfter60sOffersSendAgainNeverAFailureBanner() {
-        val o = c(); o.start(); repeat(59) { o.tick() }
-        assertFalse(o.state.value.noReceipt)
-        o.tick(); assertTrue(o.state.value.noReceipt); assertNull(o.state.value.message(OtpCopy.EN))
+    @Test fun sendAgainFollowsServerShowSendAgainNeverAFailureBanner() {
+        val o = c(); o.start(); repeat(120) { o.tick() }
+        assertFalse(o.state.value.noReceipt) // no local 60 s timer decides this
+        repo.status = OtpStatus(showSendAgain = true); o.pollStatus()
+        assertTrue(o.state.value.noReceipt); assertNull(o.state.value.message(OtpCopy.EN))
     }
 
-    @Test fun demoChipNeedsMockAndDemoTenant() {
-        repo.mock = true
-        val a = c(demo = true); a.start(); assertTrue(a.state.value.showDemoChip)
-        val b = c(demo = false); b.start(); assertFalse(b.state.value.showDemoChip)
-        repo.mock = false
-        val d = c(demo = true); d.start(); assertFalse(d.state.value.showDemoChip)
+    @Test fun resendUsesResendEndpointAndTakesNewOtpId() {
+        val o = c(); o.start(); repeat(60) { o.tick() }
+        repo.status = OtpStatus(true); o.pollStatus()
+        o.resend()
+        assertEquals(listOf("otp-1"), repo.resends); assertEquals("otp-r1", o.state.value.otpId)
+        assertEquals(60, o.state.value.resendInSec); assertFalse(o.state.value.noReceipt)
+    }
+
+    @Test fun serverTextIsShownAsReturned() {
+        val o = c(); o.start(); o.setCode("111111")
+        repo.verifyError = OtpApiException("OTP_INVALID", triesLeft = 4, serverMessage = "That code is not right. 4 tries left."); o.verify()
+        assertEquals("That code is not right. 4 tries left.", o.state.value.message(OtpCopy.EN))
+        repo.verifyError = OtpApiException("OTP_LOCKED", retryAfterSec = 1800, serverMessage = "Too many attempts. Try again in 30 minutes."); o.setCode("111111"); o.verify()
+        assertEquals(OtpPhase.LOCKED, o.state.value.phase); assertEquals("Too many attempts. Try again in 30 minutes.", o.state.value.message(OtpCopy.EN))
+    }
+
+    @Test fun resendWaitTakesCooldownFromRetryAfterSec() {
+        val o = c(); o.start(); repeat(60) { o.tick() }
+        repo.sendError = OtpApiException("OTP_RESEND_WAIT", retryAfterSec = 47, serverMessage = "Resend code in 47 s."); o.resend()
+        assertEquals(47, o.state.value.resendInSec)
+    }
+
+    @Test fun visitorVerifyIdIsKeptForTheVisit() {
+        val o = c(OtpPurpose.VISITOR_VERIFY); o.start("9800011100"); o.setCode("123456"); o.verify()
+        assertEquals("otp-1", o.state.value.visitorVerifyId)
     }
 
     @Test fun changeNumberVoidsTheCode() {

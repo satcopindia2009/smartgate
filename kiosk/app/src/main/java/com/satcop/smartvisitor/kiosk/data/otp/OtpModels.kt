@@ -13,6 +13,8 @@ data class OtpSendRequest(
     val channel: String? = null,
     /** One id per user tap, so a retried request is not a second send. */
     val attemptId: String,
+    /** visitor_verify: when the guard accepted the visitor notice (ISO +05:30). */
+    val consentAt: String? = null,
 )
 
 data class OtpSent(
@@ -25,9 +27,19 @@ data class OtpSent(
     val resendsLeft: Int,
     /** meta.mock from the response; the demo chip needs this AND a demo tenant. */
     val mock: Boolean,
+    /** meta.demo from the response (demo tenant). */
+    val demo: Boolean = false,
 )
 
-data class OtpVerified(val verifiedAt: String?, val resetToken: String?)
+data class OtpVerified(
+    val verifiedAt: String?,
+    val resetToken: String?,
+    /** visitor_verify only: pass as otpId on POST /visits. */
+    val visitorVerifyId: String? = null,
+)
+
+/** GET /otp/status/{otpId}: the "Send again" link shows only when the SERVER says so. A missing receipt is never a failure. */
+data class OtpStatus(val showSendAgain: Boolean, val expiresInSec: Int? = null)
 
 /** School settings from GET /schools/me/settings (Product OTP scope). */
 data class OtpSettings(
@@ -44,32 +56,28 @@ class OtpApiException(
     val code: String,
     val triesLeft: Int? = null,
     val retryAfterSec: Int? = null,
-) : RuntimeException(code)
+    /** The API's own error text (shown as returned); null for client-side failures. */
+    val serverMessage: String? = null,
+) : RuntimeException(serverMessage ?: code)
 
 /**
- * Data seam for every OTP screen. The final endpoint names are published by Backend; until they land the app binds
- * [UnboundOtpRepository] and the entry points stay hidden ([OtpAvailability]).
+ * Data seam for every OTP screen. Release binds [com.satcop.smartvisitor.kiosk.data.api.LiveOtpRepository] (the live
+ * contract 2026-09-30); the QA-only build swaps in a fake. Timers/limits are never hard-coded: they come from responses.
  */
 interface OtpRepository {
     suspend fun settings(): OtpSettings
     suspend fun send(req: OtpSendRequest): OtpSent
-    suspend fun verify(otpId: String, code: String): OtpVerified
+    /** New otpId, the previous code is void. [mobile] is needed for password_reset / visitor_verify. */
+    suspend fun resend(otpId: String, mobile: String? = null, withAuth: Boolean = true): OtpSent
+    suspend fun verify(otpId: String, code: String, withAuth: Boolean = true): OtpVerified
+    suspend fun status(otpId: String, withAuth: Boolean = true): OtpStatus = OtpStatus(false)
     suspend fun resetPassword(resetToken: String, newPassword: String)
-}
-
-/** Placeholder until Backend's OTP contract is bound: every call fails as "unavailable" (never a fake success). */
-object UnboundOtpRepository : OtpRepository {
-    private fun unavailable(): Nothing = throw OtpApiException("OTP_SEND_FAILED")
-    override suspend fun settings(): OtpSettings = OtpSettings()
-    override suspend fun send(req: OtpSendRequest): OtpSent = unavailable()
-    override suspend fun verify(otpId: String, code: String): OtpVerified = unavailable()
-    override suspend fun resetPassword(resetToken: String, newPassword: String) = unavailable()
 }
 
 /** Entry points (Verify mobile, Forgot password, Add Visitor OTP card) show only when the contract is bound. */
 object OtpAvailability {
-    /** Flip to true in the commit that binds the published endpoints. */
-    const val CONTRACT_BOUND: Boolean = false
+    /** Backend OTP contract (2026-09-30) is live and bound. Visitor OTP still needs the school setting. */
+    const val CONTRACT_BOUND: Boolean = true
 
     /** True when the real contract is bound, or inside the QA-only build (fake repository). Release: bound only. */
     val reachable: Boolean get() = CONTRACT_BOUND || com.satcop.smartvisitor.kiosk.qa.QaHooks.otpEntryPoints

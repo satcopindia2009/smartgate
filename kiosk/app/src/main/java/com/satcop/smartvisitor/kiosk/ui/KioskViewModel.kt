@@ -488,7 +488,7 @@ class KioskViewModel(
                 loginBusy = false,
                 loginError = null,
                 loginPassword = "",
-                schoolName = me.schoolId.ifBlank { it.schoolName },
+                schoolName = me.schoolName?.takeIf { n -> n.isNotBlank() } ?: me.schoolId.ifBlank { it.schoolName },
                 schoolId = me.schoolId,
                 watermark = me.meta?.watermark ?: DemoFixtures.WATERMARK,
                 dataSource = source,
@@ -1336,6 +1336,11 @@ class KioskViewModel(
                 }
                 return true
             }
+            "OTP_REQUIRED" -> {
+                val otpMsg = ErrorCopy.forApi(e).takeIf { m -> m.isNotBlank() && m != ErrorCopy.GENERIC } ?: "Verify the visitor's mobile number to continue."
+                _state.update { it.copy(submitting = false, step = 2, toast = otpMsg, toastKind = ToastKind.WARNING) }
+                return true
+            }
             "INVALID_ID_FORMAT" -> {
                 _state.update { it.copy(submitting = false, step = 3, fieldErrors = it.fieldErrors + (com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID to ErrorCopy.INVALID_ID_FORMAT)) }
                 return true
@@ -1365,6 +1370,9 @@ class KioskViewModel(
         }
         return false
     }
+
+    /** OTP card result: the id to send on the visit (null when unverified/skipped or the number changed). */
+    fun avSetOtpId(id: String?) { _state.update { it.copy(draft = it.draft.copy(otpId = id)) } }
 
     /** Guard confirmed "Register as different type" (contract: confirmKindSwitch:true, kind converted, audited). */
     fun avSwitchKind() {
@@ -1567,6 +1575,7 @@ class KioskViewModel(
                 company = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.companyToSend(kindNow, draft.company),
                 scheduledAt = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.scheduledAtToSend(kindNow, draft.scheduledAtMs),
                 attemptId = avAttemptId,
+                otpId = draft.otpId,
             )
             val visit = repository.createVisit(body)
             val source = repository.dataSource

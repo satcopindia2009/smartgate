@@ -25,13 +25,15 @@ import com.satcop.smartvisitor.kiosk.data.otp.OtpAvailability
 import com.satcop.smartvisitor.kiosk.data.otp.OtpPurpose
 import com.satcop.smartvisitor.kiosk.data.otp.OtpRepository
 import com.satcop.smartvisitor.kiosk.data.otp.OtpSettings
-import com.satcop.smartvisitor.kiosk.data.otp.UnboundOtpRepository
+import com.satcop.smartvisitor.kiosk.data.api.LiveOtpRepository
 import com.satcop.smartvisitor.kiosk.qa.QaHooks
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 
+private val liveOtp: OtpRepository by lazy { LiveOtpRepository() }
+
 /** Which repository the OTP screens talk to: the bound API, or (QA-only build) the fake one. Release: never the fake. */
-internal fun otpRepo(): OtpRepository = QaHooks.otpRepository() ?: UnboundOtpRepository
+internal fun otpRepo(): OtpRepository = QaHooks.otpRepository() ?: liveOtp
 
 private val fullScreen = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = true)
 
@@ -47,7 +49,7 @@ fun StaffVerifyEntry(strings: OtpStrings = OtpCopy.EN) {
     val masked = MaskedDisplay.mobile(user?.phone).ifBlank { "••••••" }
     var verified by remember { mutableStateOf(user?.mobileVerified == true) }
     var open by remember { mutableStateOf(false) }
-    val controller = remember { OtpController(scope, otpRepo(), OtpPurpose.STAFF_VERIFY, demoTenant = QaHooks.fakeCamera) }
+    val controller = remember { OtpController(scope, otpRepo(), OtpPurpose.STAFF_VERIFY) }
     StaffVerifyRow(maskedMobile = masked, verified = verified, strings = strings) {
         open = true
         controller.loadSettings()
@@ -68,7 +70,7 @@ fun ForgotPasswordEntry(strings: OtpStrings = OtpCopy.EN, onSignedOutDone: () ->
     if (!OtpAvailability.forgotPasswordVisible()) return
     val scope = rememberCoroutineScope()
     var open by remember { mutableStateOf(false) }
-    val controller = remember(open) { OtpController(scope, otpRepo(), OtpPurpose.PASSWORD_RESET, demoTenant = QaHooks.fakeCamera) }
+    val controller = remember(open) { OtpController(scope, otpRepo(), OtpPurpose.PASSWORD_RESET) }
     Text(
         "Forgot password?", color = KioskColors.systemBlue, fontSize = 14.sp, fontFamily = KioskFont,
         modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { open = true }.padding(top = 8.dp),
@@ -78,7 +80,11 @@ fun ForgotPasswordEntry(strings: OtpStrings = OtpCopy.EN, onSignedOutDone: () ->
             Box(Modifier.fillMaxSize()) {
                 ForgotPasswordFlow(
                     controller = controller, strings = strings,
-                    onSavePassword = { token, pw -> runCatching { otpRepo().resetPassword(token, pw) }.isSuccess },
+                    onSavePassword = { token, pw ->
+                        try { otpRepo().resetPassword(token, pw); null } catch (e: com.satcop.smartvisitor.kiosk.data.otp.OtpApiException) {
+                            e.serverMessage ?: OtpCopy.EN.sendFailed
+                        } catch (e: Exception) { OtpCopy.EN.sendFailed }
+                    },
                     onExit = { open = false; onSignedOutDone() },
                 )
             }
@@ -91,13 +97,13 @@ fun ForgotPasswordEntry(strings: OtpStrings = OtpCopy.EN, onSignedOutDone: () ->
  * Composes nothing (and reports "may continue") unless the contract is bound / QA build AND visitorOtpEnabled.
  */
 @Composable
-fun VisitorOtpSection(mobileTenDigits: String, strings: OtpStrings = OtpCopy.EN, onChangeNumber: () -> Unit, onGate: (Boolean) -> Unit) {
+fun VisitorOtpSection(mobileTenDigits: String, strings: OtpStrings = OtpCopy.EN, onChangeNumber: () -> Unit, onGate: (Boolean) -> Unit, onVerifyId: (String?) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     var settings by remember { mutableStateOf(OtpSettings()) }
     var loaded by remember { mutableStateOf(false) }
     var verified by remember(mobileTenDigits) { mutableStateOf(false) }
     var skipped by remember(mobileTenDigits) { mutableStateOf(false) }
-    val controller = remember(mobileTenDigits) { OtpController(scope, otpRepo(), OtpPurpose.VISITOR_VERIFY, demoTenant = QaHooks.fakeCamera) }
+    val controller = remember(mobileTenDigits) { OtpController(scope, otpRepo(), OtpPurpose.VISITOR_VERIFY) }
     LaunchedEffect(Unit) {
         if (OtpAvailability.reachable) {
             settings = runCatching { otpRepo().settings() }.getOrDefault(OtpSettings())
@@ -111,7 +117,7 @@ fun VisitorOtpSection(mobileTenDigits: String, strings: OtpStrings = OtpCopy.EN,
         VisitorOtpCard(
             controller = controller, strings = strings, verified = verified,
             allowSkip = OtpAvailability.visitorSkipVisible(settings),
-            onVerified = { verified = true }, onChangeNumber = onChangeNumber, onSkip = { skipped = true },
+            onVerified = { verified = true; onVerifyId(controller.state.value.visitorVerifyId) }, onChangeNumber = { onVerifyId(null); onChangeNumber() }, onSkip = { skipped = true; onVerifyId(null) },
         )
     }
 }

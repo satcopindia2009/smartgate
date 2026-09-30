@@ -231,8 +231,9 @@ object AttendanceRules {
     fun buildRequest(fix: GpsFix?, photoBase64: String?, nowUtc: Instant, attemptId: String): AttendanceRequest =
         AttendanceRequest(
             imageBase64 = photoBase64,
-            lat = fix?.lat,
-            lng = fix?.lng,
+            // Never half a pair: a lone lat or lng is a 400 VALIDATION on the server.
+            lat = fix?.lat?.takeIf { fix.lng in -180.0..180.0 && it in -90.0..90.0 },
+            lng = fix?.lng?.takeIf { fix.lat in -90.0..90.0 && it in -180.0..180.0 },
             accuracyM = fix?.accuracyM,
             // Always "...T11:00:00Z" (OffsetDateTime.toString() drops zero seconds, which some parsers reject).
             capturedAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(nowUtc.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC)),

@@ -135,7 +135,7 @@ fun GuardClockInGate(
         )
         panel != null && state.step == ClockStep.INFO -> ClockInfoScreen(
             mode = panel, today = state.attendance, schoolName = schoolName,
-            gateLabel = state.attendance?.attendance?.let { ClockInLogic.gateLabel(it) } ?: "Campus",
+            gateLabel = state.attendance?.gateName?.takeIf { it.isNotBlank() } ?: state.attendance?.attendance?.let { ClockInLogic.gateLabel(it) } ?: "Campus",
             onBack = controller::closePanel, onProceed = controller::proceedToSelfie,
         )
         panel != null -> SelfieScreen(
@@ -576,6 +576,21 @@ private fun FaceGuide() {
 /** "Checked In!" / "Checked Out!" (ref-4) with header "Self Check In" / "Self Check Out". */
 @Composable
 fun ClockResultScreen(result: ClockResult, displayName: String, schoolName: String, selfie: Bitmap?, onDone: () -> Unit) {
+    // guardPhotoUrl: the signed URL exactly as the server returned it (MediaUrl keeps ?t=, bearer only for the API host).
+    var serverSelfie by remember(result.guardPhotoUrl) { mutableStateOf<Bitmap?>(null) }
+    androidx.compose.runtime.LaunchedEffect(result.guardPhotoUrl) {
+        val url = result.guardPhotoUrl
+        if (selfie == null && url != null) {
+            serverSelfie = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    com.satcop.smartvisitor.kiosk.data.api.LiveVisitorApi().getMediaByUrl(url).let { b ->
+                        android.graphics.BitmapFactory.decodeByteArray(b, 0, b.size)
+                    }
+                }.getOrNull()
+            }
+        }
+    }
+    val shownSelfie = selfie ?: serverSelfie
     Column(Modifier.fillMaxSize().background(KioskColors.bg)) {
         FlowHeader(ClockInLogic.headerTitle(result.mode), schoolName, onBack = onDone)
         Column(
@@ -589,8 +604,8 @@ fun ClockResultScreen(result: ClockResult, displayName: String, schoolName: Stri
                     Modifier.fillMaxSize().clip(CircleShape).border(4.dp, KioskColors.green, CircleShape).background(KioskColors.secondaryFill),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (selfie != null) {
-                        Image(selfie.asImageBitmap(), "Your selfie", Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
+                    if (shownSelfie != null) {
+                        Image(shownSelfie.asImageBitmap(), "Your selfie", Modifier.fillMaxSize().clip(CircleShape), contentScale = ContentScale.Crop)
                     } else {
                         Text(ClockInLogic.firstName(displayName).take(1).uppercase(), fontSize = 40.sp, color = KioskColors.textMuted)
                     }

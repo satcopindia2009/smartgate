@@ -189,6 +189,7 @@ fun AddVisitorFormStep(
     onBack: () -> Unit,
     onContinue: () -> Unit,
     onSwitchKind: () -> Unit = {},
+    onOtpId: (String?) -> Unit = {},
 ) {
     var confirmSwitch by remember { mutableStateOf(false) }
     val kind = state.kind
@@ -286,6 +287,7 @@ fun AddVisitorFormStep(
             mobileTenDigits = draft.mobile.filter { it.isDigit() }.takeLast(10),
             onChangeNumber = onBack,
             onGate = { otpMayContinue = it },
+            onVerifyId = onOtpId,
         )
         PanelDivider()
         Column(

@@ -522,6 +522,7 @@ private fun KioskStep(
                 onBack = viewModel::back,
                 onContinue = viewModel::continueFromStep2,
                 onSwitchKind = viewModel::avSwitchKind,
+                onOtpId = viewModel::avSetOtpId,
             )
         }
         3 -> PhotoIdStep(
