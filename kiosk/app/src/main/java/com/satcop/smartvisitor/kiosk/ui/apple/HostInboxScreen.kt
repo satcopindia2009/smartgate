@@ -110,6 +110,7 @@ fun HostInboxScreen(
             rejectReason = rejectReason,
             onBack = { detailId = null; onCancelReject(); onDismissNotice() },
             notice = notice,
+            afterHours = afterHours || detailVisit.afterHours,
             gateName = detailVisit.gateId?.let { gateNames[it] },
             onApprove = onApprove,
             onStartReject = onStartReject,
@@ -313,6 +314,7 @@ private fun HostVisitDetail(
     rejectReason: String?,
     onBack: () -> Unit,
     notice: String? = null,
+    afterHours: Boolean = false,
     gateName: String? = null,
     onApprove: (String) -> Unit,
     onStartReject: (String) -> Unit,
@@ -336,6 +338,13 @@ private fun HostVisitDetail(
                 )
             }
             Text("Visit details", style = SgType.SectionTitle, color = KioskColors.text)
+        }
+        // Always visible (not inside the scroll, not under the pinned bar): shown for any pending after-hours
+        // visit, and it carries the server's reason after a failed Approve.
+        if (isPending && (afterHours || notice != null)) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = SgSpacing.ScreenMargin).padding(bottom = 8.dp)) {
+                NoticeBanner(notice ?: AfterHoursCopy.HOST_NO_OP)
+            }
         }
         Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
@@ -400,9 +409,6 @@ private fun HostVisitDetail(
                     }
                 }
             }
-        }
-        if (isPending && notice != null) {
-            Box(Modifier.fillMaxWidth().padding(horizontal = SgSpacing.ScreenMargin).padding(bottom = 8.dp)) { NoticeBanner(notice) }
         }
         if (isPending) {
             Row(

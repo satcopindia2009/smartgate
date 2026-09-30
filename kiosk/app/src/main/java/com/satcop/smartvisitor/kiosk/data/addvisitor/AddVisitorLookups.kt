@@ -36,7 +36,19 @@ class ContractLookup(private val api: LiveVisitorApi = LiveVisitorApi()) : AddVi
             }
             val open = r.openVisit
             if (open != null) {
-                return LookupOutcome.OpenVisit(OpenVisitInfo(open.visitId, open.status.orEmpty().ifBlank { "pending" }, open.hostName, open.hostId))
+                return LookupOutcome.OpenVisit(
+                    OpenVisitInfo(
+                        visitId = open.visitId,
+                        status = open.status.orEmpty().ifBlank { "pending" },
+                        hostName = open.hostName,
+                        hostId = open.hostId,
+                        visitorName = r.name?.takeIf { it.isNotBlank() },
+                        mobileMasked = r.mobileMasked?.takeIf { it.isNotBlank() },
+                        purpose = open.purpose?.takeIf { it.isNotBlank() },
+                        askedAtLabel = open.since?.let { com.satcop.smartvisitor.kiosk.ui.guardhome.ClockInLogic.time12h(it).takeIf { t -> t != "—" } },
+                        photoUrl = r.photoUrl?.takeIf { it.isNotBlank() },
+                    ),
+                )
             }
             if (!r.found) return LookupOutcome.NotFound
             val kind = if ((r.kind ?: r.profileType).equals("vendor", true)) ProfileKind.VENDOR else ProfileKind.VISITOR

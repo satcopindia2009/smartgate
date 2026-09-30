@@ -566,6 +566,7 @@ private fun KioskStep(
             blacklistHit = state.blacklistHit,
             dataSource = state.dataSource,
             afterHoursHint = state.afterHours,
+            photo = state.livePhoto,
             onNewVisitor = viewModel::registerAnother,
         )
     }
