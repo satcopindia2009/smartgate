@@ -170,7 +170,17 @@ fun KioskApp(
                     }
                 } else {
                     val role = state.homeRole()
-                    if (role == KioskRole.GUARD && state.screen == KioskScreen.COURIER) {
+                    if (role == KioskRole.GUARD) {
+                        // 1064: the guard app stays locked until the SERVER says the guard is clocked in today.
+                        val guardHome: com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeViewModel =
+                            viewModel(key = "guard-home-${state.sessionEpoch}")
+                        com.satcop.smartvisitor.kiosk.ui.guardhome.GuardClockInGate(
+                            controller = guardHome.controller,
+                            displayName = state.meDisplayName,
+                            schoolName = state.schoolName,
+                            onLogout = viewModel::logout,
+                        ) { requestLogout ->
+                    if (state.screen == KioskScreen.COURIER) {
                         CourierLogScreen(
                             company = state.courierCompany,
                             tracking = state.courierTracking,
@@ -193,7 +203,7 @@ fun KioskApp(
                             onHandOver = viewModel::handOverCourier,
                             onBack = viewModel::closeGuardTool,
                         )
-                    } else if (role == KioskRole.GUARD && state.screen == KioskScreen.LOST_FOUND) {
+                    } else if (state.screen == KioskScreen.LOST_FOUND) {
                         LostFoundCreateScreen(
                             description = state.lfDescription,
                             location = state.lfLocation,
@@ -213,7 +223,7 @@ fun KioskApp(
                             onSubmit = viewModel::submitLostFound,
                             onBack = viewModel::closeGuardTool,
                         )
-                    } else if (role == KioskRole.GUARD) {
+                    } else {
                         // AC-APP1: GuardPatrolApp always wraps GuardTodayShell + M3 NavigationBar
                         // (Today|Patrol|Desk|More). Patrol tab = assign→perform.
                         GuardPatrolApp(
@@ -221,9 +231,11 @@ fun KioskApp(
                             onExit = null,
                             onCourier = viewModel::openCourier,
                             onLostFound = viewModel::openLostFound,
-                            onLogout = viewModel::logout,
-                            homeVm = viewModel(key = "guard-home-${state.sessionEpoch}"),
+                            onLogout = requestLogout,
+                            homeVm = guardHome,
                         )
+                    }
+                        }
                     } else if (role == KioskRole.HOST) {
                         HostInboxScreen(
                             displayName = state.meDisplayName,

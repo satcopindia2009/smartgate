@@ -22,7 +22,7 @@ object ErrorCopy {
     const val ALREADY_CHECKED_IN = "You are already checked in for today."
     const val NOT_CHECKED_IN = "You have not checked in today. Please check in first."
     const val PHOTO_REQUIRED = "Please take a photo to continue."
-    const val FACE_REQUIRED = "Face verification is required to continue."
+    const val FACE_REQUIRED = "Face verification required. Please verify your face to continue."
     const val ADMIN_USE_WEB = "Please use the web dashboard."
     const val UNREACHABLE = "Can't reach the server right now. Check your internet connection and try again."
     const val TEMPORARILY_DOWN = "Server is temporarily unreachable. Retry in a minute — this is not a wrong password."
@@ -55,7 +55,7 @@ object ErrorCopy {
         when (e.code.uppercase()) {
             "INVALID_CREDENTIALS" -> return INVALID_CREDENTIALS
             "ACCOUNT_INACTIVE", "USER_INACTIVE" -> return ACCOUNT_INACTIVE
-            "FORBIDDEN" -> return FORBIDDEN
+            "FORBIDDEN" -> return ADMIN_USE_WEB // final table: FORBIDDEN on mobile = web dashboard
             "UNAUTHORIZED" -> return SIGN_IN
             "TOKEN_EXPIRED" -> return SESSION_EXPIRED
             "TOKEN_INVALID" -> return SESSION_INVALID

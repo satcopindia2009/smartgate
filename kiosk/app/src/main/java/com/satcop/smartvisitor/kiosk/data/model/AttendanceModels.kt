@@ -32,6 +32,18 @@ data class AttendanceRow(
     val outGeofenceStatus: String? = null,
     val warn: String? = null,
     val idempotent: Boolean = false,
+    // 1064 result screen. Present today: id (GA-xxxx), serverTime, timestamp (ISO +05:30), guardName, photoKey, photoUrl.
+    // Announced by Backend (additive, not yet confirmed): gateName, schoolName, selfieUploaded, guardPhotoUrl.
+    val serverTime: String? = null,
+    val timestamp: String? = null,
+    val guardName: String? = null,
+    val photoKey: String? = null,
+    val photoUrl: String? = null,
+    val gateName: String? = null,
+    val schoolName: String? = null,
+    val selfieUploaded: Boolean? = null,
+    val guardPhotoUrl: String? = null,
+    val geofenceMode: String? = null,
 )
 
 @Serializable
@@ -55,9 +67,13 @@ data class TodayAttendance(
 data class AttendanceRequest(
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val imageBase64: String? = null,
-    val lat: Double,
-    val lng: Double,
-    val accuracyM: Double,
+    // null lat/lng/accuracy = location unavailable (server treats it as gpsMissing; check-in soft mode only).
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val lat: Double? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val lng: Double? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val accuracyM: Double? = null,
     val capturedAt: String,
     val gpsMissing: Boolean = false,
     val attemptId: String,

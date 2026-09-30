@@ -75,13 +75,7 @@ fun GuardHomeScreen(
     LaunchedEffect(state.toast) {
         state.toast?.let { onToast(it); controller.clearToast() }
     }
-    BackHandler(enabled = state.panel != null || state.view != HomeView.HOME) { controller.back() }
-
-    val panel = state.panel
-    if (panel != null) {
-        AttendancePanel(mode = panel, state = state, controller = controller)
-        return
-    }
+    BackHandler(enabled = state.view != HomeView.HOME) { controller.back() }
 
     when (state.view) {
         HomeView.HOME -> HomeBody(
@@ -186,10 +180,8 @@ private fun AttendanceCard(state: GuardHomeState, controller: GuardHomeControlle
         ApplePlainButton("Try again", onClick = controller::refresh)
     }
     when (today?.state ?: AttendanceState.NONE) {
-        AttendanceState.NONE -> if (today == null || today.canCheckIn) {
-            Spacer(Modifier.height(8.dp))
-            ApplePrimaryButton("Check in") { controller.openPanel(AttendanceMode.CHECK_IN) }
-        }
+        // 1064: no "Check in" button on Home. Check-in only happens on the lock screen (Self Check In).
+        AttendanceState.NONE -> Unit
         AttendanceState.PRESENT -> if (today?.canClockOut != false) {
             Spacer(Modifier.height(8.dp))
             ApplePrimaryButton("Clock out") { controller.openPanel(AttendanceMode.CLOCK_OUT) }

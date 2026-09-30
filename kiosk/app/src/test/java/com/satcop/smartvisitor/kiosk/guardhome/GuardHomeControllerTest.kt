@@ -103,13 +103,13 @@ class GuardHomeControllerTest {
     fun checkInSendsOneRequestWithEverythingThenRefreshes() {
         val c = controller()
         c.refresh()
-        c.openPanel(AttendanceMode.CHECK_IN)
+        c.openPanel(AttendanceMode.CHECK_IN); c.proceedToSelfie()
         c.submit("B64", clock - 1000, fix())
         assertEquals(1, api.checkIns.size)
         val r = api.checkIns.single()
         assertEquals("B64", r.imageBase64)
-        assertEquals(18.5, r.lat, 0.0)
-        assertEquals(10.0, r.accuracyM, 0.0)
+        assertEquals(18.5, r.lat!!, 0.0)
+        assertEquals(10.0, r.accuracyM!!, 0.0)
         assertEquals("att-1", r.attemptId)
         assertEquals("2026-09-30T11:00:00Z", r.capturedAt)
         assertNull(c.state.value.panel)
@@ -120,7 +120,7 @@ class GuardHomeControllerTest {
     @Test
     fun noRequestIsSentWithoutFreshLocation() {
         val c = controller()
-        c.openPanel(AttendanceMode.CHECK_IN)
+        c.openPanel(AttendanceMode.CHECK_IN); c.proceedToSelfie()
         c.submit("B64", clock, null)
         c.submit("B64", clock, fix(ageMs = 60_000))
         c.submit("B64", clock, fix(acc = 500.0))
@@ -132,7 +132,7 @@ class GuardHomeControllerTest {
     fun outsideFenceStaysOnPanelWithPlainCopyAndRetryNeedsNewReading() {
         api.checkInError = err("GEO_FENCE_RESTRICTED", 403, "Outside campus geo-fence; action blocked (geoFenceMode=restrict)")
         val c = controller()
-        c.openPanel(AttendanceMode.CHECK_IN)
+        c.openPanel(AttendanceMode.CHECK_IN); c.proceedToSelfie()
         val first = fix()
         c.submit("B64", clock, first)
         val s = c.state.value
@@ -155,7 +155,7 @@ class GuardHomeControllerTest {
     @Test
     fun gpsAccuracyLowAndStaleShowServerCopy() {
         val c = controller()
-        c.openPanel(AttendanceMode.CHECK_IN)
+        c.openPanel(AttendanceMode.CHECK_IN); c.proceedToSelfie()
         api.checkInError = err("GPS_ACCURACY_LOW")
         c.submit("B", clock, fix())
         assertEquals("Unable to get an accurate location. Please enable GPS and try again.", c.state.value.panelMessage)
@@ -170,7 +170,7 @@ class GuardHomeControllerTest {
         api.clockOutError = err("ALREADY_CLOCKED_OUT", 409)
         api.today = TodayAttendance(attendanceStatus = "CLOCKED_OUT")
         val c = controller()
-        c.openPanel(AttendanceMode.CLOCK_OUT)
+        c.openPanel(AttendanceMode.CLOCK_OUT); c.proceedToSelfie()
         c.submit(null, null, fix())
         assertNull(c.state.value.panel)
         assertEquals("You have already clocked out for today.", c.state.value.toast)
@@ -182,7 +182,7 @@ class GuardHomeControllerTest {
     fun clockOutWorksWithoutPhotoAndCannotDoubleSubmit() {
         api.today = TodayAttendance(attendanceStatus = "PRESENT", canClockOut = true)
         val c = controller()
-        c.openPanel(AttendanceMode.CLOCK_OUT)
+        c.openPanel(AttendanceMode.CLOCK_OUT); c.proceedToSelfie()
         c.submit(null, null, fix())
         assertEquals(1, api.clockOuts.size)
         assertNull(api.clockOuts.single().imageBase64)
@@ -231,7 +231,7 @@ class GuardHomeControllerTest {
     fun backClosesPanelThenSubViewThenExits() {
         val c = controller()
         c.openFind()
-        c.openPanel(AttendanceMode.CHECK_IN)
+        c.openPanel(AttendanceMode.CHECK_IN); c.proceedToSelfie()
         assertTrue(c.back())
         assertNull(c.state.value.panel)
         assertTrue(c.back())
@@ -250,5 +250,86 @@ class GuardHomeControllerTest {
         assertEquals(0, c.state.value.summary.all)
         assertEquals(VisitFilter.PENDING, c.state.value.listFilter)
         assertEquals("Asia/Kolkata", GuardHomeLogic.IST.id)
+    }
+}
+
+class GuardClockFlowTest {
+    private var clock = 1_000_000L
+    private val api = FakeApi()
+    private var attempt = 0
+    private var perm = true
+    private fun controller() = GuardHomeController(
+        scope = CoroutineScope(Dispatchers.Unconfined), api = api, io = Dispatchers.Unconfined,
+        nowElapsedMs = { clock }, nowInstant = { Instant.parse("2026-09-30T11:00:00Z") },
+        newAttemptId = { "att-${++attempt}" }, hasLocationPermission = { perm },
+    )
+    private fun fix() = GpsFix(18.5, 73.8, 10.0, clock - 500)
+
+    @Test
+    fun submitBeforeSelfieStepDoesNothing() {
+        val c = controller()
+        c.openPanel(AttendanceMode.CHECK_IN)
+        c.submit("B64", clock - 1000, fix())
+        assertEquals(0, api.checkIns.size)
+    }
+
+    @Test
+    fun lockedUntilAttendanceLoadedThenServerDecides() {
+        val c = controller()
+        assertFalse(c.state.value.attendanceLoaded)
+        c.refreshAttendance()
+        assertTrue(c.state.value.attendanceLoaded)
+        assertEquals(0, api.queries.size) // no visitor data is read on the lock screen
+    }
+
+    @Test
+    fun successShowsResultWithApiIdAndFailureShowsNoResult() {
+        val c = controller()
+        c.openPanel(AttendanceMode.CHECK_IN); c.proceedToSelfie()
+        api.checkInError = ApiException("GEO_FENCE_RESTRICTED", "x", 403)
+        c.submit("B64", clock - 1000, fix())
+        assertNull(c.state.value.result)
+        assertEquals(1, c.state.value.attemptNo)
+        assertTrue(c.state.value.panelError)
+        assertEquals(AttendanceMode.CHECK_IN, c.state.value.panel) // stays on selfie screen
+        api.checkInError = null
+        clock += 5000 // Retry = NEW selfie + NEW location reading
+        c.submit("B64-2", clock - 500, fix())
+        assertEquals("GA-1", c.state.value.result?.recordId)
+        assertEquals(2, api.checkIns.size)
+        assertEquals("att-1", api.checkIns[0].attemptId)
+        assertNotEquals(api.checkIns[0].attemptId, api.checkIns[1].attemptId)
+        c.clearResult()
+        assertNull(c.state.value.result)
+    }
+
+    @Test
+    fun checkInWithoutLocationPermissionIsSentWithoutCoordinates() {
+        perm = false
+        val c = controller()
+        c.openPanel(AttendanceMode.CHECK_IN); c.proceedToSelfie()
+        c.submit("B64", clock - 1000, null)
+        val r = api.checkIns.single()
+        assertNull(r.lat); assertNull(r.lng); assertTrue(r.gpsMissing)
+    }
+
+    @Test
+    fun restrictModeRefusalShowsLocationNeededCopy() {
+        perm = false
+        val c = controller()
+        api.checkInError = ApiException("GEO_FENCE_RESTRICTED", "x", 403)
+        c.openPanel(AttendanceMode.CHECK_IN); c.proceedToSelfie()
+        c.submit("B64", clock - 1000, null)
+        assertEquals("Location access is needed to check in.", c.state.value.panelMessage)
+    }
+
+    @Test
+    fun clockOutWithoutLocationNeverReachesServer() {
+        perm = false
+        val c = controller()
+        c.openPanel(AttendanceMode.CLOCK_OUT); c.proceedToSelfie()
+        c.submit("B64", clock - 1000, null)
+        assertEquals(0, api.clockOuts.size)
+        assertEquals("Your location is required to clock out. Please turn on GPS and try again.", c.state.value.panelMessage)
     }
 }

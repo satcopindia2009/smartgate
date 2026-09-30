@@ -16,7 +16,7 @@ class ErrorCopyTest {
     fun contractCopyTable() {
         assertEquals("Invalid username or password", ErrorCopy.forApi(e("INVALID_CREDENTIALS", 401)))
         assertEquals("Your account is inactive. Please contact administrator.", ErrorCopy.forApi(e("ACCOUNT_INACTIVE", 403)))
-        assertEquals("You do not have permission to access this page.", ErrorCopy.forApi(e("FORBIDDEN", 403)))
+        assertEquals("Please use the web dashboard.", ErrorCopy.forApi(e("FORBIDDEN", 403)))
         assertEquals("Your session has expired. Please sign in again.", ErrorCopy.forApi(e("TOKEN_EXPIRED", 401)))
         assertEquals("Your session is not valid. Please sign in again.", ErrorCopy.forApi(e("TOKEN_INVALID", 401)))
         assertEquals("You are outside the school campus. Please move inside the campus and try again.", ErrorCopy.forApi(e("GEO_FENCE_RESTRICTED", 403)))

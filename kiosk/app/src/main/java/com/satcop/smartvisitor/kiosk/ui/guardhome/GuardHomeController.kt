@@ -30,6 +30,8 @@ interface GuardHomeApi {
 
 enum class HomeView { HOME, LIST, FIND }
 
+enum class SettingsHint { CAMERA, LOCATION }
+
 data class GuardHomeState(
     val today: LocalDate = GuardHomeLogic.todayIst(),
     val loading: Boolean = false,
@@ -51,6 +53,17 @@ data class GuardHomeState(
     val findResults: List<VisitOut>? = null,
     val findMessage: String? = null,
     val toast: String? = null,
+    // --- 1064 clock-in flow ---
+    /** True once GET /attendance/me/today answered (or failed) at least once. */
+    val attendanceLoaded: Boolean = false,
+    val step: ClockStep = ClockStep.INFO,
+    /** Non-null after a successful check-in / check-out: shows "Checked In!" / "Checked Out!" until Done. */
+    val result: ClockResult? = null,
+    /** Bumped after every failed attempt: the UI drops the old selfie (retry ALWAYS recaptures). */
+    val attemptNo: Int = 0,
+    /** Non-blocking notice on the selfie screen (e.g. location off in soft mode). */
+    val notice: String? = null,
+    val settingsHint: SettingsHint? = null,
 ) {
     val summary: VisitSummary get() = GuardHomeLogic.summary(visits, today)
 }
@@ -91,6 +104,7 @@ class GuardHomeController(
             _state.update {
                 it.copy(
                     loading = false,
+                    attendanceLoaded = true,
                     // Keep the last good card on a failed refresh; the error line explains why.
                     attendance = att.getOrNull() ?: it.attendance,
                     attendanceError = att.exceptionOrNull()?.let(ErrorCopy::forThrowable),
@@ -100,6 +114,37 @@ class GuardHomeController(
                 )
             }
         }
+    }
+
+    /** Lock-screen refresh: attendance only (no visitor data is read before clock-in). */
+    fun refreshAttendance() {
+        if (refreshInFlight) return
+        refreshInFlight = true
+        scope.launch {
+            val att = runCatching { withContext(io) { api.attendanceToday() } }
+            refreshInFlight = false
+            _state.update {
+                it.copy(
+                    attendanceLoaded = true,
+                    attendance = att.getOrNull() ?: it.attendance,
+                    attendanceError = att.exceptionOrNull()?.let(ErrorCopy::forThrowable),
+                )
+            }
+        }
+    }
+
+    /** Info screen -> selfie screen. */
+    fun proceedToSelfie() {
+        _state.update { it.copy(step = ClockStep.SELFIE, panelMessage = null, panelError = false, notice = null, settingsHint = null) }
+    }
+
+    /** "Done" on the result screen. */
+    fun clearResult() {
+        _state.update { it.copy(result = null) }
+    }
+
+    fun reportCameraDenied() {
+        _state.update { it.copy(panelMessage = ClockInLogic.CAMERA_OFF, panelError = true, settingsHint = SettingsHint.CAMERA) }
     }
 
     fun openList(filter: VisitFilter) {
@@ -158,12 +203,15 @@ class GuardHomeController(
 
     fun openPanel(mode: AttendanceMode) {
         _state.update {
-            it.copy(panel = mode, panelBusy = false, panelMessage = null, panelError = false, failedFixElapsedMs = null)
+            it.copy(
+                panel = mode, step = ClockStep.INFO, panelBusy = false, panelMessage = null, panelError = false,
+                failedFixElapsedMs = null, notice = null, settingsHint = null, result = null,
+            )
         }
     }
 
     fun closePanel() {
-        _state.update { it.copy(panel = null, panelBusy = false, panelMessage = null, panelError = false) }
+        _state.update { it.copy(panel = null, step = ClockStep.INFO, panelBusy = false, panelMessage = null, panelError = false, notice = null, settingsHint = null) }
     }
 
     fun clearToast() {
@@ -184,20 +232,41 @@ class GuardHomeController(
         val s = _state.value
         val mode = s.panel ?: return
         if (s.panelBusy) return
-        val ready = AttendanceRules.readiness(
-            mode = mode,
-            hasPhoto = photoBase64 != null,
-            photoAtElapsedMs = photoAtElapsedMs,
-            fix = fix,
-            failedFixElapsedMs = s.failedFixElapsedMs,
-            nowElapsedMs = nowElapsedMs(),
-            locationPermission = hasLocationPermission(),
-        )
-        if (ready is Readiness.Blocked) {
-            _state.update { it.copy(panelMessage = ready.message, panelError = true) }
+        if (s.step != ClockStep.SELFIE) return
+        val perm = hasLocationPermission()
+        val sendNoLocation = mode == AttendanceMode.CHECK_IN && !perm
+        val decision = ClockInLogic.locationDecision(mode, perm, fix != null)
+        if (decision is ClockInLogic.LocationDecision.Blocked) {
+            _state.update {
+                it.copy(panelMessage = decision.message, panelError = true, attemptNo = it.attemptNo + 1, settingsHint = SettingsHint.LOCATION)
+            }
             return
         }
-        val useFix = (ready as Readiness.Ready).fix
+        val useFix: GpsFix?
+        if (sendNoLocation) {
+            // Soft mode: allowed with a flag. Restrict mode: the server refuses and we show LOCATION_NEEDED below.
+            val blocked = AttendanceRules.photoReadiness(mode, photoBase64 != null, photoAtElapsedMs, nowElapsedMs())
+            if (blocked != null) {
+                _state.update { it.copy(panelMessage = blocked.message, panelError = true, attemptNo = it.attemptNo + 1) }
+                return
+            }
+            useFix = null
+        } else {
+            val ready = AttendanceRules.readiness(
+                mode = mode,
+                hasPhoto = photoBase64 != null,
+                photoAtElapsedMs = photoAtElapsedMs,
+                fix = fix,
+                failedFixElapsedMs = s.failedFixElapsedMs,
+                nowElapsedMs = nowElapsedMs(),
+                locationPermission = perm,
+            )
+            if (ready is Readiness.Blocked) {
+                _state.update { it.copy(panelMessage = ready.message, panelError = true, attemptNo = it.attemptNo + 1) }
+                return
+            }
+            useFix = (ready as Readiness.Ready).fix
+        }
         val req = AttendanceRules.buildRequest(useFix, photoBase64, nowInstant(), newAttemptId())
         _state.update { it.copy(panelBusy = true, panelMessage = null, panelError = false) }
         scope.launch {
@@ -208,9 +277,12 @@ class GuardHomeController(
             }
             val err = res.exceptionOrNull()
             if (err == null) {
+                val row = res.getOrThrow()
                 _state.update {
                     it.copy(
-                        panel = null, panelBusy = false, panelMessage = null, panelError = false,
+                        panel = null, step = ClockStep.INFO, panelBusy = false, panelMessage = null, panelError = false,
+                        notice = null, settingsHint = null,
+                        result = ClockInLogic.resultFrom(mode, row),
                         toast = if (mode == AttendanceMode.CHECK_IN) "You are checked in." else "You are clocked out.",
                     )
                 }
@@ -218,7 +290,8 @@ class GuardHomeController(
                 return@launch
             }
             val code = (err as? ApiException)?.code.orEmpty()
-            val msg = ErrorCopy.forThrowable(err)
+            val refusedNoLoc = ClockInLogic.checkInRefusedWithoutLocation(code, sendNoLocation)
+            val msg = if (refusedNoLoc) ClockInLogic.LOCATION_NEEDED else ErrorCopy.forThrowable(err)
             when {
                 AttendanceRules.stateAlreadyMoved(code) -> {
                     _state.update { it.copy(panel = null, panelBusy = false, toast = msg) }
@@ -229,7 +302,9 @@ class GuardHomeController(
                         panelBusy = false,
                         panelMessage = msg,
                         panelError = true,
-                        failedFixElapsedMs = if (AttendanceRules.needsFreshReading(code)) useFix.elapsedMs else it.failedFixElapsedMs,
+                        attemptNo = it.attemptNo + 1,
+                        settingsHint = if (refusedNoLoc) SettingsHint.LOCATION else null,
+                        failedFixElapsedMs = if (AttendanceRules.needsFreshReading(code) && useFix != null) useFix.elapsedMs else it.failedFixElapsedMs,
                     )
                 }
             }

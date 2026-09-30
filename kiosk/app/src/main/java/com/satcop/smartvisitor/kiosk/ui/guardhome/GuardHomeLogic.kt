@@ -219,15 +219,24 @@ object AttendanceRules {
         }
     }
 
-    fun buildRequest(fix: GpsFix, photoBase64: String?, nowUtc: Instant, attemptId: String): AttendanceRequest =
+    /** Photo checks only (used when a check-in goes out without a location). */
+    fun photoReadiness(mode: AttendanceMode, hasPhoto: Boolean, photoAtElapsedMs: Long?, nowElapsedMs: Long): Readiness.Blocked? {
+        if (mode == AttendanceMode.CHECK_IN && !hasPhoto) return Readiness.Blocked(NEED_PHOTO)
+        if (hasPhoto && photoAtElapsedMs != null && nowElapsedMs - photoAtElapsedMs > PHOTO_MAX_AGE_MS) {
+            return Readiness.Blocked(PHOTO_TOO_OLD, needsRetakePhoto = true)
+        }
+        return null
+    }
+
+    fun buildRequest(fix: GpsFix?, photoBase64: String?, nowUtc: Instant, attemptId: String): AttendanceRequest =
         AttendanceRequest(
             imageBase64 = photoBase64,
-            lat = fix.lat,
-            lng = fix.lng,
-            accuracyM = fix.accuracyM,
+            lat = fix?.lat,
+            lng = fix?.lng,
+            accuracyM = fix?.accuracyM,
             // Always "...T11:00:00Z" (OffsetDateTime.toString() drops zero seconds, which some parsers reject).
             capturedAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(nowUtc.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC)),
-            gpsMissing = false,
+            gpsMissing = fix == null,
             attemptId = attemptId,
         )
 

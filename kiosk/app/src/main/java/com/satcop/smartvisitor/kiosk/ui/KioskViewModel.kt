@@ -296,8 +296,8 @@ class KioskViewModel(
             _state.update { it.copy(loginBusy = true, loginError = null, toast = null) }
             try {
                 val me = repository.login(username, password)
-                if (me.role.trim().equals("admin", ignoreCase = true)) {
-                    // D1: Admin is web only. Never keep an admin token on the phone.
+                if (KioskRole.isWebOnly(me.role)) {
+                    // D1: Admin and security_head are web only. Never keep an admin token on the phone.
                     runCatching { repository.logout() }
                     AppAuth.session.clear()
                     _state.update {

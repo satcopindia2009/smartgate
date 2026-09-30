@@ -3,10 +3,13 @@ package com.satcop.smartvisitor.kiosk.ui
 enum class KioskRole {
     GATE, HOST, GUARD, UNSUPPORTED;
     companion object {
+        /** Roles that live on the web dashboard only (Product final rulings 4). */
+        fun isWebOnly(role: String?): Boolean = role?.trim()?.lowercase() in setOf("admin", "security_head")
+
         fun fromJwt(role: String?): KioskRole = when (role?.trim()?.lowercase()) {
             "gate" -> GATE
             "host" -> HOST
-            "guard", "security_head" -> GUARD
+            "guard" -> GUARD
             else -> UNSUPPORTED
         }
     }
