@@ -159,14 +159,6 @@ fun OutcomeStep(
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    if (canDemoApprove) {
-                        KioskCyanButton(
-                            text = "Demo host approve",
-                            onClick = onDemoApprove,
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
                 }
                 if (status == "approved") {
                     KioskCyanButton(
@@ -180,14 +172,6 @@ fun OutcomeStep(
                     KioskCyanButton(
                         text = if (busy) "Scanning…" else "Check out",
                         onClick = onCheckOut,
-                        enabled = !busy,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                if (showStory) {
-                    KioskGhostButton(
-                        text = "Load P-4F21 story",
-                        onClick = onLoadStory,
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -207,9 +191,6 @@ fun OutcomeStep(
             ) {
                 if (status == "pending") {
                     KioskGhostButton(text = if (busy) "Refreshing…" else "Refresh", onClick = onRefresh, enabled = !busy)
-                    if (canDemoApprove) {
-                        KioskCyanButton(text = "Demo host approve", onClick = onDemoApprove, enabled = !busy)
-                    }
                 }
                 if (status == "approved") {
                     KioskCyanButton(text = if (busy) "Scanning…" else "Check in", onClick = onCheckIn, enabled = !busy)
@@ -222,9 +203,6 @@ fun OutcomeStep(
                 modifier = Modifier.padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (showStory) {
-                    KioskGhostButton(text = "Load P-4F21 story", onClick = onLoadStory, enabled = !busy)
-                }
             }
             KioskPrimaryButton(
                 text = "Register another visitor",
@@ -342,11 +320,7 @@ private fun headline(status: String): String = when (status) {
 }
 
 private fun subtitle(status: String, visit: VisitOut?, source: DataSource): String = when (status) {
-    "pending" -> if (source == DataSource.FIXTURES) {
-        "No QR yet · Demo host approve issues pass"
-    } else {
-        "No QR yet · host must approve · then Refresh"
-    }
+    "pending" -> "Waiting for host approval. The pass is issued once the host approves."
     "approved" -> "Pass issued · ${visit?.passId ?: "ready"} · show QR at gate"
     "inside" -> "Checked in · present QR on exit"
     "completed" -> "Visit complete · ${visit?.passId ?: ""}"

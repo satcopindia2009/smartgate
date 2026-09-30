@@ -92,7 +92,7 @@ data class KioskUiState(
     val schoolId: String = "",
     val timezone: String = DemoFixtures.SCHOOL_TZ,
     val clockLabel: String = "",
-    val watermark: String = DemoFixtures.WATERMARK,
+    val watermark: String = "",
     val dataSource: DataSource = DataSource.FIXTURES,
     val meDisplayName: String = "",
     val meRole: String = "",
@@ -429,9 +429,7 @@ class KioskViewModel(
             val defaultHostId = story.hostId
                 .takeIf { id -> !hideStory && hosts.any { it.id == id } }
                 ?: hosts.firstOrNull()?.id
-            val watermark = me.meta?.watermark
-                ?: staff.meta?.watermark
-                ?: DemoFixtures.WATERMARK
+            val watermark = ""
             val source = repository.dataSource
             _state.update {
                 it.copy(
@@ -466,7 +464,7 @@ class KioskViewModel(
                     toast = if (source == DataSource.LIVE) {
                         "Signed in · ${me.displayName}"
                     } else {
-                        "FIXTURES · signed in · live directory unreachable"
+                        "Signed in · some lists could not be loaded"
                     },
                     toastKind = if (source == DataSource.LIVE) ToastKind.SUCCESS else ToastKind.WARNING,
                 )
@@ -490,7 +488,7 @@ class KioskViewModel(
                 loginPassword = "",
                 schoolName = me.schoolName?.takeIf { n -> n.isNotBlank() } ?: me.schoolId.ifBlank { it.schoolName },
                 schoolId = me.schoolId,
-                watermark = me.meta?.watermark ?: DemoFixtures.WATERMARK,
+                watermark = "",
                 dataSource = source,
                 meDisplayName = me.displayName,
                 meRole = me.role,
@@ -1126,13 +1124,17 @@ class KioskViewModel(
             }
             return
         }
-        val bmp = bitmap ?: PlaceholderBitmap.livePhoto(_state.value.draft.visitorName)
+        if (bitmap == null) {
+            // No camera picture = no photo. Nothing is invented; the guard must try again.
+            _state.update { it.copy(toast = "The photo could not be taken. Please try again.", toastKind = ToastKind.WARNING) }
+            return
+        }
         _state.update {
             it.copy(
-                livePhoto = bmp,
+                livePhoto = bitmap,
                 draft = it.draft.copy(livePhotoCaptured = true),
                 fieldErrors = it.fieldErrors - "livePhotoKey",
-                toast = if (bitmap == null) "Live photo captured (demo placeholder)" else "Live photo captured",
+                toast = "Visitor photo saved",
                 toastKind = ToastKind.SUCCESS,
             )
         }
@@ -1145,13 +1147,16 @@ class KioskViewModel(
             }
             return
         }
-        val bmp = bitmap ?: PlaceholderBitmap.idCard(_state.value.draft)
-        // ID number stays compulsory — capturing ID must not clear idNumber errors.
+        if (bitmap == null) {
+            _state.update { it.copy(toast = "The ID photo could not be taken. Please try again.", toastKind = ToastKind.WARNING) }
+            return
+        }
+        // ID number stays compulsory: capturing the ID photo does not clear idNumber errors.
         _state.update {
             it.copy(
-                idImage = bmp,
+                idImage = bitmap,
                 draft = it.draft.copy(idImageCaptured = true),
-                toast = if (bitmap == null) "ID captured (demo)" else "ID captured",
+                toast = "ID photo saved",
                 toastKind = ToastKind.INFO,
             )
         }
@@ -1176,23 +1181,12 @@ class KioskViewModel(
         _state.update { it.copy(draft = it.draft.block(), fieldErrors = emptyMap()) }
     }
 
-    fun prefillSample() {
-        if (_state.value.hideDemoStory) {
-            _state.update {
-                it.copy(toast = "Sample chips are off for this school", toastKind = ToastKind.INFO)
-            }
-            return
-        }
-        applyDraft(RegistrationDraft.fromStory(_state.value.story), "Sample parent visit loaded (fixture)")
-    }
+    /** Removed: no sample data in the app. Kept as an inert hook for the shell wiring. */
+    fun prefillSample() = Unit
 
-    fun applyBlockSample() {
-        applyDraft(RegistrationDraft.blockSample(), "Block sample loaded · Vikram More")
-    }
+    fun applyBlockSample() = Unit
 
-    fun applyAlertSample() {
-        applyDraft(RegistrationDraft.alertSample(), "Alert sample loaded · Neha Salunkhe")
-    }
+    fun applyAlertSample() = Unit
 
     private fun applyDraft(draft: RegistrationDraft, toast: String) {
         _state.update {
@@ -1496,7 +1490,10 @@ class KioskViewModel(
             return
         }
         try {
-            val liveBmp = snap.livePhoto ?: PlaceholderBitmap.livePhoto(draft.visitorName)
+            val liveBmp = snap.livePhoto ?: run {
+                _state.update { it.copy(submitting = false, step = 3, toast = "Take the visitor photo first.", toastKind = ToastKind.WARNING) }
+                return
+            }
             val consentAt = draft.consentAt
             val consentVer = GateConsent.VERSION
             val photo = repository.uploadMedia(
@@ -1598,7 +1595,7 @@ class KioskViewModel(
                         hit?.severity == "Alert" -> "Alert hit · visit pending · host notified"
                         visit.isVendor && visit.status == "inside" -> "Vendor checked in · host informed"
                         after -> "After hours · ${AfterHoursCopy.HOST_NO_OP}"
-                        source == DataSource.FIXTURES -> "FIXTURES · host notified · Demo approve to issue QR"
+                        source == DataSource.FIXTURES -> "Host notified · waiting for approval"
                         else -> "Host notified · waiting for approval"
                     },
                     toastKind = when {
@@ -1678,24 +1675,8 @@ class KioskViewModel(
         }
     }
 
-    fun demoApprove() {
-        val id = _state.value.createdVisit?.id ?: return
-        viewModelScope.launch {
-            _state.update { it.copy(outcomeBusy = true) }
-            try {
-                val visit = repository.demoApprove(id)
-                applyVisit(visit, "Demo host approved · pass ${visit.passId}", ToastKind.SUCCESS)
-            } catch (e: Exception) {
-                _state.update {
-                    it.copy(
-                        outcomeBusy = false,
-                        toast = ErrorCopy.forThrowable(e),
-                        toastKind = ToastKind.ERROR,
-                    )
-                }
-            }
-        }
-    }
+    /** Removed: a visit is approved only by its host. */
+    fun demoApprove() = Unit
 
     fun scanCheckIn() {
         scan("check_in", "Checked in · inside campus")
@@ -1732,34 +1713,7 @@ class KioskViewModel(
         }
     }
 
-    fun loadStoryPass() {
-        if (_state.value.hideDemoStory) {
-            _state.update {
-                it.copy(toast = "Demo story is off for this school", toastKind = ToastKind.INFO)
-            }
-            return
-        }
-        viewModelScope.launch {
-            _state.update { it.copy(outcomeBusy = true) }
-            try {
-                val visit = repository.storyPass()
-                applyVisit(
-                    visit,
-                    "Story pass ${visit.passId} · ${visit.visitorName} · ${visit.status}",
-                    ToastKind.INFO,
-                )
-            } catch (e: Exception) {
-                _state.update {
-                    it.copy(
-                        outcomeBusy = false,
-                        toast = ErrorCopy.forThrowable(e),
-                        toastKind = ToastKind.ERROR,
-                        dataSource = repository.dataSource,
-                    )
-                }
-            }
-        }
-    }
+    fun loadStoryPass() = Unit
 
     private fun applyVisit(
         visit: VisitOut,

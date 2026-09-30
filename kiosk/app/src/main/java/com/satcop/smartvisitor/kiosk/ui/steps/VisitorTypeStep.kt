@@ -74,15 +74,6 @@ fun VisitorTypeStep(
                             .fillMaxWidth()
                             .heightIn(min = FormTokens.MinTouch),
                     )
-                    if (showPrefill) {
-                        KioskGhostButton(
-                            text = "Prefill sample",
-                            onClick = onPrefill,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = FormTokens.MinTouch),
-                        )
-                    }
                 }
             }
             Column(
@@ -141,9 +132,6 @@ fun VisitorTypeStep(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     KioskGhostButton(text = "Student pickup", onClick = onPickup)
-                    if (showPrefill) {
-                        KioskGhostButton(text = "Prefill sample", onClick = onPrefill)
-                    }
                 }
             }
 

@@ -195,7 +195,7 @@ fun GuardPatrolApp(
         }
 
         Text(
-            text = if (state.useLive) "LIVE" else "DEMO",
+            text = if (state.useLive) "LIVE" else "OFFLINE",
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 12.dp, bottom = 72.dp),
@@ -758,7 +758,7 @@ private fun CheckpointPickerDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "Pick a checkpoint (demo sim — no live camera/NFC).",
+                    text = "Pick the checkpoint you are at.",
                     color = KioskColors.textDim,
                     fontSize = 12.sp,
                     fontFamily = KioskFont,

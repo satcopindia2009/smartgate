@@ -56,19 +56,6 @@ import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusSm
 
 @Composable
-fun DemoWatermark(label: String, modifier: Modifier = Modifier) {
-    Text(
-        text = label.uppercase(),
-        modifier = modifier.padding(start = 12.dp, bottom = 12.dp),
-        color = KioskColors.watermark,
-        fontSize = 10.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 1.4.sp,
-        fontFamily = KioskFont,
-    )
-}
-
-@Composable
 fun StepDots(current: Int, total: Int = 4) {
     val compact = LocalKioskCompact.current
     Row(
@@ -296,15 +283,6 @@ fun GatePill(name: String, onClick: () -> Unit) {
         background = KioskColors.cyanDim,
         foreground = KioskColors.cyanBright,
         onClick = onClick,
-    )
-}
-
-@Composable
-fun SourcePill(live: Boolean) {
-    StatusPill(
-        label = if (live) "LIVE" else "FIXTURES",
-        background = if (live) KioskColors.cyanDim else KioskColors.orangeDim,
-        foreground = if (live) KioskColors.cyanBright else KioskColors.peakAmber,
     )
 }
 

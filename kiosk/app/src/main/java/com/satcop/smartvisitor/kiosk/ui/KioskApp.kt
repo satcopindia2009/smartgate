@@ -50,11 +50,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolApp
-import com.satcop.smartvisitor.kiosk.ui.components.DemoWatermark
 import com.satcop.smartvisitor.kiosk.ui.components.GatePill
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.ShieldMark
-import com.satcop.smartvisitor.kiosk.ui.components.SourcePill
 import com.satcop.smartvisitor.kiosk.ui.components.StepDots
 import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.components.ToastBanner
@@ -452,12 +450,6 @@ fun KioskApp(
             }
             // Keep watermark/toast above pinned M3 NavigationBar (~60dp + system inset)
             val aboveNav = if (signedIn) 72.dp else 0.dp
-            DemoWatermark(
-                label = state.watermark,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(bottom = aboveNav),
-            )
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -622,7 +614,6 @@ private fun KioskHeader(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                SourcePill(live = dataSource == DataSource.LIVE)
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -695,7 +686,6 @@ private fun KioskHeader(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SourcePill(live = dataSource == DataSource.LIVE)
                 if (showGateMenu) {
                     Box {
                         GatePill(name = gateName, onClick = { menuOpen = true })

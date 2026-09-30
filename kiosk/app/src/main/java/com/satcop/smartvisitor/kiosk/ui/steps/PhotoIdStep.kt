@@ -80,8 +80,8 @@ fun PhotoIdStep(
     onIdImage: (Bitmap?) -> Unit,
     onSignature: (Bitmap?) -> Unit,
     onClearSignature: () -> Unit,
-    onBlockSample: () -> Unit,
-    onAlertSample: () -> Unit,
+    onBlockSample: () -> Unit = {},
+    onAlertSample: () -> Unit = {},
     onAgreeConsent: () -> Unit,
     onDeclineConsent: () -> Unit,
     onUseSavedId: (Boolean) -> Unit = {},
@@ -139,36 +139,9 @@ fun PhotoIdStep(
         Column(Modifier.fillMaxWidth()) {
             FormHeader(
                 title = "Photo, ID & signature",
-                subtitle = "Step 3 · live photo + ID capture · ID number required",
+                subtitle = "Take the visitor photo and the ID photo, then enter the ID number.",
                 modifier = Modifier.padding(bottom = 0.dp),
             )
-            if (compact) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = FormTokens.FieldToField),
-                    verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
-                ) {
-                    KioskGhostButton(
-                        text = "Block sample",
-                        onClick = onBlockSample,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    KioskGhostButton(
-                        text = "Alert sample",
-                        onClick = onAlertSample,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            } else {
-                Row(
-                    modifier = Modifier.padding(top = FormTokens.FieldToField),
-                    horizontalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
-                ) {
-                    KioskGhostButton(text = "Block sample", onClick = onBlockSample)
-                    KioskGhostButton(text = "Alert sample", onClick = onAlertSample)
-                }
-            }
         }
 
         if (blocked && blacklistHit != null) {
