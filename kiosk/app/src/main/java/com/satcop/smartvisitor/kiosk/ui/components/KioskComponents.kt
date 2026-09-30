@@ -200,6 +200,8 @@ fun KioskField(
     onImeAction: (() -> Unit)? = null,
     /** Password field: shows a Show/Hide toggle; [visualTransformation] is ignored while shown. */
     passwordToggle: Boolean = false,
+    /** 1064: shown, selectable, not editable (e.g. the mobile number on the Add Visitor form). */
+    readOnly: Boolean = false,
 ) {
     var shown by remember { mutableStateOf(false) }
     val masked = passwordToggle && !shown
@@ -215,6 +217,7 @@ fun KioskField(
         TextField(
             value = value,
             onValueChange = onValueChange,
+            readOnly = readOnly,
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = FormTokens.MinTouch)

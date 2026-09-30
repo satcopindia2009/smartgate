@@ -37,6 +37,9 @@ object FormTokens {
     /** Between stacked action buttons / chips. */
     val ButtonGap: Dp = 10.dp
 
+    /** Inner horizontal padding INSIDE a control (input-like boxes), not a screen margin. */
+    val ControlHPad: Dp = 16.dp
+
     /** Minimum touch target for inputs, menu rows, chips and buttons. */
     val MinTouch: Dp = 48.dp
 

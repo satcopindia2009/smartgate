@@ -59,9 +59,7 @@ private val gateTabs = listOf(
 fun GateTodayScreen(
     gateName: String,
     recent: List<InsideVisit>,
-    selectedVisitorType: String?,
-    onSelectVisitorType: (String) -> Unit,
-    onContinueRegistration: () -> Unit,
+    onAddVisitor: () -> Unit,
     onCourier: () -> Unit,
     onHistory: () -> Unit,
     onCheckout: () -> Unit,
@@ -73,8 +71,6 @@ fun GateTodayScreen(
     registrationContent: (@Composable () -> Unit)? = null,
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    var sheetOpen by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val waiting = recent.filter {
         it.status.equals("pending", ignoreCase = true) ||
@@ -106,7 +102,7 @@ fun GateTodayScreen(
                                 .verticalScroll(rememberScrollState()),
                         ) {
                             AppleShellNav(leading = "Home", trailing = " ", onLeading = { /* stay */ })
-                            AppleShellTitle("Check-in")
+                            AppleShellTitle(if (registrationStep == 2) "Add Visitor" else "Check-in")
                             AppleShellSub("Step $registrationStep · under shell · tabs stay")
                             registrationContent()
                         }
@@ -115,9 +111,9 @@ fun GateTodayScreen(
                     AppleShellTitle("Gate")
                     AppleShellSub("${gateName.ifBlank { "Main" }} · compact home · no long scroll")
                     AppleHeroCta(
-                        title = "New check-in",
-                        subtitle = "Walk-in visitor",
-                        onClick = { sheetOpen = true },
+                        title = "Add Visitor",
+                        subtitle = "Enter mobile number first",
+                        onClick = onAddVisitor,
                     )
                     Spacer(Modifier.height(10.dp))
                     AppleGrid2 {
@@ -201,53 +197,6 @@ fun GateTodayScreen(
             }
         }
         AppleTabBar(tabs = gateTabs, selectedIndex = tab, onSelect = { tab = it })
-    }
-
-    if (sheetOpen) {
-        ModalBottomSheet(
-            onDismissRequest = { sheetOpen = false },
-            sheetState = sheetState,
-            containerColor = KioskColors.card,
-        ) {
-            Text(
-                "New visitor",
-                color = KioskColors.text,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = KioskFont,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-            StepperDots(active = 0, total = 3)
-            AppleSectionHeader("Type")
-            val types = listOf(
-                "Parent / Guardian" to "Parent",
-                "Vendor" to "Vendor",
-                "Guest" to "Guest",
-                "Official" to "Official",
-            )
-            AppleInset {
-                types.forEachIndexed { i, (label, key) ->
-                    val selected = selectedVisitorType.equals(key, ignoreCase = true)
-                    AppleCell(
-                        title = label,
-                        trailing = if (selected) "✓" else null,
-                        showChevron = !selected,
-                        showDivider = i < types.lastIndex,
-                        onClick = { onSelectVisitorType(key) },
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            ApplePrimaryButton("Continue") {
-                if (selectedVisitorType.isNullOrBlank()) {
-                    onSelectVisitorType("Parent")
-                }
-                sheetOpen = false
-                onContinueRegistration()
-            }
-            ApplePlainButton("Cancel") { sheetOpen = false }
-            Spacer(Modifier.height(28.dp))
-        }
     }
 }
 

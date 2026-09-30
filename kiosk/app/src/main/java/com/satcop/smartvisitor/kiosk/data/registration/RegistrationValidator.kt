@@ -1,15 +1,20 @@
 package com.satcop.smartvisitor.kiosk.data.registration
 
+import com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic
+import com.satcop.smartvisitor.kiosk.data.addvisitor.MaskedDisplay
+
 object FieldKeys {
     const val VISITOR_NAME = "visitorName"
     const val MOBILE = "mobile"
     const val PURPOSE = "purpose"
+    const val COMPANY = "company"
     const val HOST_ID = "hostId"
     const val VISITOR_TYPE = "visitorType"
     const val ACCOMPANYING = "accompanyingCount"
     const val LIVE_PHOTO = "livePhotoKey"
     const val ID = "idNumber"
     const val ID_TYPE = "idType"
+    const val ID_IMAGE = "idImageKey"
 }
 
 object MobileIndia {
@@ -54,6 +59,11 @@ object RegistrationValidator {
         if (draft.purpose.trim().isEmpty()) {
             errors[FieldKeys.PURPOSE] = "Purpose of visit is required"
         }
+        if (draft.profileKind == com.satcop.smartvisitor.kiosk.data.addvisitor.ProfileKind.VENDOR &&
+            draft.company.trim().isEmpty()
+        ) {
+            errors[FieldKeys.COMPANY] = "Company is required"
+        }
         if (draft.hostId.isNullOrBlank()) {
             errors[FieldKeys.HOST_ID] = "Select a host to meet"
         }
@@ -76,8 +86,13 @@ object RegistrationValidator {
         if (draft.idType.isBlank()) {
             errors[FieldKeys.ID_TYPE] = "Select an ID type"
         }
-        if (draft.idNumber.trim().isEmpty()) {
-            errors[FieldKeys.ID] = "Govt ID number is required"
+        // 1064: ID number (typed, or the saved ID the server holds) AND a fresh ID photo are required every time.
+        val savedOk = draft.useSavedId && draft.savedId != null
+        if (!savedOk && (draft.idNumber.trim().isEmpty() || MaskedDisplay.looksMasked(draft.idNumber))) {
+            errors[FieldKeys.ID] = AddVisitorLogic.ID_REQUIRED
+        }
+        if (!draft.idImageCaptured) {
+            errors[FieldKeys.ID_IMAGE] = AddVisitorLogic.ID_PHOTO_REQUIRED
         }
         return errors
     }
@@ -86,7 +101,8 @@ object RegistrationValidator {
         val required = listOf(FieldKeys.VISITOR_NAME, FieldKeys.MOBILE, FieldKeys.PURPOSE, FieldKeys.HOST_ID)
         return when {
             FieldKeys.LIVE_PHOTO in errors -> "Please capture a live photo"
-            FieldKeys.ID in errors -> "Govt ID number is required"
+            FieldKeys.ID in errors -> AddVisitorLogic.ID_REQUIRED
+            FieldKeys.ID_IMAGE in errors -> AddVisitorLogic.ID_PHOTO_REQUIRED
             required.any { it in errors } -> "Please fill name, mobile, purpose, and host"
             else -> errors.values.firstOrNull() ?: "Please check the form"
         }

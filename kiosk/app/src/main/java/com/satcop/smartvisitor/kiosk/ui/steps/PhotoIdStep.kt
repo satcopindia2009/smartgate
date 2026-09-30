@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistEntry
 import com.satcop.smartvisitor.kiosk.data.model.IdType
 import com.satcop.smartvisitor.kiosk.data.registration.FieldKeys
@@ -82,6 +83,7 @@ fun PhotoIdStep(
     onAlertSample: () -> Unit,
     onAgreeConsent: () -> Unit,
     onDeclineConsent: () -> Unit,
+    onUseSavedId: (Boolean) -> Unit = {},
     onBack: () -> Unit,
     onSubmit: () -> Unit,
 ) {
@@ -221,7 +223,7 @@ fun PhotoIdStep(
                 filled = idImage != null || draft.idImageCaptured,
                 title = if (draft.idImageCaptured) "ID captured" else "Tap to capture ID",
                 subtitle = "Aadhaar / DL",
-                error = null,
+                error = errors[FieldKeys.ID_IMAGE],
                 modifier = Modifier.weight(1f),
                 onClick = { captureWithCamera("id") },
                 preview = idPreview,
@@ -237,47 +239,102 @@ fun PhotoIdStep(
             )
         }
 
-        FormLabel("ID type", modifier = Modifier.padding(top = FormTokens.FieldToField))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
-            verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
-        ) {
-            IdType.entries.forEach { type ->
-                val selected = draft.idType == type.apiValue
-                Box(
-                    modifier = Modifier
-                        .heightIn(min = FormTokens.MinTouch)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(if (selected) KioskColors.purpleDim else KioskColors.card)
-                        .border(
-                            1.dp,
-                            if (selected) KioskColors.purple else KioskColors.border,
-                            RoundedCornerShape(999.dp),
+        val savedRef = draft.savedId
+        if (savedRef != null && draft.useSavedId) {
+            // Server-provided reference only ("Aadhaar ••••1234"); never a full number, never sent back.
+            FormLabel("ID number", modifier = Modifier.padding(top = FormTokens.FieldToField))
+            Text(
+                text = savedRef.display,
+                color = KioskColors.inputText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = KioskFont,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = FormTokens.MinTouch)
+                    .clip(RoundedCornerShape(RadiusMd))
+                    .background(KioskColors.inputBg)
+                    .border(1.dp, KioskColors.inputBorder, RoundedCornerShape(RadiusMd))
+                    .padding(horizontal = FormTokens.ControlHPad, vertical = 12.dp),
+            )
+            Text(
+                text = "Using saved ID. Required for every entry.",
+                color = KioskColors.textMuted,
+                fontSize = 12.sp,
+                fontFamily = KioskFont,
+                modifier = Modifier.padding(top = FormTokens.ErrorGap),
+            )
+            KioskGhostButton(
+                text = "Enter a new ID number",
+                onClick = { onUseSavedId(false) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = FormTokens.ButtonGap)
+                    .heightIn(min = FormTokens.MinTouch),
+            )
+        } else {
+            FormLabel("ID type", modifier = Modifier.padding(top = FormTokens.FieldToField))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
+                verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
+            ) {
+                IdType.entries.forEach { type ->
+                    val selected = draft.idType == type.apiValue
+                    Box(
+                        modifier = Modifier
+                            .heightIn(min = FormTokens.MinTouch)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (selected) KioskColors.purpleDim else KioskColors.card)
+                            .border(
+                                1.dp,
+                                if (selected) KioskColors.purple else KioskColors.border,
+                                RoundedCornerShape(999.dp),
+                            )
+                            .clickable { onIdType(type.apiValue) }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                    ) {
+                        Text(
+                            text = type.apiValue,
+                            color = if (selected) Color.White else KioskColors.textMuted,
+                            fontSize = 13.sp,
+                            fontFamily = KioskFont,
                         )
-                        .clickable { onIdType(type.apiValue) }
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                ) {
-                    Text(
-                        text = type.apiValue,
-                        color = if (selected) Color.White else KioskColors.textMuted,
-                        fontSize = 13.sp,
-                        fontFamily = KioskFont,
-                    )
+                    }
                 }
             }
-        }
 
-        KioskField(
-            label = "ID number",
-            value = draft.idNumber,
-            onValueChange = onIdNumber,
-            placeholder = "Enter ID number to continue",
-            error = errors[FieldKeys.ID],
-            capitalization = KeyboardCapitalization.Characters,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = FormTokens.FieldToField),
-        )
+            KioskField(
+                label = "ID number",
+                value = draft.idNumber,
+                onValueChange = onIdNumber,
+                placeholder = "Enter ID number to continue",
+                error = errors[FieldKeys.ID],
+                capitalization = KeyboardCapitalization.Characters,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = FormTokens.FieldToField),
+            )
+
+            if (savedRef != null) {
+                KioskGhostButton(
+                    text = "Use saved ID (${savedRef.display})",
+                    onClick = { onUseSavedId(true) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = FormTokens.ButtonGap)
+                        .heightIn(min = FormTokens.MinTouch),
+                )
+            }
+        }
+        errors[FieldKeys.ID_IMAGE]?.let {
+            Text(
+                text = it,
+                color = KioskColors.errorText,
+                fontSize = 12.sp,
+                fontFamily = KioskFont,
+                modifier = Modifier.padding(top = FormTokens.ErrorGap),
+            )
+        }
 
         FormLabel("Digital signature (optional)", modifier = Modifier.padding(top = FormTokens.FieldToField))
         SignaturePad(
@@ -311,7 +368,7 @@ fun PhotoIdStep(
                 )
                 CyanSubmitButton(
                     text = if (submitting) "Submitting…" else "Issue pass",
-                    enabled = !submitting && !blocked && draft.idNumber.trim().isNotEmpty(),
+                    enabled = !submitting && !blocked && (draft.idNumber.trim().isNotEmpty() || (draft.useSavedId && draft.savedId != null)),
                     onClick = onSubmit,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -326,7 +383,7 @@ fun PhotoIdStep(
                 KioskGhostButton(text = "Back", onClick = onBack)
                 CyanSubmitButton(
                     text = if (submitting) "Submitting…" else "Issue pass",
-                    enabled = !submitting && !blocked && draft.idNumber.trim().isNotEmpty(),
+                    enabled = !submitting && !blocked && (draft.idNumber.trim().isNotEmpty() || (draft.useSavedId && draft.savedId != null)),
                     onClick = onSubmit,
                 )
             }

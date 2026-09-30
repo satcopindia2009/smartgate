@@ -16,6 +16,7 @@ class FormTokensTest {
         "steps/VisitorDetailsStep.kt",
         "steps/PhotoIdStep.kt",
         "steps/GateConsentPanel.kt",
+        "addvisitor/AddVisitorScreens.kt",
         "steps/HostDropdown.kt",
     )
 
@@ -79,7 +80,7 @@ class FormTokensTest {
 
     @Test fun textFieldsUseMinHeightAndTokenLabelGap() {
         val t = src("components/KioskComponents.kt")
-        val field = t.substring(t.indexOf("fun KioskField("), t.indexOf("fun KioskField(") + 4000)
+        val field = t.substring(t.indexOf("fun KioskField("), t.indexOf("fun KioskField(") + 6000)
         assertTrue(field.contains("heightIn(min = FormTokens.MinTouch)"))
         assertTrue(field.contains("padding(bottom = FormTokens.LabelToField)"))
         assertTrue(field.contains("FormTokens.ErrorGap"))
@@ -98,7 +99,7 @@ class FormTokensTest {
 
     @Test fun versionBumped() {
         val g = File("build.gradle.kts").readText()
-        assertTrue(g.contains("versionCode = 1063"))
-        assertTrue(g.contains("1.0.12b-1role-checkin-host-dropdown-align"))
+        assertTrue(g.contains("versionCode = 1064"))
+        assertTrue(g.contains("1.0.13-1role-add-visitor-rework"))
     }
 }

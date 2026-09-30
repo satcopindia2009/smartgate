@@ -1,5 +1,7 @@
 package com.satcop.smartvisitor.kiosk.data.registration
 
+import com.satcop.smartvisitor.kiosk.data.addvisitor.ProfileKind
+import com.satcop.smartvisitor.kiosk.data.addvisitor.SavedIdRef
 import com.satcop.smartvisitor.kiosk.data.fixture.DemoFixtures
 import com.satcop.smartvisitor.kiosk.data.model.DemoStory
 import com.satcop.smartvisitor.kiosk.data.model.IdType
@@ -30,6 +32,14 @@ data class RegistrationDraft(
     val consentAgreed: Boolean = false,
     val consentVersion: String? = null,
     val consentAt: String? = null,
+    /** 1064 Add Visitor: server-decided kind of this person (Visitor | Vendor). */
+    val profileKind: ProfileKind = ProfileKind.VISITOR,
+    /** ID reference the SERVER returned (type + last 4). Never a full number. */
+    val savedId: SavedIdRef? = null,
+    /** Default true when [savedId] exists; false after the guard taps Edit and types a new number. */
+    val useSavedId: Boolean = false,
+    /** Visitor only (never Vendor). null = walk-in now. */
+    val scheduledAtMs: Long? = null,
 ) {
     companion object {
         fun fromStory(story: DemoStory): RegistrationDraft = RegistrationDraft(

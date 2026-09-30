@@ -60,7 +60,9 @@ import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.components.ToastBanner
 import com.satcop.smartvisitor.kiosk.ui.steps.OutcomeStep
 import com.satcop.smartvisitor.kiosk.ui.steps.PhotoIdStep
-import com.satcop.smartvisitor.kiosk.ui.steps.VisitorDetailsStep
+import com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorFormStep
+import com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorNumberStep
+import com.satcop.smartvisitor.kiosk.ui.addvisitor.AvStage
 import com.satcop.smartvisitor.kiosk.ui.steps.VisitorTypeStep
 import com.satcop.smartvisitor.kiosk.ui.theme.CardShape
 import com.satcop.smartvisitor.kiosk.ui.face.FaceLoginScreen
@@ -254,9 +256,7 @@ fun KioskApp(
                         GateTodayScreen(
                             gateName = state.selectedGate?.name ?: "Main Gate",
                             recent = state.recent,
-                            selectedVisitorType = state.draft.visitorType,
-                            onSelectVisitorType = viewModel::selectVisitorType,
-                            onContinueRegistration = viewModel::continueFromStep1,
+                            onAddVisitor = viewModel::startAddVisitor,
                             onCourier = viewModel::openCourier,
                             onHistory = viewModel::openHistory,
                             onCheckout = viewModel::openCheckout,
@@ -484,24 +484,33 @@ private fun KioskStep(
             onPickup = viewModel::openPickup,
             onContinue = viewModel::continueFromStep1,
         )
-        2 -> VisitorDetailsStep(
-            draft = state.draft,
-            hosts = state.hosts,
-            errors = state.fieldErrors,
-            autofetchHint = state.autofetchHint,
-            autofetchBusy = state.autofetchBusy,
-            hostsLoading = !state.loaded,
-            onName = viewModel::updateName,
-            onMobile = viewModel::updateMobile,
-            onCompany = viewModel::updateCompany,
-            onPurpose = viewModel::updatePurpose,
-            onHost = viewModel::selectHost,
-            onVehicle = viewModel::updateVehicle,
-            onAccompanying = viewModel::updateAccompanying,
-            onNotes = viewModel::updateNotes,
-            onBack = viewModel::back,
-            onContinue = viewModel::continueFromStep2,
-        )
+        2 -> if (state.addVisitor.stage == AvStage.NUMBER) {
+            AddVisitorNumberStep(
+                state = state.addVisitor,
+                onMobile = viewModel::avTypeMobile,
+                onContinue = viewModel::avContinue,
+                onCancel = viewModel::cancelAddVisitor,
+                onCloseNotice = viewModel::avCloseNotice,
+                onCheckout = viewModel::avCheckout,
+            )
+        } else {
+            AddVisitorFormStep(
+                state = state.addVisitor,
+                draft = state.draft,
+                hosts = state.hosts,
+                hostsLoading = !state.loaded,
+                errors = state.fieldErrors,
+                onKind = viewModel::avChooseKind,
+                onName = viewModel::updateName,
+                onCompany = viewModel::updateCompany,
+                onPurpose = viewModel::updatePurpose,
+                onHost = viewModel::selectHost,
+                onScheduled = viewModel::updateScheduled,
+                onUseSavedId = viewModel::avUseSavedId,
+                onBack = viewModel::back,
+                onContinue = viewModel::continueFromStep2,
+            )
+        }
         3 -> PhotoIdStep(
             draft = state.draft,
             livePhoto = state.livePhoto,
@@ -520,6 +529,7 @@ private fun KioskStep(
             onAlertSample = viewModel::applyAlertSample,
             onAgreeConsent = viewModel::agreeGateConsent,
             onDeclineConsent = viewModel::declineGateConsent,
+            onUseSavedId = viewModel::avUseSavedId,
             onBack = viewModel::back,
             onSubmit = viewModel::submitRegistration,
         )

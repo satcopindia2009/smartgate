@@ -26,6 +26,13 @@ object ErrorCopy {
     const val ADMIN_USE_WEB = "Please use the web dashboard."
     const val UNREACHABLE = "Can't reach the server right now. Check your internet connection and try again."
     const val TEMPORARILY_DOWN = "Server is temporarily unreachable. Retry in a minute — this is not a wrong password."
+    const val GPS_REQUIRED = "Your location is required to clock out. Please turn on GPS and try again."
+    const val ALREADY_INSIDE = "This visitor is already inside."
+    const val PROFILE_TYPE_CONFLICT = "This number is already registered as a vendor. Opening the vendor form."
+    const val BLACKLISTED = "Entry not allowed. Call the security head."
+    const val VENDOR_NO_SCHEDULE = "A vendor visit cannot have a scheduled time."
+    const val INVALID_MOBILE = "Enter a valid 10-digit mobile number."
+    const val LOOKUP_FAILED = "Can't check right now. Try again."
     const val GENERIC = "Something went wrong. Please try again."
 
     private val technicalMarkers = listOf(
@@ -59,6 +66,12 @@ object ErrorCopy {
             "ALREADY_CHECKED_IN" -> return ALREADY_CHECKED_IN
             "NO_ACTIVE_ATTENDANCE" -> return NOT_CHECKED_IN
             "PHOTO_REQUIRED" -> return PHOTO_REQUIRED
+            "GPS_REQUIRED" -> return GPS_REQUIRED
+            "ALREADY_INSIDE" -> return ALREADY_INSIDE
+            "PROFILE_TYPE_CONFLICT" -> return PROFILE_TYPE_CONFLICT
+            "BLACKLISTED", "BLACKLIST_BLOCK" -> return BLACKLISTED
+            "VENDOR_NO_SCHEDULE" -> return VENDOR_NO_SCHEDULE
+            "INVALID_MOBILE" -> return INVALID_MOBILE
             "FACE_REQUIRED" -> return FACE_REQUIRED
             "INTERNAL" -> return GENERIC
             "TUNNEL_DOWN" -> return TEMPORARILY_DOWN

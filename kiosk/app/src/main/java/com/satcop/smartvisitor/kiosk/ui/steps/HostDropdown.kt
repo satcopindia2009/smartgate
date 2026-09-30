@@ -50,9 +50,10 @@ fun HostDropdown(
     loading: Boolean,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
+    label: String = HostPicker.LABEL,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
-        FormLabel(HostPicker.LABEL)
+        FormLabel(label)
         when (HostPicker.viewState(hosts, loading)) {
             HostPicker.ViewState.LOADING -> HostMessage(HostPicker.LOADING, error != null)
             HostPicker.ViewState.EMPTY -> HostMessage(HostPicker.EMPTY, error != null)
@@ -83,7 +84,7 @@ private fun HostMessage(text: String, isError: Boolean) {
             .clip(ControlShape)
             .border(1.dp, if (isError) KioskColors.errorText else KioskColors.inputBorder, ControlShape)
             .background(KioskColors.inputBg)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = FormTokens.ControlHPad, vertical = 12.dp)
             .semantics { contentDescription = HostPicker.LABEL + ". " + text },
     )
 }

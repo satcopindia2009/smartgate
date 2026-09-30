@@ -141,6 +141,7 @@ data class KioskUiState(
     /** Host's reason for the selected rejected visit (GET /visits/{id}); null until loaded. */
     val historyRejectReason: String? = null,
     val historyBusy: Boolean = false,
+    val addVisitor: com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorState = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorState(),
     val autofetchBusy: Boolean = false,
     val autofetchHint: String? = null,
     val courierCompany: String = "",
@@ -186,6 +187,8 @@ data class KioskUiState(
 class KioskViewModel(
     private val repository: KioskRepository = HybridKioskRepository(),
     private val liveApi: LiveVisitorApi = LiveVisitorApi(),
+    private val addVisitorLookup: com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLookup =
+        com.satcop.smartvisitor.kiosk.data.addvisitor.InterimLookup(),
 ) : ViewModel() {
 
     private var faceStore: LocalFaceTemplateStore? = null
@@ -1208,6 +1211,121 @@ class KioskViewModel(
         }
     }
 
+    // ---------------- 1064 Add Visitor (all lookup/prefill/dedupe is server-side) ----------------
+
+    private var avLookupJob: Job? = null
+
+    /** Gate "Add Visitor": number-only screen first (registration step 2 hosts the flow). */
+    fun startAddVisitor() {
+        avLookupJob?.cancel()
+        val snap = _state.value
+        _state.update {
+            it.copy(
+                step = 2,
+                addVisitor = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorState(),
+                draft = RegistrationDraft(hostId = null, gateId = snap.draft.gateId),
+                livePhoto = null, idImage = null, signature = null,
+                fieldErrors = emptyMap(), toast = null, blocked = false, blacklistHit = null, createdVisit = null,
+                submitting = false, outcomeBusy = false,
+            )
+        }
+    }
+
+    fun cancelAddVisitor() {
+        avLookupJob?.cancel()
+        _state.update {
+            it.copy(
+                step = 1,
+                addVisitor = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorState(),
+                draft = RegistrationDraft(hostId = null, gateId = it.draft.gateId),
+                fieldErrors = emptyMap(), toast = null,
+            )
+        }
+    }
+
+    fun avTypeMobile(raw: String) {
+        _state.update { it.copy(addVisitor = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorReducer.typeMobile(it.addVisitor, raw)) }
+    }
+
+    fun avCloseNotice() {
+        _state.update { it.copy(addVisitor = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorReducer.closeNotice(it.addVisitor)) }
+    }
+
+    fun avContinue() {
+        val reducer = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorReducer
+        val (next, ten) = reducer.tenDigitsOrError(_state.value.addVisitor)
+        _state.update { it.copy(addVisitor = next) }
+        if (ten == null || _state.value.addVisitor.busy.not()) return
+        avLookupJob?.cancel()
+        avLookupJob = viewModelScope.launch {
+            val outcome = try {
+                addVisitorLookup.lookup(ten)
+            } catch (e: ApiException) {
+                if (ErrorCopy.isSessionEnd(e)) return@launch
+                com.satcop.smartvisitor.kiosk.data.addvisitor.LookupOutcome.Failed(ErrorCopy.LOOKUP_FAILED)
+            } catch (e: Exception) {
+                com.satcop.smartvisitor.kiosk.data.addvisitor.LookupOutcome.Failed(ErrorCopy.LOOKUP_FAILED)
+            }
+            _state.update { s ->
+                val av = reducer.applyOutcome(s.addVisitor, outcome)
+                val draft = if (av.stage == com.satcop.smartvisitor.kiosk.ui.addvisitor.AvStage.FORM) {
+                    reducer.draftFor(s.draft, av, ten, s.hosts.map { h -> h.id }.toSet())
+                } else s.draft
+                s.copy(addVisitor = av, draft = draft, fieldErrors = emptyMap())
+            }
+            val key = (outcome as? com.satcop.smartvisitor.kiosk.data.addvisitor.LookupOutcome.Found)?.profile?.photoKey
+            if (!key.isNullOrBlank()) {
+                val bmp = runCatching { repository.loadMediaBytes(key) }.getOrNull()
+                    ?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                if (bmp != null) _state.update { s -> s.copy(addVisitor = s.addVisitor.copy(referencePhoto = bmp)) }
+            }
+        }
+    }
+
+    fun avChooseKind(kind: com.satcop.smartvisitor.kiosk.data.addvisitor.ProfileKind) {
+        _state.update { s ->
+            val av = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorReducer.chooseKind(s.addVisitor, kind)
+            s.copy(
+                addVisitor = av,
+                draft = s.draft.copy(
+                    profileKind = av.kind,
+                    visitorType = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.apiVisitorType(av.kind, null),
+                    scheduledAtMs = if (av.kind == com.satcop.smartvisitor.kiosk.data.addvisitor.ProfileKind.VENDOR) null else s.draft.scheduledAtMs,
+                ),
+                fieldErrors = emptyMap(),
+            )
+        }
+    }
+
+    fun avUseSavedId(use: Boolean) = patchDraft { copy(useSavedId = use && savedId != null, idNumber = if (use) "" else idNumber) }
+
+    fun updateScheduled(ms: Long?) = patchDraft { copy(scheduledAtMs = ms) }
+
+    /** "Already inside" -> Check out. Server does the work; the banner closes on success. */
+    fun avCheckout(active: com.satcop.smartvisitor.kiosk.data.addvisitor.ActiveVisit) {
+        if (_state.value.addVisitor.checkoutBusy) return
+        _state.update { it.copy(addVisitor = it.addVisitor.copy(checkoutBusy = true)) }
+        viewModelScope.launch {
+            try {
+                val gateId = _state.value.selectedGate?.id ?: _state.value.draft.gateId
+                repository.checkoutInsideVisit(active.visitId, gateId)
+                _state.update {
+                    it.copy(
+                        addVisitor = it.addVisitor.copy(checkoutBusy = false, notice = null),
+                        toast = "Checked out", toastKind = ToastKind.SUCCESS,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        addVisitor = it.addVisitor.copy(checkoutBusy = false),
+                        toast = ErrorCopy.forThrowable(e), toastKind = ToastKind.ERROR,
+                    )
+                }
+            }
+        }
+    }
+
     fun continueFromStep1() {
         _state.update { it.copy(step = 2, toast = null) }
     }
@@ -1332,7 +1450,7 @@ class KioskViewModel(
             val hit = repository.matchBlacklist(
                 mobile = mobileTen,
                 idType = draft.idType,
-                idNumber = draft.idNumber.trim().ifEmpty { null },
+                idNumber = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.idNumberToSend(draft.useSavedId && draft.savedId != null, draft.idNumber),
             )
             if (hit?.severity == "Block") {
                 _state.update {
@@ -1355,7 +1473,7 @@ class KioskViewModel(
                 hostId = draft.hostId.orEmpty(),
                 livePhotoKey = photo.key,
                 idType = draft.idType,
-                idNumber = draft.idNumber.trim().ifEmpty { null },
+                idNumber = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.idNumberToSend(draft.useSavedId && draft.savedId != null, draft.idNumber),
                 idImageKey = idKey,
                 vehicleNumber = draft.vehicleNumber.trim().ifEmpty { null },
                 accompanyingCount = draft.accompanyingCount.trim().toIntOrNull(),
@@ -1581,6 +1699,13 @@ class KioskViewModel(
 
     fun back() {
         _state.update {
+            // Add Visitor form -> back to the number-only screen (no lookup cache; the guard re-checks).
+            if (it.step == 2 && it.addVisitor.stage == com.satcop.smartvisitor.kiosk.ui.addvisitor.AvStage.FORM) {
+                return@update it.copy(
+                    addVisitor = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorReducer.backToNumber(it.addVisitor),
+                    toast = null, fieldErrors = emptyMap(),
+                )
+            }
             val prev = (it.step - 1).coerceAtLeast(1)
             it.copy(step = prev, toast = null, fieldErrors = emptyMap(), blocked = false)
         }
@@ -1599,6 +1724,7 @@ class KioskViewModel(
         _state.update {
             it.copy(
                 step = 1,
+                addVisitor = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorState(),
                 draft = RegistrationDraft(hostId = hostId, gateId = gateId),
                 livePhoto = null,
                 idImage = null,

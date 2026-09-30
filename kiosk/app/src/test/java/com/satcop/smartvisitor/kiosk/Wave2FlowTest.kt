@@ -27,11 +27,13 @@ class Wave2FlowTest {
     }
 
     @Test
-    fun step3AcceptsIdNumberWithoutImage() {
+    fun step3AcceptsIdNumberWithImage() {
+        // 1064 (Product add-visitor spec): ID number AND camera ID photo are required on every entry.
         val draft = RegistrationDraft(
             livePhotoCaptured = true,
             idType = IdType.Aadhaar.apiValue,
-            idNumber = "XXXX1234",
+            idNumber = "ABCD1234",
+            idImageCaptured = true,
         )
         assertTrue(RegistrationValidator.validateStep3(draft).isEmpty())
     }
