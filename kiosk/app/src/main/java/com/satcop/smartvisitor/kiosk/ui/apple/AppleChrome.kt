@@ -39,7 +39,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.ui.theme.AppearanceMode
+import com.satcop.smartvisitor.kiosk.ui.theme.CardShape
+import com.satcop.smartvisitor.kiosk.ui.theme.HeroShape
 import com.satcop.smartvisitor.kiosk.ui.theme.InsetShape
+import com.satcop.smartvisitor.kiosk.ui.theme.PillShape
+import com.satcop.smartvisitor.kiosk.ui.theme.SgSize
+import com.satcop.smartvisitor.kiosk.ui.theme.SgType
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import com.satcop.smartvisitor.kiosk.ui.theme.LocalAppearanceMode
@@ -100,11 +105,10 @@ fun AppleLargeTitle(text: String) {
     Text(
         text = text,
         color = KioskColors.text,
-        fontSize = 34.sp,
+        fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
         fontFamily = KioskFont,
-        letterSpacing = 0.37.sp,
-        lineHeight = 41.sp,
+        lineHeight = 28.sp,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
     )
 }
@@ -134,7 +138,9 @@ fun AppleSearchField(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(10.dp)),
+            .heightIn(min = 48.dp)
+            .clip(PillShape),
+        shape = PillShape,
         colors = com.satcop.smartvisitor.kiosk.ui.theme.kioskTextFieldColors(container = KioskColors.searchFill),
         textStyle = androidx.compose.ui.text.TextStyle(
             color = KioskColors.inputText,
@@ -155,7 +161,7 @@ fun AppleSegmented(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(9.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(KioskColors.secondaryFill)
             .padding(2.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -173,7 +179,7 @@ fun AppleSegmented(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(7.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(if (on) KioskColors.card else Color.Transparent)
                     .clickable { onSelect(index) }
                     .padding(vertical = 7.dp),
@@ -185,11 +191,11 @@ fun AppleSegmented(
 @Composable
 fun AppleSectionHeader(text: String) {
     Text(
-        text = text.uppercase(),
+        text = text,
         color = KioskColors.textMuted,
         fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
         fontFamily = KioskFont,
-        letterSpacing = (-0.08).sp,
         modifier = Modifier.padding(start = 28.dp, end = 16.dp, top = 18.dp, bottom = 6.dp),
     )
 }
@@ -234,11 +240,11 @@ fun AppleCell(
                 Box(
                     modifier = Modifier
                         .size(29.dp)
-                        .clip(RoundedCornerShape(7.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(glyphColor),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(glyph, color = Color.White, fontSize = 14.sp)
+                    Text(glyph, color = KioskColors.onFill(glyphColor), fontSize = 14.sp)
                 }
                 Spacer(Modifier.width(12.dp))
             }
@@ -268,7 +274,7 @@ fun AppleCell(
 @Composable
 fun AppleAvatar(
     initials: String,
-    color: Color = KioskColors.systemBlue,
+    color: Color = KioskColors.brandSoft,
     size: androidx.compose.ui.unit.Dp = 48.dp,
 ) {
     Box(
@@ -280,7 +286,7 @@ fun AppleAvatar(
     ) {
         Text(
             text = initials.take(2).uppercase(),
-            color = Color.White,
+            color = if (color == KioskColors.brandSoft) KioskColors.primary else KioskColors.onFill(color),
             fontWeight = FontWeight.SemiBold,
             fontSize = (size.value * 0.33f).sp,
             fontFamily = KioskFont,
@@ -298,16 +304,17 @@ fun ApplePillButton(
 ) {
     Text(
         text = text,
-        color = if (positive) Color.White else KioskColors.systemRed,
-        fontSize = 15.sp,
+        color = if (positive) KioskColors.onPrimary else KioskColors.danger,
+        fontSize = 14.sp,
         fontWeight = FontWeight.SemiBold,
         fontFamily = KioskFont,
         textAlign = TextAlign.Center,
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (positive) KioskColors.systemGreen else KioskColors.secondaryFill)
+            .heightIn(min = SgSize.SmallButtonHeight)
+            .clip(PillShape)
+            .background(if (positive) KioskColors.primary else KioskColors.secondaryFill)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     )
 }
 
@@ -323,10 +330,10 @@ fun AppleTabBar(
     NavigationBar(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 60.dp) // grows with large font scale instead of clipping
+            .heightIn(min = SgSize.BottomNavHeight) // grows with large font scale instead of clipping
             .navigationBarsPadding(),
         containerColor = KioskColors.tabBarBg,
-        contentColor = KioskColors.systemBlue,
+        contentColor = KioskColors.primary,
         tonalElevation = 0.dp,
         windowInsets = WindowInsets(0, 0, 0, 0),
     ) {
@@ -339,13 +346,13 @@ fun AppleTabBar(
                     Icon(
                         imageVector = tab.icon,
                         contentDescription = tab.label,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(24.dp),
                     )
                 },
                 label = {
                     Text(
                         text = tab.label,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                         fontFamily = KioskFont,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -353,11 +360,11 @@ fun AppleTabBar(
                 },
                 alwaysShowLabel = true,
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = KioskColors.systemBlue,
-                    selectedTextColor = KioskColors.systemBlue,
+                    selectedIconColor = KioskColors.primary,
+                    selectedTextColor = KioskColors.primary,
                     unselectedIconColor = KioskColors.textMuted,
                     unselectedTextColor = KioskColors.textMuted,
-                    indicatorColor = KioskColors.secondaryFill,
+                    indicatorColor = Color.Transparent,
                 ),
             )
         }
@@ -415,16 +422,17 @@ fun AppearanceSegmentedRow() {
 fun ApplePrimaryButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
         text = text,
-        color = Color.White,
-        fontSize = 17.sp,
+        color = KioskColors.onPrimary,
+        fontSize = 16.sp,
         fontWeight = FontWeight.SemiBold,
         fontFamily = KioskFont,
         textAlign = TextAlign.Center,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(KioskColors.systemBlue)
+            .heightIn(min = SgSize.ButtonHeight)
+            .clip(PillShape)
+            .background(KioskColors.primary)
             .clickable(onClick = onClick)
             .padding(vertical = 15.dp),
     )
@@ -489,11 +497,10 @@ fun AppleShellTitle(text: String) {
     Text(
         text = text,
         color = KioskColors.text,
-        fontSize = 34.sp,
+        fontSize = 22.sp,
         fontWeight = FontWeight.Bold,
         fontFamily = KioskFont,
-        letterSpacing = 0.3.sp,
-        lineHeight = 38.sp,
+        lineHeight = 28.sp,
         modifier = Modifier.padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 2.dp),
     )
 }
@@ -518,13 +525,13 @@ fun AppleHeroCta(
     filled: Boolean = true,
     trailing: String = "→",
 ) {
-    val bg = if (filled) KioskColors.systemBlue else KioskColors.secondaryFill
-    val fg = if (filled) Color.White else KioskColors.text
+    val bg = if (filled) KioskColors.primary else KioskColors.secondaryFill
+    val fg = if (filled) KioskColors.onPrimary else KioskColors.text
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(HeroShape)
             .background(bg)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 16.dp),
@@ -571,7 +578,7 @@ fun RowScope.AppleTile(
         modifier = Modifier
             .weight(1f)
             .heightIn(min = 88.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(CardShape)
             .background(KioskColors.card)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 12.dp, vertical = 14.dp),
@@ -586,6 +593,7 @@ fun RowScope.AppleTile(
                 color = KioskColors.systemBlue,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
+                lineHeight = 34.sp,
                 fontFamily = KioskFont,
             )
         } else {
@@ -612,8 +620,8 @@ fun AppleStatusPill(text: String) {
         fontWeight = FontWeight.SemiBold,
         fontFamily = KioskFont,
         modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(KioskColors.secondaryFill)
+            .clip(PillShape)
+            .background(KioskColors.brandSoft)
             .padding(horizontal = 10.dp, vertical = 4.dp),
     )
 }
