@@ -31,7 +31,7 @@ object ErrorCopy {
     private val technicalMarkers = listOf(
         "geofencemode", "traceback", "exception", "http://", "https://", "trycloudflare", "cloudflare",
         "tunnel", "error code", "stack", "null pointer", "sqlite", "psycopg", "jwt", "bearer ", "{\"", "<html",
-        "details.allowed", "role '",
+        "details.allowed", "role '", "java.", "kotlin.", "android.", "okhttp", "com.satcop", "at com.",
     )
 
     /** True when [text] looks like an internal/technical message that must not be shown. */

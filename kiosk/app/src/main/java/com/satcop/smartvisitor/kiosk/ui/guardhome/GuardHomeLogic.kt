@@ -225,7 +225,8 @@ object AttendanceRules {
             lat = fix.lat,
             lng = fix.lng,
             accuracyM = fix.accuracyM,
-            capturedAt = nowUtc.atOffset(ZoneOffset.UTC).toString(),
+            // Always "...T11:00:00Z" (OffsetDateTime.toString() drops zero seconds, which some parsers reject).
+            capturedAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(nowUtc.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC)),
             gpsMissing = false,
             attemptId = attemptId,
         )
