@@ -40,6 +40,10 @@ data class RegistrationDraft(
     val useSavedId: Boolean = false,
     /** Visitor only (never Vendor). null = walk-in now. */
     val scheduledAtMs: Long? = null,
+    /** Server profile (PRF-nnnnn) of a known number; null for a new number. */
+    val profileId: String? = null,
+    /** True only after the guard confirmed "Register as different type". */
+    val confirmKindSwitch: Boolean = false,
 ) {
     companion object {
         fun fromStory(story: DemoStory): RegistrationDraft = RegistrationDraft(

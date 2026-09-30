@@ -270,3 +270,50 @@ object HistoryFilter {
     val TYPES = listOf("all", HistoryKind.VISITOR, HistoryKind.VENDOR, HistoryKind.COURIER, HistoryKind.CHECKOUT)
     val STATUSES = listOf("all", "pending", "approved", "inside", "completed", "Received", "HandedOver", "Returned", "Open")
 }
+
+/** GET /v1/visitors/lookup?mobile= (Add Visitor contract 2026-09-30 section 2). Guard/gate view: masked values only. */
+@Serializable
+data class ProfileLookupResponse(
+    val found: Boolean = false,
+    val blocked: Boolean = false,
+    val blockedMessage: String? = null,
+    val profileId: String? = null,
+    val kind: String? = null,
+    val profileType: String? = null,
+    val name: String? = null,
+    val photoKey: String? = null,
+    /** Absolute URL with a 30-minute signed ?t= token: fetch as returned, never rebuild. */
+    val photoUrl: String? = null,
+    val idType: String? = null,
+    val idOnFile: Boolean = false,
+    val idNumberMasked: String? = null,
+    val idReference: String? = null,
+    val mobileMasked: String? = null,
+    val lastHostId: String? = null,
+    val lastHostName: String? = null,
+    val lastPurpose: String? = null,
+    val company: String? = null,
+    val lastVisitAt: String? = null,
+    val alert: Boolean = false,
+    val alertMessage: String? = null,
+    val skipTypeSelector: Boolean = false,
+    val activeVisit: LookupActiveVisit? = null,
+    val approvedToday: LookupDecision? = null,
+    val rejectedToday: LookupDecision? = null,
+)
+
+@Serializable
+data class LookupActiveVisit(
+    val id: String,
+    val status: String? = null,
+    val displayStatus: String? = null,
+    val since: String? = null,
+    val gateId: String? = null,
+)
+
+@Serializable
+data class LookupDecision(
+    val visitId: String? = null,
+    val at: String? = null,
+    val rejectReason: String? = null,
+)

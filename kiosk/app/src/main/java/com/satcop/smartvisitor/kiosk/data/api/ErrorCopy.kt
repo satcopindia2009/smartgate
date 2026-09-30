@@ -33,6 +33,10 @@ object ErrorCopy {
     const val VENDOR_NO_SCHEDULE = "A vendor visit cannot have a scheduled time."
     const val INVALID_MOBILE = "Enter a valid 10-digit mobile number."
     const val LOOKUP_FAILED = "Can't check right now. Try again."
+    const val RATE_LIMITED = "Too many lookups. Try again in a minute."
+    const val INVALID_ID_FORMAT = "Check the ID number"
+    const val HOST_INACTIVE = "Pick an active host."
+    const val WAITING_HOST = "Waiting for host approval."
     const val GENERIC = "Something went wrong. Please try again."
 
     private val technicalMarkers = listOf(
@@ -72,6 +76,8 @@ object ErrorCopy {
             "BLACKLISTED", "BLACKLIST_BLOCK" -> return BLACKLISTED
             "VENDOR_NO_SCHEDULE" -> return VENDOR_NO_SCHEDULE
             "INVALID_MOBILE" -> return INVALID_MOBILE
+            "RATE_LIMITED" -> return RATE_LIMITED
+            "INVALID_ID_FORMAT" -> return INVALID_ID_FORMAT
             "FACE_REQUIRED" -> return FACE_REQUIRED
             "INTERNAL" -> return GENERIC
             "TUNNEL_DOWN" -> return TEMPORARILY_DOWN

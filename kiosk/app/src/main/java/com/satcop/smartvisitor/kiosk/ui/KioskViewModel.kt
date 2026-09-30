@@ -188,7 +188,7 @@ class KioskViewModel(
     private val repository: KioskRepository = HybridKioskRepository(),
     private val liveApi: LiveVisitorApi = LiveVisitorApi(),
     private val addVisitorLookup: com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLookup =
-        com.satcop.smartvisitor.kiosk.data.addvisitor.InterimLookup(),
+        com.satcop.smartvisitor.kiosk.data.addvisitor.ContractLookup(),
 ) : ViewModel() {
 
     private var faceStore: LocalFaceTemplateStore? = null
@@ -1216,8 +1216,12 @@ class KioskViewModel(
     private var avLookupJob: Job? = null
 
     /** Gate "Add Visitor": number-only screen first (registration step 2 hosts the flow). */
+    /** One id per Add Visitor save; reused for retries so a lost response cannot create a second visit. */
+    private var avAttemptId: String = java.util.UUID.randomUUID().toString()
+
     fun startAddVisitor() {
         avLookupJob?.cancel()
+        avAttemptId = java.util.UUID.randomUUID().toString()
         val snap = _state.value
         _state.update {
             it.copy(
@@ -1273,9 +1277,11 @@ class KioskViewModel(
                 } else s.draft
                 s.copy(addVisitor = av, draft = draft, fieldErrors = emptyMap())
             }
-            val key = (outcome as? com.satcop.smartvisitor.kiosk.data.addvisitor.LookupOutcome.Found)?.profile?.photoKey
-            if (!key.isNullOrBlank()) {
-                val bmp = runCatching { repository.loadMediaBytes(key) }.getOrNull()
+            // Reference photo: the URL exactly as the lookup returned it (signed ?t= intact, Bearer only for API media).
+            // An expired token just means no thumbnail: the lookup is re-run (Continue) to get a fresh URL.
+            val url = (outcome as? com.satcop.smartvisitor.kiosk.data.addvisitor.LookupOutcome.Found)?.profile?.photoUrl
+            if (!url.isNullOrBlank()) {
+                val bmp = runCatching { repository.loadMediaUrl(url) }.getOrNull()
                     ?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
                 if (bmp != null) _state.update { s -> s.copy(addVisitor = s.addVisitor.copy(referencePhoto = bmp)) }
             }
@@ -1302,6 +1308,73 @@ class KioskViewModel(
     fun updateScheduled(ms: Long?) = patchDraft { copy(scheduledAtMs = ms) }
 
     /** "Already inside" -> Check out. Server does the work; the banner closes on success. */
+    /**
+     * 409 on save (contract sections 3-4): PROFILE_TYPE_CONFLICT -> open the form of the type the server has;
+     * ALREADY_INSIDE -> back to the number step and re-run the lookup (shows the banner). Returns true when handled.
+     */
+    private fun handleSaveConflict(e: ApiException): Boolean {
+        val reducer = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorReducer
+        when (e.code.uppercase()) {
+            "PROFILE_TYPE_CONFLICT" -> {
+                val serverKind = if (e.details["profileType"].equals("vendor", true))
+                    com.satcop.smartvisitor.kiosk.data.addvisitor.ProfileKind.VENDOR
+                else com.satcop.smartvisitor.kiosk.data.addvisitor.ProfileKind.VISITOR
+                _state.update { s ->
+                    val av = s.addVisitor.copy(kind = serverKind)
+                    s.copy(
+                        submitting = false,
+                        step = 2,
+                        addVisitor = av,
+                        draft = s.draft.copy(
+                            profileKind = serverKind, profileId = e.details["profileId"] ?: s.draft.profileId,
+                            confirmKindSwitch = false,
+                            visitorType = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.apiVisitorType(serverKind, null),
+                            scheduledAtMs = if (serverKind == com.satcop.smartvisitor.kiosk.data.addvisitor.ProfileKind.VENDOR) null else s.draft.scheduledAtMs,
+                        ),
+                        toast = ErrorCopy.PROFILE_TYPE_CONFLICT, toastKind = ToastKind.WARNING,
+                    )
+                }
+                return true
+            }
+            "INVALID_ID_FORMAT" -> {
+                _state.update { it.copy(submitting = false, step = 3, fieldErrors = it.fieldErrors + (com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID to ErrorCopy.INVALID_ID_FORMAT)) }
+                return true
+            }
+            "VENDOR_NO_SCHEDULE" -> {
+                // Vendor goes straight to checked-in: drop the schedule and ask the guard to save again.
+                _state.update { it.copy(submitting = false, step = 2, draft = it.draft.copy(scheduledAtMs = null), toast = ErrorCopy.VENDOR_NO_SCHEDULE, toastKind = ToastKind.WARNING) }
+                return true
+            }
+            "VALIDATION" -> {
+                val f = e.details["field"]?.takeIf { it in setOf(com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.HOST_ID, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID_IMAGE, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.PURPOSE, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.COMPANY, com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.VISITOR_NAME) } ?: return false
+                val step = if (f == com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID || f == com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.ID_IMAGE) 3 else 2
+                val msg = if (f == com.satcop.smartvisitor.kiosk.data.registration.FieldKeys.HOST_ID) ErrorCopy.HOST_INACTIVE else e.message?.takeIf { it.isNotBlank() && !it.contains('_') } ?: ErrorCopy.GENERIC
+                _state.update { it.copy(submitting = false, step = step, fieldErrors = it.fieldErrors + (f to msg)) }
+                return true
+            }
+            "ALREADY_INSIDE" -> {
+                val mobile = _state.value.draft.mobile
+                _state.update { s ->
+                    s.copy(submitting = false, step = 2, addVisitor = reducer.backToNumber(s.addVisitor.copy(mobileInput = com.satcop.smartvisitor.kiosk.data.registration.MobileIndia.tenDigit(mobile) ?: mobile.filter { it.isDigit() })),
+                        toast = if (e.details["activeVisit.status"].equals("pending", true)) ErrorCopy.WAITING_HOST else ErrorCopy.ALREADY_INSIDE,
+                        toastKind = ToastKind.WARNING)
+                }
+                avContinue()
+                return true
+            }
+        }
+        return false
+    }
+
+    /** Guard confirmed "Register as different type" (contract: confirmKindSwitch:true, kind converted, audited). */
+    fun avSwitchKind() {
+        val reducer = com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorReducer
+        _state.update { s ->
+            val (av, d) = reducer.switchKind(s.addVisitor, s.draft)
+            s.copy(addVisitor = av, draft = d, fieldErrors = emptyMap())
+        }
+    }
+
     fun avCheckout(active: com.satcop.smartvisitor.kiosk.data.addvisitor.ActiveVisit) {
         if (_state.value.addVisitor.checkoutBusy) return
         _state.update { it.copy(addVisitor = it.addVisitor.copy(checkoutBusy = true)) }
@@ -1465,14 +1538,16 @@ class KioskViewModel(
                 }
                 return
             }
+            val kindNow = draft.profileKind
             val body = VisitCreate(
                 visitorName = draft.visitorName.trim(),
                 mobile = mobileTen,
-                visitorType = draft.visitorType,
+                visitorType = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.visitorTypeToSend(kindNow, draft.profileId, draft.confirmKindSwitch),
                 purpose = draft.purpose.trim(),
                 hostId = draft.hostId.orEmpty(),
                 livePhotoKey = photo.key,
                 idType = draft.idType,
+                // Only a newly typed full number is sent; the saved ID (masked) is never echoed back.
                 idNumber = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.idNumberToSend(draft.useSavedId && draft.savedId != null, draft.idNumber),
                 idImageKey = idKey,
                 vehicleNumber = draft.vehicleNumber.trim().ifEmpty { null },
@@ -1487,6 +1562,11 @@ class KioskViewModel(
                     java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Kolkata"))
                         .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
                 },
+                profileId = draft.profileId,
+                confirmKindSwitch = if (draft.confirmKindSwitch) true else null,
+                company = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.companyToSend(kindNow, draft.company),
+                scheduledAt = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.scheduledAtToSend(kindNow, draft.scheduledAtMs),
+                attemptId = avAttemptId,
             )
             val visit = repository.createVisit(body)
             val source = repository.dataSource
@@ -1507,6 +1587,7 @@ class KioskViewModel(
                     step = 4,
                     toast = when {
                         hit?.severity == "Alert" -> "Alert hit · visit pending · host notified"
+                        visit.isVendor && visit.status == "inside" -> "Vendor checked in · host informed"
                         after -> "After hours · ${AfterHoursCopy.HOST_NO_OP}"
                         source == DataSource.FIXTURES -> "FIXTURES · host notified · Demo approve to issue QR"
                         else -> "Host notified · waiting for approval"
@@ -1522,7 +1603,8 @@ class KioskViewModel(
                 viewModelScope.launch { pollWhilePending() }
             }
         } catch (e: ApiException) {
-            if (e.code == "BLACKLIST_BLOCK") {
+            if (handleSaveConflict(e)) return
+            if (e.code == "BLACKLIST_BLOCK" || e.code == "BLACKLISTED") {
                 _state.update {
                     it.copy(
                         submitting = false,

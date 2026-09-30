@@ -11,6 +11,9 @@ object AddVisitorLogic {
     const val ID_PHOTO_REQUIRED = "Take a photo of the ID."
     const val ID_HELPER = "Required for every entry."
     const val WAITING_HOST = "Waiting for host approval"
+    const val ALERT_DEFAULT = "Alert: call the security head before entry."
+    const val SWITCH_TYPE_LINK = "Register as different type"
+    const val SWITCH_TYPE_CONFIRM = "Register this number as a different type? The history is kept and the change is recorded."
 
     /** Continue is enabled only for a valid 10-digit Indian mobile (first digit 6-9). */
     fun canLookup(raw: String): Boolean = MobileIndia.isValid(digitsOnly(raw))
@@ -56,6 +59,28 @@ object AddVisitorLogic {
         !serverGiven.isNullOrBlank() && !serverGiven.equals("Vendor", true) -> serverGiven
         else -> "Guest"
     }
+
+    /**
+     * visitorType for POST /visits (contract section 4): OMITTED for a number the server already knows (auto-link to
+     * its profile type, no 409); explicit for a new number; explicit only together with confirmKindSwitch when the
+     * guard chose "Register as different type".
+     */
+    fun visitorTypeToSend(kind: ProfileKind, profileId: String?, confirmKindSwitch: Boolean): String? = when {
+        profileId != null && !confirmKindSwitch -> null
+        kind == ProfileKind.VENDOR -> "Vendor"
+        else -> "Guest"
+    }
+
+    /** Vendor company is NOT server-required: the form enforces it (trimmed, non-empty). */
+    fun companyToSend(kind: ProfileKind, company: String): String? =
+        if (kind == ProfileKind.VENDOR) company.trim().ifEmpty { null } else null
+
+    /** scheduledAt only for visitors (a vendor with scheduledAt is refused by the server). */
+    fun scheduledAtToSend(kind: ProfileKind, ms: Long?): String? =
+        if (kind == ProfileKind.VISITOR && ms != null) {
+            java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.of("Asia/Kolkata"))
+                .format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        } else null
 
     /** ID number to send: null when the saved ID is used or the value is a masked placeholder (never send those). */
     fun idNumberToSend(useSavedId: Boolean, typed: String): String? {

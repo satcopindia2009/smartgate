@@ -188,7 +188,9 @@ fun AddVisitorFormStep(
     onUseSavedId: (Boolean) -> Unit,
     onBack: () -> Unit,
     onContinue: () -> Unit,
+    onSwitchKind: () -> Unit = {},
 ) {
+    var confirmSwitch by remember { mutableStateOf(false) }
     val kind = state.kind
     val returning = state.returning
     Column(Modifier.fillMaxWidth()) {
@@ -200,6 +202,8 @@ fun AddVisitorFormStep(
             if (AddVisitorLogic.showsTypeSelector(returning)) {
                 KindSelector(kind = kind, onKind = onKind)
             }
+            state.known?.alertMessage?.let { InfoBanner(it, KioskColors.orangeDim) }
+            state.known?.todayNote?.let { InfoBanner(it, KioskColors.orangeDim) }
             if (returning && state.referencePhoto != null) {
                 ReferencePhoto(state.referencePhoto)
             }
@@ -253,6 +257,30 @@ fun AddVisitorFormStep(
                 ScheduleField(scheduledAtMs = draft.scheduledAtMs, onScheduled = onScheduled)
             }
         }
+        if (returning) {
+            Text(
+                AddVisitorLogic.SWITCH_TYPE_LINK,
+                color = KioskColors.text, fontSize = 13.sp, fontFamily = KioskFont,
+                textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline,
+                modifier = Modifier
+                    .padding(top = FormTokens.ButtonGap)
+                    .heightIn(min = 48.dp)
+                    .clickable { confirmSwitch = true },
+            )
+        }
+        if (confirmSwitch) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { confirmSwitch = false },
+                title = { Text(AddVisitorLogic.SWITCH_TYPE_LINK) },
+                text = { Text(AddVisitorLogic.SWITCH_TYPE_CONFIRM) },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = { confirmSwitch = false; onSwitchKind() }) { Text("Switch type") }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { confirmSwitch = false }) { Text("Cancel") }
+                },
+            )
+        }
         var otpMayContinue by remember { mutableStateOf(true) }
         com.satcop.smartvisitor.kiosk.ui.otp.VisitorOtpSection(
             mobileTenDigits = draft.mobile.filter { it.isDigit() }.takeLast(10),
@@ -268,6 +296,15 @@ fun AddVisitorFormStep(
             KioskGhostButton(text = "Back", onClick = onBack, modifier = Modifier.fillMaxWidth())
         }
     }
+}
+
+@Composable
+private fun InfoBanner(text: String, bg: androidx.compose.ui.graphics.Color) {
+    Text(
+        text,
+        color = KioskColors.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont,
+        modifier = Modifier.fillMaxWidth().clip(ControlShape).background(bg).padding(FormTokens.ScreenHPad),
+    )
 }
 
 @Composable

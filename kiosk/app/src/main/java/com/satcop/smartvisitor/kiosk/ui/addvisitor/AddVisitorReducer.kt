@@ -53,6 +53,17 @@ object AddVisitorReducer {
     fun chooseKind(s: AddVisitorState, kind: ProfileKind): AddVisitorState =
         if (s.returning) s else s.copy(kind = kind)
 
+    /** "Register as different type" (after the guard confirmed): flips the kind and marks the switch for the server. */
+    fun switchKind(s: AddVisitorState, d: RegistrationDraft): Pair<AddVisitorState, RegistrationDraft> {
+        val next = if (s.kind == ProfileKind.VENDOR) ProfileKind.VISITOR else ProfileKind.VENDOR
+        return s.copy(kind = next) to d.copy(
+            profileKind = next, confirmKindSwitch = true,
+            visitorType = AddVisitorLogic.apiVisitorType(next, null),
+            scheduledAtMs = if (next == ProfileKind.VENDOR) null else d.scheduledAtMs,
+        )
+    }
+
+    /** A 409 PROFILE_TYPE_CONFLICT / ALREADY_INSIDE on save: back to the number step and look up again. */
     fun backToNumber(s: AddVisitorState): AddVisitorState =
         AddVisitorState(mobileInput = s.mobileInput)
 
@@ -78,6 +89,8 @@ object AddVisitorReducer {
             savedId = k?.idRef,
             useSavedId = k?.idRef != null,
             scheduledAtMs = null,
+            profileId = k?.profileId,
+            confirmKindSwitch = false,
             livePhotoCaptured = false,
             livePhotoKey = null,
             idImageCaptured = false,

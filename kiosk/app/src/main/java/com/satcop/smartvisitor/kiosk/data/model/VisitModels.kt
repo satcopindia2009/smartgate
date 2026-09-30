@@ -57,15 +57,20 @@ data class BlacklistMatchResponse(
     val meta: Meta? = null,
 )
 
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class VisitCreate(
     val visitorName: String,
     val mobile: String,
-    val visitorType: String,
+    /** null = omitted: the server links to the existing profile's type (Add Visitor contract 2026-09-30 section 4). */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val visitorType: String? = null,
     val purpose: String,
     val hostId: String,
     val livePhotoKey: String,
     val idType: String,
+    /** null = omitted = "use the saved ID". A masked value is never sent. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val idNumber: String? = null,
     val idImageKey: String? = null,
     val vehicleNumber: String? = null,
@@ -76,6 +81,20 @@ data class VisitCreate(
     val blacklistOverride: Boolean = false,
     val consentVersion: String? = null,
     val consentAt: String? = null,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val profileId: String? = null,
+    /** true only after the guard confirmed "Register as different type". */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val confirmKindSwitch: Boolean? = null,
+    /** Vendor company (trimmed). */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val company: String? = null,
+    /** Visitors only; a vendor with scheduledAt is refused (VENDOR_NO_SCHEDULE). ISO-8601 with +05:30. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val scheduledAt: String? = null,
+    /** One id per submit; the same id returns the original entry (idempotentReplay). */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val attemptId: String? = null,
 )
 
 @Serializable
@@ -112,8 +131,24 @@ data class VisitOut(
     val consentVersion: String? = null,
     val consentAt: String? = null,
     val decidedAt: String? = null,
+    // Add Visitor contract 2026-09-30 (additive)
+    val profileId: String? = null,
+    val kind: String? = null,
+    val company: String? = null,
+    val scheduledAt: String? = null,
+    val statusCode: String? = null,
+    val displayStatus: String? = null,
+    val displayNote: String? = null,
+    val mobileMasked: String? = null,
+    val idNumberMasked: String? = null,
+    val idOnFile: Boolean? = null,
+    val created: Boolean? = null,
+    val profileCreated: Boolean? = null,
+    val idempotentReplay: Boolean? = null,
     val meta: Meta? = null,
-)
+) {
+    val isVendor: Boolean get() = kind.equals("vendor", true) || visitorType.equals("Vendor", true)
+}
 
 @Serializable
 data class PassScanRequest(
@@ -163,13 +198,15 @@ data class ErrorEnvelope(
 data class ErrorBody(
     val code: String? = null,
     val message: String? = null,
+    val details: kotlinx.serialization.json.JsonElement? = null,
 )
 
 enum class IdType(val apiValue: String) {
     Aadhaar("Aadhaar"),
-    DL("DL"),
-    Voter("Voter"),
+    PAN("PAN"),
     Passport("Passport"),
+    Voter("Voter"),
+    DL("DL"),
     Other("Other"),
     ;
 
@@ -185,4 +222,6 @@ class ApiException(
     val code: String,
     override val message: String,
     val httpStatus: Int = 0,
+    /** Flattened error `details` (e.g. field, profileId, profileType, activeVisit.id, activeVisit.status). */
+    val details: Map<String, String> = emptyMap(),
 ) : RuntimeException(message)

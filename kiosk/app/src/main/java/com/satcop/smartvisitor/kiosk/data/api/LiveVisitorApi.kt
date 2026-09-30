@@ -17,6 +17,7 @@ import com.satcop.smartvisitor.kiosk.data.model.GateListResponse
 import com.satcop.smartvisitor.kiosk.data.model.HoursListResponse
 import com.satcop.smartvisitor.kiosk.data.model.InsideListResponse
 import com.satcop.smartvisitor.kiosk.data.model.LoginRequest
+import com.satcop.smartvisitor.kiosk.data.model.ProfileLookupResponse
 import com.satcop.smartvisitor.kiosk.data.model.LoginResponse
 import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.School
@@ -203,6 +204,17 @@ class LiveVisitorApi(
         return executeBytes(req)
     }
 
+    /**
+     * Fetch a media URL exactly as the API returned it (query, incl. the signed ?t=, stays intact). The Bearer is
+     * attached only for the API's own host; URLs are never built from keys here.
+     */
+    fun getMediaByUrl(url: String): ByteArray {
+        val target = MediaUrl.resolve(url) ?: throw ApiException("MEDIA_URL", "Bad media url", 0)
+        val b = Request.Builder().url(target.url).get()
+        val req = if (target.attachBearer) authorized(b) else b.build()
+        return executeBytes(req)
+    }
+
     fun listStudents(q: String? = null, active: Boolean = true): StudentListResponse {
         val path = buildString {
             append("/students?active=$active")
@@ -343,6 +355,7 @@ class LiveVisitorApi(
             code = parsed?.error?.code ?: "HTTP_$code",
             message = parsed?.error?.message ?: text.take(180).ifBlank { "HTTP $code" },
             httpStatus = code,
+            details = ErrorDetails.flatten(parsed?.error?.details),
         )
     }
 
@@ -396,6 +409,12 @@ class LiveVisitorApi(
     }
 
     // --- Guard ASAP living endpoints ---
+
+    /** Canonical unified lookup (visitor + vendor, server-side dedupe, masked for guard/gate). */
+    fun lookupProfile(mobile: String): ProfileLookupResponse {
+        val q = java.net.URLEncoder.encode(mobile, Charsets.UTF_8.name())
+        return get("/visitors/lookup?mobile=$q")
+    }
 
     fun lookupVisitorByMobile(mobile: String): VisitorLookupResponse {
         val q = java.net.URLEncoder.encode(mobile, Charsets.UTF_8.name())

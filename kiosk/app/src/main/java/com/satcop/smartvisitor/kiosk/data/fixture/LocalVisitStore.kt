@@ -57,7 +57,7 @@ class LocalVisitStore {
                 schoolId = DemoFixtures.SCHOOL_ID,
                 visitorName = body.visitorName,
                 mobile = body.mobile,
-                visitorType = body.visitorType,
+                visitorType = body.visitorType ?: "Guest",
                 purpose = body.purpose,
                 hostId = body.hostId,
                 livePhotoKey = body.livePhotoKey,

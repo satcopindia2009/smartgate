@@ -74,7 +74,7 @@ fun OutcomeStep(
     ) {
         OutcomeGlyph(status = status)
         Text(
-            text = headline(status),
+            text = if (visit?.isVendor == true && status == "inside") "Checked in" else headline(status),
             color = KioskColors.text,
             fontSize = 24.sp,
             fontWeight = FontWeight.SemiBold,

@@ -165,6 +165,9 @@ class HybridKioskRepository(
                 live.createVisit(body).also { local.put(it) }
             } catch (e: ApiException) {
                 if (e.code == "BLACKLIST_BLOCK") throw e
+                // 4xx = the server answered (validation, 409 ALREADY_INSIDE / PROFILE_TYPE_CONFLICT, 403 BLACKLISTED...):
+                // surface it. Only a dead server (0 / 5xx) may fall back to the local fixture store.
+                if (e.httpStatus in 400..499) throw e
                 if (shouldFallback(e)) markFixtures()
                 local.createPending(body)
             } catch (e: Exception) {
@@ -328,6 +331,15 @@ class HybridKioskRepository(
         if (key.isBlank() || dataSource != DataSource.LIVE) return@withContext null
         try {
             live.getMediaBytes(key)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    override suspend fun loadMediaUrl(url: String): ByteArray? = withContext(Dispatchers.IO) {
+        if (url.isBlank() || dataSource != DataSource.LIVE) return@withContext null
+        try {
+            live.getMediaByUrl(url)
         } catch (_: Exception) {
             null
         }

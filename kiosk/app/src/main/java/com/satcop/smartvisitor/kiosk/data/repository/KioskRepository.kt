@@ -53,6 +53,8 @@ interface KioskRepository : DirectoryRepository {
     suspend fun registerDeviceToken(token: String): String?
     suspend fun listHours(): List<CampusHoursRow>
     suspend fun loadMediaBytes(key: String): ByteArray?
+    /** Fetch a media URL exactly as the API returned it (Bearer for API media, ?t= untouched). */
+    suspend fun loadMediaUrl(url: String): ByteArray?
     suspend fun listStudents(q: String?): List<StudentOut>
     suspend fun listAuthorizedPickup(studentId: String): List<AuthorizedPickup>
     suspend fun startPickup(body: PickupCreate): PickupOut

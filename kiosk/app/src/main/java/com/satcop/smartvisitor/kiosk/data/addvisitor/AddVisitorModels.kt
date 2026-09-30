@@ -34,6 +34,15 @@ data class KnownProfile(
     val lastVisitLabel: String? = null,
     /** API visitorType to send on the visit (kept as the server gave it). */
     val visitorTypeApi: String? = null,
+    /** Server profile id (PRF-nnnnn): sent back on the visit so the server links, never duplicates. */
+    val profileId: String? = null,
+    /** Absolute URL with a 30-minute signed ?t= token: fetched as given (never rebuilt). */
+    val photoUrl: String? = null,
+    val lastHostName: String? = null,
+    /** Yellow banner text for an Alert-severity number ("Alert: call the security head before entry."). */
+    val alertMessage: String? = null,
+    /** "Approved earlier today" / "Rejected earlier today: <reason>" line for the guard. */
+    val todayNote: String? = null,
 )
 
 sealed interface LookupOutcome {
