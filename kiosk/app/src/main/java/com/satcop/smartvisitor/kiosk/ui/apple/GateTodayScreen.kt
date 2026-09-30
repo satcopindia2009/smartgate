@@ -474,7 +474,7 @@ private fun statusKind(key: String) = when (key) {
     else -> SgStatusKind.NEUTRAL
 }
 
-private fun initialsOf(name: String): String =
+internal fun initialsOf(name: String): String =
     name.trim().split(" ").filter { it.isNotBlank() }.mapNotNull { it.firstOrNull()?.uppercase() }.take(2)
         .joinToString("").ifBlank { "•" }
 
@@ -488,7 +488,7 @@ private fun greeting(): String {
 }
 
 /** "Today, 09:50 am" / "30 Sep, 09:50 am" in IST; null when there is no timestamp. Unparseable text is shown as given. */
-private fun whenText(iso: String?): String? {
+internal fun whenText(iso: String?): String? {
     if (iso.isNullOrBlank()) return null
     val zoned: ZonedDateTime = runCatching { OffsetDateTime.parse(iso).atZoneSameInstant(IST) }.getOrNull()
         ?: runCatching { LocalDateTime.parse(iso).atZone(IST) }.getOrNull()

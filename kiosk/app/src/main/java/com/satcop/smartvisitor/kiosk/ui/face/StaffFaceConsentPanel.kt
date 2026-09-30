@@ -22,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.data.model.StaffFaceConsent
-import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
-import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgSecondaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
@@ -64,20 +64,20 @@ fun StaffFaceConsentPanel(
         )
         Text(
             text = "Version · ${StaffFaceConsent.VERSION}",
-            color = KioskColors.textDim,
+            color = KioskColors.textMuted,
             fontSize = 11.sp,
             fontFamily = KioskFont,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            KioskGhostButton(
+            SgSecondaryButton(
                 text = StaffFaceConsent.DECLINE,
                 onClick = onDecline,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                modifier = Modifier.weight(1f),
             )
-            KioskPrimaryButton(
+            SgPrimaryButton(
                 text = if (langHi) StaffFaceConsent.AGREE_HI else StaffFaceConsent.AGREE_EN,
                 onClick = onAgree,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -87,13 +87,13 @@ fun StaffFaceConsentPanel(
 private fun LangChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Text(
         text = label,
-        color = if (selected) KioskColors.cyanBright else KioskColors.textMuted,
+        color = if (selected) KioskColors.primary else KioskColors.textMuted,
         fontSize = 12.sp,
         fontFamily = KioskFont,
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(if (selected) KioskColors.cyanDim else KioskColors.bg)
-            .border(1.dp, if (selected) KioskColors.cyan else KioskColors.border, RoundedCornerShape(999.dp))
+            .background(if (selected) KioskColors.brandSoft else KioskColors.secondaryFill)
+            .border(1.dp, if (selected) KioskColors.primary else KioskColors.border, RoundedCornerShape(999.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )

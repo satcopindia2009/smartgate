@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.data.model.StaffFaceConsent
 import com.satcop.smartvisitor.kiosk.ui.components.KioskField
-import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
-import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgSecondaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.theme.ControlShape
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
@@ -68,14 +68,14 @@ fun FaceLoginScreen(
     ) {
         if (!capturePhase) {
             Text(
-                "Staff face login",
+                "Face login",
                 color = KioskColors.text,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = KioskFont,
             )
             Text(
-                "Gate · Host · Guard · visitor face OUT · password always available (AC-FL1)",
+                "Unlock with your face, or use your password.",
                 color = KioskColors.textMuted,
                 fontSize = 13.sp,
                 fontFamily = KioskFont,
@@ -85,8 +85,8 @@ fun FaceLoginScreen(
         when (phase) {
             FaceLoginPhase.CONSENT_ENROLL -> {
                 Text(
-                    "Consent required before CameraX enroll",
-                    color = KioskColors.orange,
+                    "Please read and agree before your face is enrolled.",
+                    color = KioskColors.warning,
                     fontSize = 13.sp,
                     fontFamily = KioskFont,
                 )
@@ -112,29 +112,28 @@ fun FaceLoginScreen(
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .clip(ControlShape)
-                        .background(KioskColors.sidebar)
-                        .border(1.dp, KioskColors.border, ControlShape)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                        .background(KioskColors.brandSoft)
                         .padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        if (enrolled) "Template: enrolled"
-                        else "Template: not enrolled · password needed for live enroll",
-                        color = if (enrolled) KioskColors.greenBright else KioskColors.orange,
+                        if (enrolled) "Face enrolled"
+                        else "Face not enrolled. Sign in with your password to enroll.",
+                        color = if (enrolled) KioskColors.success else KioskColors.warning,
                         fontFamily = KioskFont,
                         fontWeight = FontWeight.Medium,
                     )
                     if (consentAgreed && !consentAt.isNullOrBlank()) {
                         Text(
-                            "Consent · ${StaffFaceConsent.VERSION} @ $consentAt",
+                            "Consent recorded · ${StaffFaceConsent.VERSION}",
                             color = KioskColors.textMuted,
                             fontSize = 12.sp,
                             fontFamily = KioskFont,
                         )
                     } else {
                         Text(
-                            "Enroll requires EN+HI consent (${StaffFaceConsent.VERSION}) — no pre-tick",
+                            "Consent is needed before you can enroll your face.",
                             color = KioskColors.textMuted,
                             fontSize = 12.sp,
                             fontFamily = KioskFont,
@@ -142,35 +141,35 @@ fun FaceLoginScreen(
                     }
                 }
                 KioskField(
-                    label = "Username (staff)",
+                    label = "User ID",
                     value = username,
                     onValueChange = onUsername,
-                    placeholder = "username",
+                    placeholder = "Enter your User ID",
                     keyboardType = KeyboardType.Ascii,
                     capitalization = KeyboardCapitalization.None,
                     autoCorrect = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                KioskPrimaryButton(
+                SgPrimaryButton(
                     text = if (enrolled) "Re-enroll face" else "Enroll face",
                     onClick = onStartEnroll,
                     enabled = !busy && username.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                KioskGhostButton(
+                SgSecondaryButton(
                     text = "Unlock with face",
                     onClick = onStartVerify,
                     enabled = !busy,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                KioskGhostButton(
+                SgSecondaryButton(
                     text = "Use password instead",
                     onClick = onUsePassword,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 if (!message.isNullOrBlank()) {
                     Spacer(Modifier.height(4.dp))
-                    Text(message, color = if (messageIsError) KioskColors.errorText else KioskColors.systemBlue, fontSize = 13.sp, fontFamily = KioskFont)
+                    Text(message, color = if (messageIsError) KioskColors.errorText else KioskColors.primary, fontSize = 13.sp, fontFamily = KioskFont)
                 }
             }
         }
