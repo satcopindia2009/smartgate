@@ -1,6 +1,7 @@
 package com.satcop.smartvisitor.kiosk.qa
 
 import android.graphics.Bitmap
+import com.satcop.smartvisitor.kiosk.data.otp.OtpRepository
 
 /**
  * QA-ONLY (src/debugqa, applicationId ...kiosk.debugqa). Emulators have no front camera, so every camera capture
@@ -14,6 +15,12 @@ object QaHooks {
 
     val fakeCamera: Boolean get() = enabled
     const val bannerText: String = "TEST CAMERA (QA build)"
+
+    /** QA build: OTP screens are reachable even while the real OTP contract is unbound (fake repository, code 123456). */
+    val otpEntryPoints: Boolean get() = true
+
+    private val otpRepo by lazy { QaOtpRepository() }
+    fun otpRepository(): OtpRepository? = otpRepo
 
     fun frame(label: String): Bitmap? = if (enabled) DebugQaTestPattern.create(label) else null
 }

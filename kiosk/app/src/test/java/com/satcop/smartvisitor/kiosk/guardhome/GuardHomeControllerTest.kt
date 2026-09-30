@@ -333,3 +333,19 @@ class GuardClockFlowTest {
         assertEquals("Your location is required to clock out. Please turn on GPS and try again.", c.state.value.panelMessage)
     }
 }
+
+class GuardSoftModeFlagTest {
+    @Test
+    fun locationDeniedCheckInSucceedsWithFlagNoteOnResult() {
+        val api = FakeApi()
+        val c = GuardHomeController(
+            CoroutineScope(Dispatchers.Unconfined), api, Dispatchers.Unconfined, { 1_000_000L },
+            { Instant.parse("2026-09-30T11:00:00Z") }, { "att-1" }, { false },
+        )
+        c.openPanel(AttendanceMode.CHECK_IN); c.proceedToSelfie()
+        c.submit("B64", 999_000L, null)
+        val res = c.state.value.result!!
+        assertEquals("Location is off. Your check-in will be flagged for review.", res.flaggedNote)
+        assertEquals("GA-1", res.recordId)
+    }
+}

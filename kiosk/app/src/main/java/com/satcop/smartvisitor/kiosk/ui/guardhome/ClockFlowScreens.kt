@@ -603,6 +603,10 @@ fun ClockResultScreen(result: ClockResult, displayName: String, schoolName: Stri
             Text(ClockInLogic.resultTitle(result.mode), color = KioskColors.text, fontSize = 28.sp, fontWeight = FontWeight.Bold, fontFamily = KioskFont)
             Text(ClockInLogic.resultBody(result.mode), color = KioskColors.textMuted, fontSize = 15.sp, fontFamily = KioskFont, textAlign = TextAlign.Center)
             result.flaggedNote?.let {
+                Text(
+                    "⚑ Flagged for review", color = KioskColors.orange, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont,
+                    modifier = Modifier.clip(RoundedCornerShape(50)).background(KioskColors.orangeDim).padding(horizontal = 12.dp, vertical = 5.dp),
+                )
                 Text(it, color = KioskColors.orange, fontSize = 13.sp, fontFamily = KioskFont, textAlign = TextAlign.Center)
             }
             Column(

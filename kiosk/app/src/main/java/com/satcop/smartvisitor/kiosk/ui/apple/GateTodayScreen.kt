@@ -189,6 +189,7 @@ fun GateTodayScreen(
                     AppleShellTitle("Settings")
                     AppearanceSegmentedRow()
                     AppleSectionHeader("Account")
+                    com.satcop.smartvisitor.kiosk.ui.otp.StaffVerifyEntry()
                     AppleInset {
                         AppleCell("Lost & Found", onClick = onLostFound, showDivider = true)
                         AppleCell("Sign out", showChevron = false, showDivider = false, onClick = onLogout)

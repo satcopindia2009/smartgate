@@ -145,6 +145,7 @@ fun LoginScreen(
                 .padding(top = 4.dp)
                 .heightIn(min = 52.dp),
         )
+        com.satcop.smartvisitor.kiosk.ui.otp.ForgotPasswordEntry()
         Text(
             text = "Need help? Ask school admin",
             color = KioskColors.textMuted,

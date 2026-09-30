@@ -40,6 +40,9 @@ data class MeResponse(
     val displayName: String,
     val phone: String? = null,
     val email: String? = null,
+    // OTP scope: mobileVerified / verifiedAt on /auth/me (additive; absent until Backend ships it).
+    val mobileVerified: Boolean? = null,
+    val verifiedAt: String? = null,
     val meta: Meta? = null,
 )
 

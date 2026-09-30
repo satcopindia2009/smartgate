@@ -6,6 +6,7 @@
         <receiver android:name="com.satcop.smartvisitor.kiosk.qa.QaSwitchReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="com.satcop.smartvisitor.kiosk.debugqa.FAKE_CAMERA" />
+                <action android:name="com.satcop.smartvisitor.kiosk.debugqa.QA_OTP" />
             </intent-filter>
         </receiver>
     </application>

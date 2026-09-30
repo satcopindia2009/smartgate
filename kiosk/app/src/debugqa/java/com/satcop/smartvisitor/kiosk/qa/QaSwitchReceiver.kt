@@ -5,11 +5,25 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Debug-only switch (adb): turn the fake camera off to use a real camera on a device that has one.
- *   adb shell am broadcast -a com.satcop.smartvisitor.kiosk.debugqa.FAKE_CAMERA --ez enabled false -p com.satcop.smartvisitor.kiosk.debugqa
+ * Debug-only switches (adb). Package: com.satcop.smartvisitor.kiosk.debugqa. See /workspace/qa-debug/README.md.
+ *  Fake camera:  -a ...debugqa.FAKE_CAMERA --ez enabled false
+ *  OTP states:   -a ...debugqa.QA_OTP  --ez sendFail true | --es send ok|fail|limit|daily|wait
+ *                --es verify ok|wrong|expired|locked|used | --ez visitorOtp true|false | --ez visitorSkip true|false | --ez reset true
  */
 class QaSwitchReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        QaHooks.enabled = intent.getBooleanExtra("enabled", true)
+        when (intent.action) {
+            "com.satcop.smartvisitor.kiosk.debugqa.QA_OTP" -> {
+                val e = intent.extras
+                if (e?.getBoolean("reset", false) == true) QaOtpState.reset()
+                if (e?.containsKey("sendFail") == true) QaOtpState.send = if (e.getBoolean("sendFail")) "fail" else "ok"
+                e?.getString("send")?.let { QaOtpState.send = it }
+                e?.getString("verify")?.let { QaOtpState.verify = it }
+                if (e?.containsKey("visitorOtp") == true) QaOtpState.visitorOtpEnabled = e.getBoolean("visitorOtp")
+                if (e?.containsKey("visitorSkip") == true) QaOtpState.visitorOtpAllowSkip = e.getBoolean("visitorSkip")
+                e?.getString("channel")?.let { QaOtpState.otpChannel = it }
+            }
+            else -> QaHooks.enabled = intent.getBooleanExtra("enabled", true)
+        }
     }
 }

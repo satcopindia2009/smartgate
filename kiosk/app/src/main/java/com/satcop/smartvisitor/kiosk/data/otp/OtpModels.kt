@@ -71,8 +71,11 @@ object OtpAvailability {
     /** Flip to true in the commit that binds the published endpoints. */
     const val CONTRACT_BOUND: Boolean = false
 
-    fun staffVerifyVisible(bound: Boolean = CONTRACT_BOUND) = bound
-    fun forgotPasswordVisible(bound: Boolean = CONTRACT_BOUND) = bound
-    fun visitorCardVisible(s: OtpSettings, bound: Boolean = CONTRACT_BOUND) = bound && s.visitorOtpEnabled
+    /** True when the real contract is bound, or inside the QA-only build (fake repository). Release: bound only. */
+    val reachable: Boolean get() = CONTRACT_BOUND || com.satcop.smartvisitor.kiosk.qa.QaHooks.otpEntryPoints
+
+    fun staffVerifyVisible(bound: Boolean = reachable) = bound
+    fun forgotPasswordVisible(bound: Boolean = reachable) = bound
+    fun visitorCardVisible(s: OtpSettings, bound: Boolean = reachable) = bound && s.visitorOtpEnabled
     fun visitorSkipVisible(s: OtpSettings) = s.visitorOtpEnabled && s.visitorOtpAllowSkip
 }

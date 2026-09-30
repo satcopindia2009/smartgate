@@ -19,6 +19,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -249,12 +253,18 @@ fun AddVisitorFormStep(
                 ScheduleField(scheduledAtMs = draft.scheduledAtMs, onScheduled = onScheduled)
             }
         }
+        var otpMayContinue by remember { mutableStateOf(true) }
+        com.satcop.smartvisitor.kiosk.ui.otp.VisitorOtpSection(
+            mobileTenDigits = draft.mobile.filter { it.isDigit() }.takeLast(10),
+            onChangeNumber = onBack,
+            onGate = { otpMayContinue = it },
+        )
         PanelDivider()
         Column(
             modifier = Modifier.fillMaxWidth().padding(top = FormTokens.SectionGap),
             verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
         ) {
-            KioskPrimaryButton(text = "Continue to photo & ID", onClick = onContinue, modifier = Modifier.fillMaxWidth())
+            KioskPrimaryButton(text = "Continue to photo & ID", onClick = onContinue, enabled = otpMayContinue, modifier = Modifier.fillMaxWidth())
             KioskGhostButton(text = "Back", onClick = onBack, modifier = Modifier.fillMaxWidth())
         }
     }

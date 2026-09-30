@@ -122,3 +122,18 @@ class ClockInLogicTest {
         assertEquals(KioskRole.GUARD, KioskRole.fromJwt("guard"))
     }
 }
+
+class FlaggedNoteTest {
+    @Test
+    fun softModeCheckInWithoutLocationShowsRulingFlagNote() {
+        val row = AttendanceRow(id = "GA-0040", timestamp = "2026-09-30T09:00:00+05:30", geofenceStatus = "no_gps", warn = "no_gps")
+        val r = ClockInLogic.resultFrom(AttendanceMode.CHECK_IN, row, sentWithoutLocation = true)
+        assertEquals("Location is off. Your check-in will be flagged for review.", r.flaggedNote)
+        // server code text is never shown raw
+        assertEquals(null, ClockInLogic.resultFrom(AttendanceMode.CHECK_IN, AttendanceRow(warn = "no_gps")).flaggedNote)
+        // plain-words server warning is kept
+        assertEquals("Checked in outside the campus.", ClockInLogic.resultFrom(AttendanceMode.CHECK_IN, AttendanceRow(warn = "Checked in outside the campus.")).flaggedNote)
+        // clock-out never carries the location-off flag
+        assertEquals(null, ClockInLogic.resultFrom(AttendanceMode.CLOCK_OUT, row, sentWithoutLocation = true).flaggedNote)
+    }
+}

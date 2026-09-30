@@ -110,7 +110,10 @@ dependencies {
 //  2) verifyNoQaBypassInReleaseApk: runs AFTER packageRelease (finalizer); fails if any release dex / manifest
 //     contains a QA class name, the debugqa applicationId or the switch action.
 // ---------------------------------------------------------------------------------------------------------------
-val qaForbiddenSymbols = listOf("DebugQaTestPattern", "QaSwitchReceiver", "debugqa", "FAKE_CAMERA", "QA TEST IMAGE", "TEST CAMERA (QA build)")
+val qaForbiddenSymbols = listOf(
+    "DebugQaTestPattern", "QaSwitchReceiver", "debugqa", "FAKE_CAMERA", "QA TEST IMAGE", "TEST CAMERA (QA build)",
+    "QaOtpRepository", "QaOtpState", "QA_OTP", "qa-otp-", "qa-reset-token",
+)
 
 val verifyNoQaBypassSources = tasks.register("verifyNoQaBypassSources") {
     group = "verification"
@@ -125,7 +128,9 @@ val verifyNoQaBypassSources = tasks.register("verifyNoQaBypassSources") {
                 qaForbiddenSymbols.filter { text.contains(it) }.forEach { bad += "${f.relativeTo(projectDir)}: $it" }
             }
         }
-        if (!releaseHooks.exists() || !releaseHooks.readText().contains("const val fakeCamera: Boolean = false")) {
+        if (!releaseHooks.exists() || !releaseHooks.readText().contains("const val fakeCamera: Boolean = false") ||
+            !releaseHooks.readText().contains("const val otpEntryPoints: Boolean = false") ||
+            !releaseHooks.readText().contains("fun otpRepository(): OtpRepository? = null")) {
             bad += "src/release QaHooks must be the constant-false no-op"
         }
         if (bad.isNotEmpty()) throw GradleException("QA bypass code found in release sources:\n" + bad.joinToString("\n"))

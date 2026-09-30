@@ -218,6 +218,7 @@ fun HostInboxScreen(
                     }
                     AppearanceSegmentedRow()
                     AppleSectionHeader("Account")
+                    com.satcop.smartvisitor.kiosk.ui.otp.StaffVerifyEntry()
                     AppleInset {
                         AppleCell("Sign out", showChevron = false, showDivider = false, onClick = onLogout)
                     }

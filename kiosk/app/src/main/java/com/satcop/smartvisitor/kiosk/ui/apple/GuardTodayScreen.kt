@@ -143,6 +143,7 @@ fun GuardTodayShell(
                     AppleShellTitle("Settings")
                     AppearanceSegmentedRow()
                     AppleSectionHeader("Account")
+                    com.satcop.smartvisitor.kiosk.ui.otp.StaffVerifyEntry()
                     AppleInset {
                         AppleCell(
                             "Sign out",

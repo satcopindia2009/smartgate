@@ -94,13 +94,18 @@ object ClockInLogic {
         listOf(row?.gateName, fallbackGateName, row?.geofenceName)
             .firstOrNull { !it.isNullOrBlank() }?.trim() ?: "—"
 
-    fun resultFrom(mode: AttendanceMode, row: AttendanceRow, fallbackGateName: String? = null): ClockResult {
+    fun resultFrom(mode: AttendanceMode, row: AttendanceRow, fallbackGateName: String? = null, sentWithoutLocation: Boolean = false): ClockResult {
         val whenIso = if (mode == AttendanceMode.CHECK_IN) {
             row.timestamp ?: row.serverTime ?: row.checkInAt
         } else {
             row.outServerTime ?: row.timestamp ?: row.serverTime ?: row.checkOutAt
         }
-        val flagged = row.warn?.takeIf { it.isNotBlank() && !ErrorCopy.isTechnical(it) }
+        // Flagged note: a check-in that went without location is flagged by the server (soft mode) -> the ruling text.
+        // Any other server warning is shown only when it reads as plain words (never a code like "no_gps").
+        val flagged = when {
+            mode == AttendanceMode.CHECK_IN && (sentWithoutLocation || row.geofenceStatus.equals("no_gps", true)) -> LOCATION_OFF_SOFT
+            else -> row.warn?.takeIf { it.isNotBlank() && ' ' in it.trim() && !ErrorCopy.isTechnical(it) }
+        }
         return ClockResult(
             mode = mode,
             action = actionLabel(mode),
