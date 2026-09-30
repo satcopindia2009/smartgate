@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +36,8 @@ import com.satcop.smartvisitor.kiosk.data.model.AfterHoursCopy
 import com.satcop.smartvisitor.kiosk.data.model.RejectReasons
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import com.satcop.smartvisitor.kiosk.ui.components.SgDangerOutlineButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgPrimaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgSecondaryButton
 import com.satcop.smartvisitor.kiosk.ui.components.SgNavSets
 import com.satcop.smartvisitor.kiosk.ui.components.SgPillStyle
 import com.satcop.smartvisitor.kiosk.ui.components.SgSmallPill
@@ -82,10 +86,31 @@ fun HostInboxScreen(
     focusVisitId: String? = null,
 ) {
     var tab by remember { mutableIntStateOf(0) }
+    var detailId by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     androidx.compose.runtime.LaunchedEffect(focusVisitId) { if (focusVisitId != null) tab = 0 }
+    val detailVisit = detailId?.let { id -> pending.firstOrNull { it.id == id } ?: active.firstOrNull { it.id == id } }
+    androidx.activity.compose.BackHandler(enabled = detailVisit != null) { detailId = null; onCancelReject() }
     val ordered = if (focusVisitId == null) pending
     else pending.sortedByDescending { it.id == focusVisitId }
 
+    if (detailVisit != null) {
+        HostVisitDetail(
+            visit = detailVisit,
+            photo = photos[detailVisit.id],
+            hostName = displayName,
+            isPending = pending.any { it.id == detailVisit.id },
+            busy = busy,
+            rejecting = rejectingVisitId == detailVisit.id,
+            rejectReason = rejectReason,
+            onBack = { detailId = null; onCancelReject() },
+            onApprove = onApprove,
+            onStartReject = onStartReject,
+            onPickRejectReason = onPickRejectReason,
+            onCancelReject = onCancelReject,
+            onConfirmReject = onConfirmReject,
+        )
+        return
+    }
     Column(Modifier.fillMaxSize().background(KioskColors.bg)) {
         androidx.compose.material3.pulltorefresh.PullToRefreshBox(
             isRefreshing = refreshing,
@@ -116,6 +141,7 @@ fun HostInboxScreen(
                                 onPickRejectReason = onPickRejectReason,
                                 onCancelReject = onCancelReject,
                                 onConfirmReject = onConfirmReject,
+                                onOpen = { detailId = visit.id },
                             )
                         }
                     }
@@ -207,10 +233,12 @@ private fun InboxCard(
     onPickRejectReason: (String) -> Unit,
     onCancelReject: () -> Unit,
     onConfirmReject: () -> Unit,
+    onOpen: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         HostVisitCard(
             visit, photo,
+            onClick = onOpen,
             chip = { SgStatusChip("Pending", SgStatusKind.PENDING) },
             actions = if (rejecting) null else ({
                 SgSmallPill("Reject", onClick = { onStartReject(visit.id) }, style = SgPillStyle.OUTLINE_DANGER, enabled = !busy, modifier = Modifier.weight(1f))
@@ -242,3 +270,126 @@ private fun InboxCard(
         }
     }
 }
+
+// ───────────────────────── visit detail ─────────────────────────
+
+@Composable
+private fun DetailSection(title: String, rows: List<Pair<String, String?>>) {
+    val shown = rows.filter { !it.second.isNullOrBlank() }
+    if (shown.isEmpty()) return
+    Column(Modifier.fillMaxWidth().sgCardSurface().padding(SgSpacing.CardPadding), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(title, style = SgType.SectionTitle, color = KioskColors.text)
+        shown.forEach { (k, v) ->
+            Column {
+                Text(k, style = SgType.Caption, color = KioskColors.textMuted)
+                Text(v!!, style = SgType.Body, color = KioskColors.text)
+            }
+        }
+    }
+}
+
+/**
+ * Host visit detail: photo + name, sections Visitor / Host / Visit, pinned Approve / Reject.
+ * Mobile and ID are shown exactly as the API returns them (masked by the server).
+ */
+@Composable
+private fun HostVisitDetail(
+    visit: VisitOut,
+    photo: Bitmap?,
+    hostName: String,
+    isPending: Boolean,
+    busy: Boolean,
+    rejecting: Boolean,
+    rejectReason: String?,
+    onBack: () -> Unit,
+    onApprove: (String) -> Unit,
+    onStartReject: (String) -> Unit,
+    onPickRejectReason: (String) -> Unit,
+    onCancelReject: () -> Unit,
+    onConfirmReject: () -> Unit,
+) {
+    val name = visit.visitorName ?: "Visitor"
+    Column(Modifier.fillMaxSize().background(KioskColors.bg)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                androidx.compose.material3.Icon(
+                    androidx.compose.material.icons.Icons.Filled.ArrowBack,
+                    contentDescription = "Back", tint = KioskColors.text,
+                )
+            }
+            Text("Visit details", style = SgType.SectionTitle, color = KioskColors.text)
+        }
+        Column(
+            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
+                .padding(horizontal = SgSpacing.ScreenMargin).padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(SgSpacing.GapBetweenCards),
+        ) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(72.dp).clip(CircleShape).background(KioskColors.brandSoft), contentAlignment = Alignment.Center) {
+                    if (photo != null) {
+                        Image(bitmap = photo.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize())
+                    } else {
+                        Text(initialsOf(name), style = SgType.ScreenTitle, color = KioskColors.primary)
+                    }
+                }
+                Text(name, style = SgType.ScreenTitle, color = KioskColors.text)
+                if (isPending) SgStatusChip("Pending", SgStatusKind.PENDING)
+                else SgStatusChip(visit.status.replace('_', ' ').replaceFirstChar { it.uppercase() }, SgStatusKind.IN_PROGRESS)
+            }
+            DetailSection(
+                "Visitor",
+                listOf(
+                    "Type" to visit.visitorType?.replaceFirstChar { it.uppercase() },
+                    "Company" to visit.company,
+                    "Mobile number" to visit.mobile,
+                    "ID" to listOfNotNull(visit.idType, visit.idNumber).filter { it.isNotBlank() }.joinToString(" ").ifBlank { null },
+                ),
+            )
+            DetailSection("Host", listOf("Name" to hostName))
+            DetailSection("Visit", listOf(
+                "Purpose" to visit.purpose,
+                "Gate" to visit.gateId,
+                "Requested" to whenText(visit.createdAt ?: visit.timeIn),
+                "Notes" to visit.notes,
+            ))
+            if (rejecting) {
+                Column(Modifier.fillMaxWidth().sgCardSurface().padding(SgSpacing.CardPadding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Reason for rejecting", style = SgType.SectionTitle, color = KioskColors.text)
+                    RejectReasons.chips.forEach { reason ->
+                        val on = rejectReason == reason
+                        Box(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                .background(if (on) KioskColors.primary else KioskColors.secondaryFill)
+                                .clickable(role = Role.RadioButton) { onPickRejectReason(reason) }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                        ) { Text(reason, style = SgType.Body, color = if (on) KioskColors.onPrimary else KioskColors.text) }
+                    }
+                }
+            }
+        }
+        if (isPending) {
+            Row(
+                Modifier.fillMaxWidth().background(KioskColors.tabBarBg)
+                    .padding(horizontal = SgSpacing.ScreenMargin, vertical = 12.dp)
+                    .androidx_navPad(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (rejecting) {
+                    SgSecondaryButton("Cancel", onClick = onCancelReject, enabled = !busy, modifier = Modifier.weight(1f))
+                    SgPrimaryButton("Confirm reject", onClick = onConfirmReject, enabled = !busy && !rejectReason.isNullOrBlank(), modifier = Modifier.weight(1f))
+                } else {
+                    SgDangerOutlineButton("Reject", onClick = { onStartReject(visit.id) }, enabled = !busy, modifier = Modifier.weight(1f))
+                    SgPrimaryButton("Approve", onClick = { onApprove(visit.id) }, enabled = !busy, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+private fun Modifier.androidx_navPad(): Modifier = this.navigationBarsPadding()

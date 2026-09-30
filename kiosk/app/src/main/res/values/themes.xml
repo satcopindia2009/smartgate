@@ -10,4 +10,12 @@
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:colorPrimary">#1E806A</item>
     </style>
+
+    <!-- Launch window only: teal background + logo. MainActivity switches to Theme.SatcopGateKiosk before setContent. -->
+    <style name="Theme.SatcopGateKiosk.Starting" parent="Theme.SatcopGateKiosk">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:statusBarColor">@color/splash_teal</item>
+        <item name="android:navigationBarColor">@color/splash_teal</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
 </resources>

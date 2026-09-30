@@ -522,7 +522,7 @@ fun LostFoundCreateScreen(
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Tap to capture photo", color = KioskColors.text, fontSize = 13.sp, fontFamily = KioskFont)
-                    Text("Camera only · required (AC-LF1)", color = KioskColors.textDim, fontSize = 11.sp, fontFamily = KioskFont)
+                    Text("Camera only · required", color = KioskColors.textDim, fontSize = 11.sp, fontFamily = KioskFont)
                 }
             }
         }

@@ -12,6 +12,8 @@ import com.satcop.smartvisitor.kiosk.ui.theme.SatcopKioskTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Leave the teal launch window theme; the app theme takes over for the real content.
+        setTheme(R.style.Theme_SatcopGateKiosk)
         super.onCreate(savedInstanceState)
         CaptureGeo.install(applicationContext)
         // AC-PH: phone portrait only — do not restore FULL_USER.

@@ -31,7 +31,7 @@
             android:exported="true"
             android:lockTaskMode="if_whitelisted"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.SatcopGateKiosk"
+            android:theme="@style/Theme.SatcopGateKiosk.Starting"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
