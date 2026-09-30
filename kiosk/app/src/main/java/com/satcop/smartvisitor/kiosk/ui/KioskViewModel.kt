@@ -9,6 +9,9 @@ import androidx.lifecycle.viewModelScope
 import com.satcop.smartvisitor.kiosk.data.api.AppAuth
 import com.satcop.smartvisitor.kiosk.data.api.LiveVisitorApi
 import com.satcop.smartvisitor.kiosk.data.api.LoginErrors
+import com.satcop.smartvisitor.kiosk.data.api.LoginInput
+import com.satcop.smartvisitor.kiosk.data.face.FaceErrors
+import com.satcop.smartvisitor.kiosk.data.face.FaceImage
 import com.satcop.smartvisitor.kiosk.data.face.LocalFaceTemplateStore
 import com.satcop.smartvisitor.kiosk.data.fixture.DemoFixtures
 import com.satcop.smartvisitor.kiosk.data.fixture.HybridKioskRepository
@@ -75,8 +78,10 @@ data class KioskUiState(
     /** Bumped on every logout so per-session ViewModels (Guard patrol) are never reused across users. */
     val sessionEpoch: Int = 0,
     val signedIn: Boolean = false,
-    val loginUsername: String = "pranay.gate",
-    val loginPassword: String = "PranayGate@2026",
+    // 1059b: NO prefilled credentials. In 1059 these were prefilled but invisible (black on black), so anything
+    // the tester typed was APPENDED to "pranay.gate"/"PranayGate@2026" -> wrong credentials -> "cannot log in".
+    val loginUsername: String = "",
+    val loginPassword: String = "",
     val loginError: String? = null,
     val loginBusy: Boolean = false,
     val step: Int = 1,
@@ -161,6 +166,8 @@ data class KioskUiState(
     val geoFenceMode: String? = null,
     val faceBusy: Boolean = false,
     val faceMessage: String? = null,
+    /** 1059b: faceMessage is an error (shown in error colour, capture stays open for retry). */
+    val faceError: Boolean = false,
     val facePhase: FaceLoginPhase = FaceLoginPhase.HUB,
     /** Host: queue of new pending-visitor alerts (head = shown in the foreground popup). */
     val hostAlerts: List<HostFeedItem> = emptyList(),
@@ -239,7 +246,8 @@ class KioskViewModel(
     }
 
     fun login() {
-        val username = _state.value.loginUsername.trim()
+        // Phone keyboards capitalise ("Gate") and append a trailing space: normalise before sending.
+        val username = LoginInput.normalizeUsername(_state.value.loginUsername)
         val password = _state.value.loginPassword
         if (username.isEmpty() || password.isEmpty()) {
             _state.update {
@@ -247,11 +255,29 @@ class KioskViewModel(
             }
             return
         }
+        if (_state.value.loginBusy) return
         viewModelScope.launch {
             _state.update { it.copy(loginBusy = true, loginError = null, toast = null) }
             try {
-                repository.login(username, password)
-                // Face gate: password alone NEVER opens the app. Go to the face step; no data calls yet.
+                val me = repository.login(username, password)
+                val session = AppAuth.session
+                // AuthSession.faceVerified was already set from the server flags in LiveVisitorApi.login.
+                val needsFace = !session.faceVerified
+                if (!needsFace) {
+                    // Server says this role is exempt/not enforced (gate/host/admin) or already verified: NO face step.
+                    _state.update {
+                        it.copy(
+                            gateStage = GateStage.VERIFIED,
+                            loginBusy = false,
+                            loginError = null,
+                            loginPassword = "",
+                            loginUsername = username,
+                        )
+                    }
+                    loadAfterLogin(me)
+                    return@launch
+                }
+                // Face gate: password alone NEVER opens the app for a face-required role (guard).
                 val store = faceStore
                 val enrolled = store?.isEnrolled(username) == true
                 _state.update {
@@ -261,10 +287,13 @@ class KioskViewModel(
                         loginBusy = false,
                         loginError = null,
                         loginPassword = "",
+                        loginUsername = username,
                         screen = KioskScreen.FACE_LOGIN,
-                        facePhase = FaceLoginPhase.HUB,
+                        // straight to the camera: no dead-end hub
+                        facePhase = FaceLoginPhase.CAPTURE_VERIFY,
                         faceEnrolled = enrolled || it.faceEnrolled,
-                        faceMessage = "Password accepted — face verification required to continue",
+                        faceMessage = "Password accepted — take a selfie to finish signing in",
+                        faceError = false,
                         toast = null,
                     )
                 }
@@ -1873,13 +1902,13 @@ class KioskViewModel(
 
     fun startFaceVerify() {
         _state.update {
-            it.copy(facePhase = FaceLoginPhase.CAPTURE_VERIFY, faceMessage = null)
+            it.copy(facePhase = FaceLoginPhase.CAPTURE_VERIFY, faceMessage = null, faceError = false)
         }
     }
 
     fun cancelFaceCapture() {
         _state.update {
-            it.copy(facePhase = FaceLoginPhase.HUB, faceBusy = false, faceMessage = null)
+            it.copy(facePhase = FaceLoginPhase.HUB, faceBusy = false, faceMessage = null, faceError = false)
         }
     }
 
@@ -1966,7 +1995,7 @@ class KioskViewModel(
                             faceBusy = false,
                             facePhase = FaceLoginPhase.HUB,
                             faceMessage = e.message,
-                            toast = GeoFenceCodes.toastMessage(),
+                            toast = GeoFenceCodes.toastMessage(e.message),
                             toastKind = ToastKind.ERROR,
                         )
                     }
@@ -1998,14 +2027,16 @@ class KioskViewModel(
     }
 
     private fun verifyFace(jpegBytes: ByteArray) {
-        val typedUser = _state.value.loginUsername.trim().ifBlank { faceStore?.enrolledUsername().orEmpty() }
+        val typedUser = LoginInput.normalizeUsername(_state.value.loginUsername)
+            .ifBlank { faceStore?.enrolledUsername().orEmpty() }
         // With a password session the server takes the username from the token (mismatch => 403).
         val hasSession = AppAuth.session.isSignedIn
         val user = if (hasSession) "" else typedUser
-        val store = faceStore
+        if (_state.value.faceBusy) return
         viewModelScope.launch {
-            _state.update { it.copy(faceBusy = true, faceMessage = "Verifying…") }
+            _state.update { it.copy(faceBusy = true, faceMessage = "Verifying…", faceError = false) }
             val b64 = LocalFaceTemplateStore.jpegToBase64(jpegBytes)
+            // GPS is OPTIONAL: lat/lng/accuracy are only sent when a real fix exists; gpsMissing=true otherwise.
             val stamp = CaptureGeo.read()
             val liveResult = runCatching {
                 liveApi.faceVerify(
@@ -2020,47 +2051,39 @@ class KioskViewModel(
                     ),
                 )
             }
-            val liveErr = liveResult.exceptionOrNull()
-            if (liveErr is ApiException) {
-                val geo = GeoFenceCodes.isRestricted(liveErr.code, liveErr.message)
-                if (geo) {
-                    _state.update {
-                        it.copy(
-                            faceBusy = false,
-                            facePhase = FaceLoginPhase.HUB,
-                            faceMessage = liveErr.message,
-                            toast = GeoFenceCodes.toastMessage(),
-                            toastKind = ToastKind.ERROR,
-                        )
-                    }
-                    return@launch
-                }
-            }
             val live = liveResult.getOrNull()
-            if (live != null && live.faceVerified && live.matched && !live.accessToken.isNullOrBlank() && live.user != null) {
-                val warn = if (stamp.gpsMissing) " · GPS unavailable (allowed)" else ""
+            // The SERVER decides (face_verified token). No client-side template match gates success.
+            if (live != null && live.faceVerified && !live.accessToken.isNullOrBlank() && live.user != null) {
                 _state.update {
                     it.copy(
                         faceBusy = false,
                         facePhase = FaceLoginPhase.HUB,
-                        faceMessage = "Live face verify OK$warn",
-                        toast = if (stamp.gpsMissing) "Face OK · location missing (gpsMissing)" else null,
-                        toastKind = if (stamp.gpsMissing) ToastKind.WARNING else ToastKind.SUCCESS,
+                        faceMessage = null,
+                        faceError = false,
+                        toast = live.warn?.takeIf { w -> w.isNotBlank() }
+                            ?: if (stamp.gpsMissing) "Signed in · location unavailable" else null,
+                        toastKind = if (live.warn.isNullOrBlank() && !stamp.gpsMissing) ToastKind.SUCCESS else ToastKind.WARNING,
                     )
                 }
                 loadAfterLogin(live.user)
                 return@launch
             }
-            // A local template match is NOT a login: only a server face_verified token opens the app.
-            val liveMsg = liveErr?.message?.take(140)
+            // Failure: show the server's own message/code text (GEO_FENCE_RESTRICTED, FACE_MISMATCH, ...),
+            // stay on the camera so Retry is one tap. 403 FACE_REQUIRED is NOT an error here (it is what we are fixing).
+            val err = liveResult.exceptionOrNull()
+            val text = if (err != null) {
+                FaceErrors.message(err)
+            } else {
+                live?.message?.takeIf { it.isNotBlank() } ?: FaceErrors.MISMATCH_DEFAULT
+            }
             _state.update {
                 it.copy(
                     faceBusy = false,
-                    facePhase = FaceLoginPhase.HUB,
+                    facePhase = FaceLoginPhase.CAPTURE_VERIFY,
                     screen = KioskScreen.FACE_LOGIN,
-                    faceMessage = liveMsg ?: live?.message ?: "Face not verified — try again",
-                    toast = "Face not verified",
-                    toastKind = ToastKind.WARNING,
+                    faceMessage = text,
+                    faceError = true,
+                    toast = null,
                 )
             }
         }

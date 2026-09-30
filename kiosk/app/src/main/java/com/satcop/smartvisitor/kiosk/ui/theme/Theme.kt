@@ -3,7 +3,9 @@ package com.satcop.smartvisitor.kiosk.ui.theme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -24,6 +26,75 @@ val RadiusSm = 6.dp
 val RadiusMd = 10.dp
 val RadiusLg = 12.dp
 val RadiusXl = 14.dp
+
+/** Text-field colour sets built ONLY from palette tokens (testable, identical in Light/Dark/System). */
+@Composable
+fun kioskTextFieldColors(
+    container: androidx.compose.ui.graphics.Color = KioskColors.inputBg,
+): androidx.compose.material3.TextFieldColors {
+    val t = androidx.compose.ui.graphics.Color.Transparent
+    return androidx.compose.material3.TextFieldDefaults.colors(
+        focusedTextColor = KioskColors.inputText,
+        unfocusedTextColor = KioskColors.inputText,
+        disabledTextColor = KioskColors.inputHint,
+        errorTextColor = KioskColors.inputText,
+        focusedContainerColor = container,
+        unfocusedContainerColor = container,
+        disabledContainerColor = container,
+        errorContainerColor = container,
+        cursorColor = KioskColors.inputCursor,
+        errorCursorColor = KioskColors.errorText,
+        selectionColors = androidx.compose.foundation.text.selection.TextSelectionColors(
+            handleColor = KioskColors.inputCursor,
+            backgroundColor = KioskColors.inputCursor.copy(alpha = 0.3f),
+        ),
+        focusedIndicatorColor = t,
+        unfocusedIndicatorColor = t,
+        disabledIndicatorColor = t,
+        errorIndicatorColor = t,
+        focusedPlaceholderColor = KioskColors.inputHint,
+        unfocusedPlaceholderColor = KioskColors.inputHint,
+        disabledPlaceholderColor = KioskColors.inputHint,
+        errorPlaceholderColor = KioskColors.inputHint,
+        focusedLabelColor = KioskColors.inputLabel,
+        unfocusedLabelColor = KioskColors.inputLabel,
+        errorLabelColor = KioskColors.errorText,
+        focusedTrailingIconColor = KioskColors.inputLabel,
+        unfocusedTrailingIconColor = KioskColors.inputLabel,
+        errorTrailingIconColor = KioskColors.errorText,
+    )
+}
+
+@Composable
+fun kioskOutlinedFieldColors(
+    container: androidx.compose.ui.graphics.Color = KioskColors.inputBg,
+): androidx.compose.material3.TextFieldColors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+    focusedTextColor = KioskColors.inputText,
+    unfocusedTextColor = KioskColors.inputText,
+    disabledTextColor = KioskColors.inputHint,
+    errorTextColor = KioskColors.inputText,
+    focusedContainerColor = container,
+    unfocusedContainerColor = container,
+    disabledContainerColor = container,
+    errorContainerColor = container,
+    cursorColor = KioskColors.inputCursor,
+    errorCursorColor = KioskColors.errorText,
+    selectionColors = androidx.compose.foundation.text.selection.TextSelectionColors(
+        handleColor = KioskColors.inputCursor,
+        backgroundColor = KioskColors.inputCursor.copy(alpha = 0.3f),
+    ),
+    focusedBorderColor = KioskColors.systemBlue,
+    unfocusedBorderColor = KioskColors.inputBorder,
+    disabledBorderColor = KioskColors.inputBorder,
+    errorBorderColor = KioskColors.errorText,
+    focusedPlaceholderColor = KioskColors.inputHint,
+    unfocusedPlaceholderColor = KioskColors.inputHint,
+    disabledPlaceholderColor = KioskColors.inputHint,
+    errorPlaceholderColor = KioskColors.inputHint,
+    focusedLabelColor = KioskColors.inputLabel,
+    unfocusedLabelColor = KioskColors.inputLabel,
+    errorLabelColor = KioskColors.errorText,
+)
 
 val LocalAppearanceMode = staticCompositionLocalOf { AppearanceMode.AUTO }
 val LocalSetAppearanceMode = staticCompositionLocalOf<(AppearanceMode) -> Unit> { {} }
@@ -50,7 +121,8 @@ fun SatcopKioskTheme(content: @Composable () -> Unit) {
         AppearanceMode.AUTO -> systemDark
     }
     val palette = if (dark) AppleDark else AppleLight
-    // Keep facade + Material in sync; marker forces DEX retain.
+    // Apply the palette synchronously (before children compose) so no frame ever paints with a stale palette.
+    if (AppleThemeState.palette !== palette) AppleThemeState.apply(palette)
     SideEffect {
         AppleThemeState.apply(palette)
         @Suppress("UNUSED_VARIABLE")
@@ -111,8 +183,13 @@ fun SatcopKioskTheme(content: @Composable () -> Unit) {
         MaterialTheme(
             colorScheme = scheme,
             typography = KioskTypography,
-            content = content,
-        )
+        ) {
+            // Explicit defaults for everything that does not set its own colour (M3 falls back to BLACK
+            // LocalContentColor outside a Surface -> black-on-black in Dark mode).
+            CompositionLocalProvider(LocalContentColor provides palette.label) {
+                ProvideTextStyle(KioskTypography.bodyLarge.copy(color = palette.label), content)
+            }
+        }
     }
 }
 

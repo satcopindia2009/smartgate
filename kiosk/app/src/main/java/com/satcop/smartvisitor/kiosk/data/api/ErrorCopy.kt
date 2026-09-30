@@ -25,7 +25,7 @@ object ErrorCopy {
     const val FACE_REQUIRED = "Face verification is required to continue."
     const val ADMIN_USE_WEB = "Please use the web dashboard."
     const val UNREACHABLE = "Can't reach the server right now. Check your internet connection and try again."
-    const val TEMPORARILY_DOWN = "The service is temporarily unavailable. Please try again in a minute."
+    const val TEMPORARILY_DOWN = "Server is temporarily unreachable. Retry in a minute — this is not a wrong password."
     const val GENERIC = "Something went wrong. Please try again."
 
     private val technicalMarkers = listOf(

@@ -3,6 +3,7 @@ package com.satcop.smartvisitor.kiosk.data.geo
 /** Backend error code for campus geo HARD block (AC-GF2). Must appear verbatim in dex. */
 object GeoFenceCodes {
     const val GEO_FENCE_RESTRICTED = "GEO_FENCE_RESTRICTED"
+    const val DEFAULT_MESSAGE = "You are outside the school campus. Please move inside the campus and try again."
 
     fun isRestricted(code: String?, message: String?): Boolean {
         val c = code.orEmpty()
@@ -13,6 +14,7 @@ object GeoFenceCodes {
     }
 
     /** User-visible toast — includes exact code for QA/ops. */
-    fun toastMessage(): String =
-        "$GEO_FENCE_RESTRICTED · Outside campus geo-fence — move inside campus"
+    fun toastMessage(serverMessage: String? = null): String =
+        serverMessage?.takeIf { it.isNotBlank() && !it.contains(GEO_FENCE_RESTRICTED) }
+            ?: DEFAULT_MESSAGE
 }

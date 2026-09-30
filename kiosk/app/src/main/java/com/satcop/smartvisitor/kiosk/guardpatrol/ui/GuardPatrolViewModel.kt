@@ -652,7 +652,7 @@ class GuardPatrolViewModel(
                         incidentBusy = false,
                         toast = ToastEvent(
                             System.currentTimeMillis(),
-                            if (geo) GeoFenceCodes.toastMessage() else (e.message),
+                            if (geo) GeoFenceCodes.toastMessage(e.message) else (e.message),
                             ToastKind.ERROR,
                         ),
                     )

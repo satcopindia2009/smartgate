@@ -129,23 +129,15 @@ fun AppleSearchField(
             onSearch = { onSearch?.invoke() },
         ),
         placeholder = {
-            Text(placeholder, color = KioskColors.textMuted, fontFamily = KioskFont, fontSize = 17.sp)
+            Text(placeholder, color = KioskColors.inputHint, fontFamily = KioskFont, fontSize = 17.sp)
         },
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(10.dp)),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = KioskColors.searchFill,
-            unfocusedContainerColor = KioskColors.searchFill,
-            disabledContainerColor = KioskColors.searchFill,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            cursorColor = KioskColors.systemBlue,
-            focusedTextColor = KioskColors.text,
-            unfocusedTextColor = KioskColors.text,
-        ),
+        colors = com.satcop.smartvisitor.kiosk.ui.theme.kioskTextFieldColors(container = KioskColors.searchFill),
         textStyle = androidx.compose.ui.text.TextStyle(
+            color = KioskColors.inputText,
             fontFamily = KioskFont,
             fontSize = 17.sp,
         ),

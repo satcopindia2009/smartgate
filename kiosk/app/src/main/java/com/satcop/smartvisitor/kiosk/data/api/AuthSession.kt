@@ -8,7 +8,10 @@ import kotlinx.coroutines.flow.SharedFlow
  * Process-scoped JWT session. NEVER persisted: a cold start always begins signed-out and
  * re-requires password + face (face gate policy 1059).
  *
- * [faceVerified] is true only after POST /auth/face-verify returned a face_verified token.
+ * 1059b: [faceVerified] is true after POST /auth/face-verify, OR straight from login when the server says the role
+ * needs no face (faceVerified:true for host/admin, faceRequired:false for gate). Previously EVERY role was forced
+ * through the face step, which dead-ended gate/host/admin.
+ * Original: [faceVerified] is true only after POST /auth/face-verify returned a face_verified token.
  * Data endpoints refuse to run (client side) until then; the server enforces the same (403 FACE_REQUIRED).
  */
 class AuthSession {
@@ -24,6 +27,11 @@ class AuthSession {
     var faceVerified: Boolean = false
         private set
 
+    /** Server `faceRequired` from login (true only for enforced roles, i.e. guard). */
+    @Volatile
+    var faceRequired: Boolean = false
+        private set
+
     private val _faceRequired = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
 
     /** Emitted when the server answers 403 FACE_REQUIRED for the current token. */
@@ -36,10 +44,11 @@ class AuthSession {
     val dataAccessAllowed: Boolean
         get() = isSignedIn && faceVerified
 
-    fun accept(token: String, user: MeResponse?, faceVerified: Boolean = false) {
+    fun accept(token: String, user: MeResponse?, faceVerified: Boolean = false, faceRequired: Boolean = true) {
         accessToken = token
         this.user = user
         this.faceVerified = faceVerified
+        this.faceRequired = faceRequired
     }
 
     fun updateUser(user: MeResponse) {
@@ -53,6 +62,7 @@ class AuthSession {
     }
 
     fun clear() {
+        faceRequired = false
         accessToken = null
         user = null
         faceVerified = false
