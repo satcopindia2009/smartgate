@@ -217,6 +217,8 @@ fun KioskApp(
                             onExit = null,
                             onCourier = viewModel::openCourier,
                             onLostFound = viewModel::openLostFound,
+                            onLogout = viewModel::logout,
+                            homeVm = viewModel(key = "guard-home-${state.sessionEpoch}"),
                         )
                     } else if (role == KioskRole.HOST) {
                         HostInboxScreen(

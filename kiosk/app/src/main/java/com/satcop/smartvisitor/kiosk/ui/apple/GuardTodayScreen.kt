@@ -51,6 +51,8 @@ fun GuardTodayShell(
     onLogout: () -> Unit = {},
     /** Force Patrol tab when assign→perform is active (ACTIVE/RESULT). */
     preferredTab: Int? = null,
+    /** Guard Home body for the Today tab (attendance, summary, Find Visitor). Null = legacy tiles. */
+    homeContent: (@Composable () -> Unit)? = null,
     /** Assigned-today perform UI (existing StartRoundScreen content). */
     patrolContent: @Composable () -> Unit,
 ) {
@@ -77,7 +79,9 @@ fun GuardTodayShell(
                 .fillMaxWidth(),
         ) {
             when (tab) {
-                0 -> { // Today — guard-home.png 1:1
+                0 -> if (homeContent != null) {
+                    homeContent()
+                } else { // Today — guard-home.png 1:1
                     AppleShellNav(leading = "Roles", trailing = "🔔", onLeading = onLogout)
                     AppleShellTitle("Guard")
                     AppleShellSub(sub.ifBlank { statusLine.ifBlank { "Shift" } })

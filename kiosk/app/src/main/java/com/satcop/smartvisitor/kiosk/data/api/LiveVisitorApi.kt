@@ -1,6 +1,9 @@
 package com.satcop.smartvisitor.kiosk.data.api
 
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
+import com.satcop.smartvisitor.kiosk.data.model.AttendanceRequest
+import com.satcop.smartvisitor.kiosk.data.model.AttendanceRow
+import com.satcop.smartvisitor.kiosk.data.model.TodayAttendance
 import com.satcop.smartvisitor.kiosk.data.model.ApproveBody
 import com.satcop.smartvisitor.kiosk.data.model.AuthorizedPickupListResponse
 import com.satcop.smartvisitor.kiosk.data.model.BlacklistMatchRequest
@@ -315,7 +318,7 @@ class LiveVisitorApi(
         if (code == 530 || "error code: 1033" in lower || ("cloudflare" in lower && "1033" in lower)) {
             return ApiException(
                 code = "TUNNEL_DOWN",
-                message = "Cloudflare tunnel 1033/530 — origin offline. Retry; not invalid password.",
+                message = ErrorCopy.TEMPORARILY_DOWN,
                 httpStatus = code,
             )
         }
@@ -397,6 +400,28 @@ class LiveVisitorApi(
     }
 
     fun listCouriers(): CourierListResponse = get("/couriers")
+
+    // --- Attendance (Backend 2026-09-30): server clock + geofence decide; client only sends a fresh attempt ---
+
+    fun attendanceToday(): TodayAttendance = get("/attendance/me/today")
+
+    fun attendanceCheckIn(body: AttendanceRequest): AttendanceRow =
+        post("/attendance/check-in", json.encodeToString(body))
+
+    fun attendanceClockOut(body: AttendanceRequest): AttendanceRow =
+        post("/attendance/clock-out", json.encodeToString(body))
+
+    /** Visits created between two IST dates (inclusive). Backend caps the range at 90 days. */
+    fun listVisitsBetween(dateFrom: String, dateTo: String, q: String? = null, limit: Int = 500): VisitListResponse {
+        val path = buildString {
+            append("/visits?dateFrom=").append(dateFrom).append("&dateTo=").append(dateTo)
+            append("&limit=").append(limit)
+            if (!q.isNullOrBlank()) {
+                append("&q=").append(java.net.URLEncoder.encode(q.trim(), Charsets.UTF_8.name()))
+            }
+        }
+        return get(path)
+    }
 
     fun receiveCourier(body: CourierCreate): CourierEvent =
         post("/couriers", json.encodeToString(body))

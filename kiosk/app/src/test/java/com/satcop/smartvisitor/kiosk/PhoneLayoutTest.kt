@@ -8,7 +8,7 @@ import org.junit.Test
 
 class PhoneLayoutTest {
     @Test
-    fun liveApiStaysOnReplacingSpywareTunnel() {
+    fun liveApiStaysOnCurrentTunnel() {
         assertEquals(
             "https://broadband-headers-commander-drug.trycloudflare.com/v1",
             ApiConfig.BASE_URL,

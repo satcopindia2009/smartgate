@@ -56,7 +56,7 @@ fun AppleNavBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .heightIn(min = 44.dp)
             .padding(horizontal = 16.dp),
     ) {
         if (leading != null) {
@@ -115,11 +115,19 @@ fun AppleSearchField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
+    onSearch: (() -> Unit)? = null,
 ) {
     TextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+            imeAction = if (onSearch != null) androidx.compose.ui.text.input.ImeAction.Search
+            else androidx.compose.ui.text.input.ImeAction.Default,
+        ),
+        keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+            onSearch = { onSearch?.invoke() },
+        ),
         placeholder = {
             Text(placeholder, color = KioskColors.textMuted, fontFamily = KioskFont, fontSize = 17.sp)
         },
@@ -459,7 +467,7 @@ fun AppleShellNav(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .height(32.dp),
+            .heightIn(min = 32.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {

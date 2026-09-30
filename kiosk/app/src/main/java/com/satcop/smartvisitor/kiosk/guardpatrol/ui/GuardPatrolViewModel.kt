@@ -85,6 +85,10 @@ class GuardPatrolViewModel(
         bootstrapLive()
     }
 
+    fun showInfoToast(message: String) {
+        _state.update { it.copy(toast = ToastEvent(System.currentTimeMillis(), message, ToastKind.SUCCESS)) }
+    }
+
     fun selectTemplate(id: String) {
         _state.update { it.copy(selectedTemplateId = id) }
     }

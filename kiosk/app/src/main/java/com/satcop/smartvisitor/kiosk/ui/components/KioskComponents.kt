@@ -94,7 +94,7 @@ fun KioskPrimaryButton(
     val brush = Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))
     Box(
         modifier = modifier
-            .height(52.dp)
+            .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (enabled) brush else Brush.linearGradient(listOf(KioskColors.border, KioskColors.border)))
             .clickable(enabled = enabled, onClick = onClick)
@@ -107,8 +107,8 @@ fun KioskPrimaryButton(
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
-            maxLines = 1,
-            softWrap = false,
+            maxLines = 2,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             overflow = TextOverflow.Ellipsis,
         )
     }
@@ -124,7 +124,7 @@ fun KioskCyanButton(
     val brush = Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))
     Box(
         modifier = modifier
-            .height(52.dp)
+            .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (enabled) brush else Brush.linearGradient(listOf(KioskColors.border, KioskColors.border)))
             .clickable(enabled = enabled, onClick = onClick)
@@ -137,8 +137,8 @@ fun KioskCyanButton(
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
-            maxLines = 1,
-            softWrap = false,
+            maxLines = 2,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             overflow = TextOverflow.Ellipsis,
         )
     }
@@ -153,7 +153,7 @@ fun KioskGhostButton(
 ) {
     Box(
         modifier = modifier
-            .height(52.dp)
+            .heightIn(min = 52.dp)
             .clip(RoundedCornerShape(RadiusSm))
             .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusSm))
             .clickable(enabled = enabled, onClick = onClick)
@@ -166,8 +166,8 @@ fun KioskGhostButton(
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
-            maxLines = 1,
-            softWrap = false,
+            maxLines = 2,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             overflow = TextOverflow.Ellipsis,
         )
     }

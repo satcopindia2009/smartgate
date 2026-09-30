@@ -69,6 +69,8 @@ fun GuardPatrolApp(
     onExit: (() -> Unit)? = null,
     onCourier: (() -> Unit)? = null,
     onLostFound: (() -> Unit)? = null,
+    onLogout: (() -> Unit)? = null,
+    homeVm: com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeViewModel? = null,
     vm: GuardPatrolViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsState()
@@ -136,7 +138,31 @@ fun GuardPatrolApp(
                     onCourier = { onCourier?.invoke() },
                     onLostFound = { onLostFound?.invoke() },
                     onReportIncident = vm::openIncidentReport,
+                    onLogout = { onLogout?.invoke() },
                     preferredTab = preferredTab,
+                    homeContent = homeVm?.let { hv ->
+                        {
+                            com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeScreen(
+                                controller = hv.controller,
+                                displayName = state.guardLabel,
+                                subtitle = listOf(state.guardLabel, state.schoolName)
+                                    .filter { it.isNotBlank() }.joinToString(" · "),
+                                routeSubtitle = tpl?.name ?: "Assigned today",
+                                progressLabel = "$progressDone/${progressTotal.coerceAtLeast(state.assignments.size)}",
+                                onStartPatrol = {
+                                    val id = firstAsg?.id
+                                    if (id != null) vm.startFromAssignment(id)
+                                },
+                                onCourier = { onCourier?.invoke() },
+                                onLostFound = { onLostFound?.invoke() },
+                                onReportIncident = vm::openIncidentReport,
+                                onLogout = { onLogout?.invoke() },
+                                onToast = { msg ->
+                                    vm.showInfoToast(msg)
+                                },
+                            )
+                        }
+                    },
                     patrolContent = {
                         when (state.screen) {
                             GuardPatrolScreen.ACTIVE -> ActiveRoundScreen(
