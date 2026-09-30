@@ -91,7 +91,6 @@ data class KioskUiState(
     val schoolName: String = "",
     val schoolId: String = "",
     val timezone: String = DemoFixtures.SCHOOL_TZ,
-    val clockLabel: String = "",
     val watermark: String = "",
     val dataSource: DataSource = DataSource.OFFLINE,
     val meDisplayName: String = "",
@@ -247,10 +246,8 @@ class KioskViewModel(
         hostPollJob?.cancel()
         hostPollJob = null
         AppAuth.session.clear()
-        val clock = _state.value.clockLabel
         val epoch = _state.value.sessionEpoch + 1
         _state.value = KioskUiState(
-            clockLabel = clock,
             sessionEpoch = epoch,
             gateStage = GateStage.SIGNED_OUT,
             loginError = message,
@@ -368,11 +365,9 @@ class KioskViewModel(
             hostPollJob = null
             runCatching { repository.logout() }
             AppAuth.session.clear()
-            val clock = _state.value.clockLabel
-            val epoch = _state.value.sessionEpoch + 1
+                val epoch = _state.value.sessionEpoch + 1
             _state.value = KioskUiState(
-                clockLabel = clock,
-                sessionEpoch = epoch,
+                    sessionEpoch = epoch,
                 gateStage = FaceGateMachine.onLogout(_state.value.gateStage),
             )
         }
@@ -999,12 +994,18 @@ class KioskViewModel(
         }
     }
 
+    /**
+     * The per-second clock lives in its OWN flow, not in [KioskUiState]: a state copy every second recomposed the
+     * whole app (1065-1068 emulator ANR suspicion). Only the tiny ClockText composables collect this.
+     */
+    private val _clock = MutableStateFlow("")
+    val clock: StateFlow<String> = _clock.asStateFlow()
+
     private suspend fun tickClock() {
         while (true) {
             val zone = runCatching { ZoneId.of(_state.value.timezone) }
                 .getOrDefault(ZoneId.of(DemoFixtures.SCHOOL_TZ))
-            val label = ZonedDateTime.now(zone).format(clockFmt) + " IST"
-            _state.update { it.copy(clockLabel = label) }
+            _clock.value = ZonedDateTime.now(zone).format(clockFmt) + " IST"
             delay(1_000)
         }
     }
@@ -2076,19 +2077,24 @@ class KioskViewModel(
         context?.let { bindFaceStore(it) }
         val store = faceStore
         val user = _state.value.loginUsername.trim()
-        val enrolled = store?.isEnrolled(user) == true || store?.hasAny() == true
-        val enrolledUser = if (user.isNotBlank() && store?.isEnrolled(user) == true) user else store?.enrolledUsername().orEmpty()
-        _state.update {
-            it.copy(
-                screen = KioskScreen.FACE_LOGIN,
-                facePhase = FaceLoginPhase.HUB,
-                faceMessage = null,
-                faceEnrolled = enrolled,
-                faceConsentAgreed = enrolled && !store?.consentAt(enrolledUser).isNullOrBlank(),
-                faceConsentAt = store?.consentAt(enrolledUser),
-                faceConsentVersion = store?.consentVersion(enrolledUser),
-                loginUsername = it.loginUsername.ifBlank { enrolledUser },
-            )
+        // Show the face screen at once; the template-store reads (disk) run on IO and then fill in the hub fields.
+        _state.update { it.copy(screen = KioskScreen.FACE_LOGIN, facePhase = FaceLoginPhase.HUB, faceMessage = null) }
+        viewModelScope.launch {
+            val info = withContext(Dispatchers.IO) {
+                val enrolled = store?.isEnrolled(user) == true || store?.hasAny() == true
+                val enrolledUser = if (user.isNotBlank() && store?.isEnrolled(user) == true) user else store?.enrolledUsername().orEmpty()
+                Triple(enrolled, enrolledUser, Pair(store?.consentAt(enrolledUser), store?.consentVersion(enrolledUser)))
+            }
+            val (enrolled, enrolledUser, consent) = info
+            _state.update {
+                it.copy(
+                    faceEnrolled = enrolled,
+                    faceConsentAgreed = enrolled && !consent.first.isNullOrBlank(),
+                    faceConsentAt = consent.first,
+                    faceConsentVersion = consent.second,
+                    loginUsername = it.loginUsername.ifBlank { enrolledUser },
+                )
+            }
         }
     }
 

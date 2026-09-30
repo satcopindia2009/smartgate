@@ -14,8 +14,10 @@ import kotlin.math.abs
  * Staff only (Gate|Host|Guard) — never visitor. AC-FL1/FL2/FL3.
  */
 class LocalFaceTemplateStore(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    private val dir = File(context.applicationContext.filesDir, "face_templates").also { it.mkdirs() }
+    private val appContext = context.applicationContext
+    // lazy: SharedPreferences load + mkdirs are disk I/O; first use is already on IO (login/verify paths).
+    private val prefs by lazy { appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    private val dir by lazy { File(appContext.filesDir, "face_templates").also { it.mkdirs() } }
 
     fun isEnrolled(username: String): Boolean {
         val key = normalize(username)

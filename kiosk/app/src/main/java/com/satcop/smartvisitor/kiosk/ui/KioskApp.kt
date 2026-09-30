@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.StateFlow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolApp
@@ -329,7 +330,7 @@ fun KioskApp(
                         schoolId = state.schoolId,
                         gateName = state.selectedGate?.name ?: "Main Gate",
                         gates = state.gates,
-                        clockLabel = state.clockLabel,
+                        clock = viewModel.clock,
                         dataSource = state.dataSource,
                         displayName = state.meDisplayName,
                         compact = compact,
@@ -509,7 +510,7 @@ private fun KioskStep(
         1 -> VisitorTypeStep(
             selectedType = state.draft.visitorType,
             schoolName = state.schoolName,
-            clockLabel = state.clockLabel,
+            clock = viewModel.clock,
             recent = state.recent,
             gates = state.gates,
             showPrefill = !state.hideDemoStory,
@@ -572,13 +573,25 @@ private fun KioskStep(
     }
 }
 
+/** The only reader of the per-second clock flow: a tick recomposes this Text, nothing else. */
+@Composable
+fun ClockText(
+    clock: StateFlow<String>,
+    color: androidx.compose.ui.graphics.Color,
+    fontSize: androidx.compose.ui.unit.TextUnit,
+    modifier: Modifier = Modifier,
+) {
+    val label by clock.collectAsStateWithLifecycle()
+    Text(text = label.ifBlank { "—" }, color = color, fontSize = fontSize, fontFamily = KioskFont, modifier = modifier)
+}
+
 @Composable
 private fun KioskHeader(
     schoolName: String,
     schoolId: String,
     gateName: String,
     gates: List<com.satcop.smartvisitor.kiosk.data.model.Gate>,
-    clockLabel: String,
+    clock: StateFlow<String>,
     dataSource: DataSource,
     displayName: String,
     compact: Boolean,
@@ -709,11 +722,10 @@ private fun KioskHeader(
                             onSelectGate = onSelectGate,
                         )
                     }
-                    Text(
-                        text = clockLabel.ifBlank { "—" },
+                    ClockText(
+                        clock = clock,
                         color = KioskColors.textMuted,
                         fontSize = 13.sp,
-                        fontFamily = KioskFont,
                     )
                 }
                 KioskGhostButton(

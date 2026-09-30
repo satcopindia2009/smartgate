@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +21,8 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +53,10 @@ fun LoginScreen(
     onSubmit: () -> Unit,
     onFaceLogin: () -> Unit = {},
 ) {
+    // Board 03: EN | हिं toggle. Login screen only; the choice lives for this screen (no app-wide language mechanism).
+    var hindi by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    val t = LoginStrings.of(hindi)
+    val fam = if (hindi) com.satcop.smartvisitor.kiosk.ui.theme.NotoDevanagariFamily else com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
     // Teal restyle (STYLE-GUIDE / LIGHT/02-login): teal header band + rounded white sheet. Layout only.
     val band = KioskColors.primary
     Column(Modifier.fillMaxWidth().background(band)) {
@@ -87,14 +94,14 @@ fun LoginScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Login", color = KioskColors.text, style = SgType.ScreenTitle.copy(fontSize = 28.sp, lineHeight = 34.sp))
-                Text("Sign in to your account", color = KioskColors.textMuted, style = SgType.Body)
+                Text(t.title, color = KioskColors.text, style = SgType.ScreenTitle.copy(fontSize = 28.sp, lineHeight = 34.sp, fontFamily = fam))
+                Text(t.subtitle, color = KioskColors.textMuted, style = SgType.Body.copy(fontFamily = fam))
             }
             KioskField(
-                label = "User ID",
+                label = t.userIdLabel,
                 value = username,
                 onValueChange = onUsername,
-                placeholder = "Enter your User ID",
+                placeholder = t.userIdHint,
                 keyboardType = KeyboardType.Ascii,
                 capitalization = KeyboardCapitalization.None,
                 autoCorrect = false,
@@ -102,10 +109,10 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             KioskField(
-                label = "Password",
+                label = t.passwordLabel,
                 value = password,
                 onValueChange = onPassword,
-                placeholder = "Enter your password",
+                placeholder = t.passwordHint,
                 keyboardType = KeyboardType.Password,
                 capitalization = KeyboardCapitalization.None,
                 autoCorrect = false,
@@ -115,18 +122,33 @@ fun LoginScreen(
                 error = error,
                 modifier = Modifier.fillMaxWidth(),
             )
-            com.satcop.smartvisitor.kiosk.ui.otp.ForgotPasswordEntry()
+            com.satcop.smartvisitor.kiosk.ui.otp.ForgotPasswordEntry(linkText = t.forgot)
             SgPrimaryButton(
-                text = if (busy) "Signing in…" else "Login",
+                text = if (busy) t.signingIn else t.login,
                 onClick = onSubmit,
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             )
             SgSecondaryButton(
-                text = "Face login",
+                text = t.faceLogin,
                 onClick = onFaceLogin,
                 modifier = Modifier.fillMaxWidth(),
             )
+            // EN | हिं pill (board 03)
+            Row(Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(50)).background(KioskColors.secondaryFill).padding(4.dp)) {
+                listOf(false to "EN", true to "हिं").forEach { (isHi, label) ->
+                    val sel = hindi == isHi
+                    Box(
+                        Modifier.clip(RoundedCornerShape(50))
+                            .background(if (sel) KioskColors.primary else androidx.compose.ui.graphics.Color.Transparent)
+                            .clickable { hindi = isHi }
+                            .padding(horizontal = 18.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(label, color = if (sel) KioskColors.onPrimary else KioskColors.textMuted, style = SgType.Label)
+                    }
+                }
+            }
         }
     }
 }

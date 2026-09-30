@@ -66,13 +66,13 @@ fun StaffVerifyEntry(strings: OtpStrings = OtpCopy.EN) {
 
 /** S-OTP3 entry: "Forgot password?" link on Login. Hidden until bound. */
 @Composable
-fun ForgotPasswordEntry(strings: OtpStrings = OtpCopy.EN, onSignedOutDone: () -> Unit = {}) {
+fun ForgotPasswordEntry(strings: OtpStrings = OtpCopy.EN, onSignedOutDone: () -> Unit = {}, linkText: String = "Forgot password?") {
     if (!OtpAvailability.forgotPasswordVisible()) return
     val scope = rememberCoroutineScope()
     var open by remember { mutableStateOf(false) }
     val controller = remember(open) { OtpController(scope, otpRepo(), OtpPurpose.PASSWORD_RESET) }
     Text(
-        "Forgot password?", color = KioskColors.systemBlue, fontSize = 14.sp, fontFamily = KioskFont,
+        linkText, color = KioskColors.systemBlue, fontSize = 14.sp, fontFamily = KioskFont,
         modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { open = true }.padding(top = 8.dp),
     )
     if (open) {

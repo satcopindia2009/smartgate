@@ -32,7 +32,10 @@ class LiveGuardPatrolApi(
         encodeDefaults = true
     }
 
-    private val client = OkHttpClient.Builder()
+    // lazy: building an OkHttpClient (pool, dispatcher) is not free; do it on the first real call (always on IO), not in the ViewModel constructor on main.
+    private val client by lazy { buildClient() }
+
+    private fun buildClient(): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(ApiConfig.CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .readTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .writeTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)

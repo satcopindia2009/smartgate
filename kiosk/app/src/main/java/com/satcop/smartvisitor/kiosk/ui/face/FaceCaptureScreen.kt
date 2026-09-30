@@ -110,7 +110,7 @@ private fun FacePill(
             Icon(icon, contentDescription = null, tint = D.onPrimary, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(text, color = D.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, maxLines = 2)
+        Text(text, color = D.onPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, maxLines = 1, softWrap = false)
     }
 }
 
@@ -121,7 +121,7 @@ private fun FaceGhost(text: String, onClick: () -> Unit, modifier: Modifier = Mo
             .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 18.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = if (enabled) D.label else D.secondaryLabel, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+        Text(text, color = if (enabled) D.label else D.secondaryLabel, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, maxLines = 1, softWrap = false)
     }
 }
 
@@ -382,6 +382,48 @@ fun FaceCaptureScreen(
                 color = D.label, fontSize = 13.sp, fontFamily = KioskFont,
             )
         }
+        // Primary action on its own full-width row, so "Verify face" / "Use for enroll" can never wrap (1068 QA: "Veri/fy").
+        FacePill(
+            icon = Icons.Outlined.CameraAlt,
+            text = when {
+                busy -> "Working…"
+                previewBmp == null -> "Capture"
+                messageIsError -> "Retry"
+                mode == FaceCaptureMode.ENROLL -> "Use for enroll"
+                else -> "Verify face"
+            },
+            onClick = {
+                if (previewBmp == null) {
+                    QaHooks.frame("Face")?.let { previewBmp = it; return@FacePill }
+                    val cap = imageCapture ?: return@FacePill
+                    if (capturing) return@FacePill
+                    capturing = true
+                    cap.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
+                        override fun onCaptureSuccess(image: ImageProxy) {
+                            val bmp = runCatching { imageProxyToBitmap(image) }.getOrNull()
+                            image.close()
+                            // Compose state only on main — off-thread set crashes ("keeps stopping").
+                            mainExecutor.execute {
+                                capturing = false
+                                if (bmp != null) previewBmp = bmp
+                                else cameraError = "Could not read the photo. Please try again."
+                            }
+                        }
+                        override fun onError(exception: ImageCaptureException) {
+                            mainExecutor.execute {
+                                capturing = false
+                                cameraError = "Could not take the photo. Please try again."
+                            }
+                        }
+                    })
+                } else {
+                    // <=1024px, JPEG q80: small, fast upload over mobile data.
+                    onCaptured(FaceImage.prepareJpeg(previewBmp!!))
+                }
+            },
+            enabled = !busy && granted && (previewBmp != null || imageCapture != null || QaHooks.fakeCamera),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FaceGhost(
                 text = "Cancel",
@@ -396,47 +438,6 @@ fun FaceCaptureScreen(
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                 )
             }
-            FacePill(
-                icon = Icons.Outlined.CameraAlt,
-                text = when {
-                    busy -> "Working…"
-                    previewBmp == null -> "Capture"
-                    messageIsError -> "Retry"
-                    mode == FaceCaptureMode.ENROLL -> "Use for enroll"
-                    else -> "Verify face"
-                },
-                onClick = {
-                    if (previewBmp == null) {
-                        QaHooks.frame("Face")?.let { previewBmp = it; return@FacePill }
-                        val cap = imageCapture ?: return@FacePill
-                        if (capturing) return@FacePill
-                        capturing = true
-                        cap.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
-                            override fun onCaptureSuccess(image: ImageProxy) {
-                                val bmp = runCatching { imageProxyToBitmap(image) }.getOrNull()
-                                image.close()
-                                // Compose state only on main — off-thread set crashes ("keeps stopping").
-                                mainExecutor.execute {
-                                    capturing = false
-                                    if (bmp != null) previewBmp = bmp
-                                    else cameraError = "Could not read the photo. Please try again."
-                                }
-                            }
-                            override fun onError(exception: ImageCaptureException) {
-                                mainExecutor.execute {
-                                    capturing = false
-                                    cameraError = "Could not take the photo. Please try again."
-                                }
-                            }
-                        })
-                    } else {
-                        // <=1024px, JPEG q80: small, fast upload over mobile data.
-                        onCaptured(FaceImage.prepareJpeg(previewBmp!!))
-                    }
-                },
-                enabled = !busy && granted && (previewBmp != null || imageCapture != null || QaHooks.fakeCamera),
-                modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-            )
         }
         Text(text = FaceCaptureCopy.LOCATION_HINT_EN, color = D.secondaryLabel, fontSize = 11.sp, fontFamily = KioskFont)
         Text(text = FaceCaptureCopy.LOCATION_HINT_HI, color = D.secondaryLabel, fontSize = 11.sp, fontFamily = KioskFont)

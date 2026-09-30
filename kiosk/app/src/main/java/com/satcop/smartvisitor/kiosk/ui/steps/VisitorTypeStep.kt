@@ -48,7 +48,7 @@ import java.util.Locale
 fun VisitorTypeStep(
     selectedType: String,
     schoolName: String,
-    clockLabel: String,
+    clock: kotlinx.coroutines.flow.StateFlow<String>,
     recent: List<InsideVisit>,
     gates: List<Gate>,
     showPrefill: Boolean = true,
@@ -102,7 +102,7 @@ fun VisitorTypeStep(
                 }
                 KioskContextStrip(
                     schoolName = schoolName,
-                    clockLabel = clockLabel,
+                    clock = clock,
                     recent = recent,
                     gates = gates,
                     modifier = Modifier.fillMaxWidth(),
@@ -157,7 +157,7 @@ fun VisitorTypeStep(
                 }
                 KioskContextStrip(
                     schoolName = schoolName,
-                    clockLabel = clockLabel,
+                    clock = clock,
                     recent = recent,
                     gates = gates,
                     modifier = Modifier.width(280.dp),
@@ -232,7 +232,7 @@ private fun TypeCard(
 @Composable
 private fun KioskContextStrip(
     schoolName: String,
-    clockLabel: String,
+    clock: kotlinx.coroutines.flow.StateFlow<String>,
     recent: List<InsideVisit>,
     gates: List<Gate>,
     modifier: Modifier = Modifier,
@@ -253,11 +253,10 @@ private fun KioskContextStrip(
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = KioskFont,
             )
-            Text(
-                text = clockLabel.ifBlank { "—" },
+            com.satcop.smartvisitor.kiosk.ui.ClockText(
+                clock = clock,
                 color = KioskColors.cyanBright,
                 fontSize = 13.sp,
-                fontFamily = KioskFont,
                 modifier = Modifier.padding(top = 2.dp),
             )
         }
