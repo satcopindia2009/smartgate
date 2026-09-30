@@ -73,7 +73,7 @@ fun GuardToolRow(onHistory: () -> Unit, onCourier: () -> Unit, onCheckout: () ->
 @Composable
 fun HistoryScreen(
     events: List<GuardHistoryEvent>, filterToday: Boolean, filterKind: String, filterStatus: String,
-    busy: Boolean, selected: GuardHistoryEvent?,
+    busy: Boolean, selected: GuardHistoryEvent?, rejectReason: String? = null,
     onToggleToday: () -> Unit, onKind: (String) -> Unit, onStatus: (String) -> Unit,
     onSelect: (GuardHistoryEvent) -> Unit, onClearDetail: () -> Unit, onRefresh: () -> Unit, onBack: () -> Unit,
 ) {
@@ -87,7 +87,7 @@ fun HistoryScreen(
         KioskGhostButton(text = if (busy) "Refreshing…" else "Refresh", onClick = onRefresh, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp))
         Spacer(Modifier.height(12.dp))
         if (selected != null) {
-            DetailCard(selected, onClearDetail); Spacer(Modifier.height(12.dp))
+            DetailCard(selected, onClearDetail, rejectReason); Spacer(Modifier.height(12.dp))
         }
         if (events.isEmpty()) Text("No entries for this filter", color = KioskColors.textMuted, fontFamily = KioskFont)
         else events.forEach { ev -> EventRow(ev) { onSelect(ev) }; Spacer(Modifier.height(8.dp)) }
@@ -104,7 +104,7 @@ fun HistoryScreen(
     }
 }
 
-@Composable private fun DetailCard(ev: GuardHistoryEvent, onClose: () -> Unit) {
+@Composable private fun DetailCard(ev: GuardHistoryEvent, onClose: () -> Unit, rejectReason: String? = null) {
     Column(Modifier.fillMaxWidth().clip(ControlShape).background(KioskColors.cardHover).border(1.dp, KioskColors.purple, ControlShape).padding(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Detail", color = KioskColors.purpleBright, fontFamily = KioskFont, fontWeight = FontWeight.SemiBold)
@@ -117,6 +117,7 @@ fun HistoryScreen(
         Text("When · ${ev.occurredAt}", color = KioskColors.textDim, fontSize = 12.sp, fontFamily = KioskFont)
         if (!ev.mobile.isNullOrBlank()) Text("Mobile · ${ev.mobile}", color = KioskColors.textDim, fontSize = 12.sp, fontFamily = KioskFont)
         if (!ev.company.isNullOrBlank()) Text("Company · ${ev.company}", color = KioskColors.textDim, fontSize = 12.sp, fontFamily = KioskFont)
+        if (!rejectReason.isNullOrBlank()) Text("Reason · $rejectReason", color = KioskColors.red, fontSize = 13.sp, fontFamily = KioskFont)
         if (!ev.gateId.isNullOrBlank()) Text("Gate · ${ev.gateId}", color = KioskColors.textDim, fontSize = 12.sp, fontFamily = KioskFont)
     }
 }

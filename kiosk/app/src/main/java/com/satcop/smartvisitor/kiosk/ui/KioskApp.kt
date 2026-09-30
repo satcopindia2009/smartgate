@@ -335,6 +335,7 @@ fun KioskApp(
                                     filterStatus = state.historyStatusFilter,
                                     busy = state.historyBusy,
                                     selected = state.historySelected,
+                                    rejectReason = state.historyRejectReason,
                                     onToggleToday = viewModel::toggleHistoryToday,
                                     onKind = viewModel::setHistoryKind,
                                     onStatus = viewModel::setHistoryStatus,
@@ -749,6 +750,7 @@ private fun HostNotifyEffects(viewModel: KioskViewModel, state: KioskUiState) {
 
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) viewModel.onAppResumed()
             when (e) {
                 androidx.lifecycle.Lifecycle.Event.ON_RESUME -> { foreground = true; viewModel.setHostForeground(true) }
                 androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> { foreground = false; viewModel.setHostForeground(false) }

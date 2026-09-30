@@ -251,10 +251,10 @@ fun AttendancePanel(
             )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        // Side by side normally; stacked on narrow screens / large text so labels never clip.
+        val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f ||
+            androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 340
+        val actions: @Composable (Modifier) -> Unit = { m ->
             KioskGhostButton(
                 text = if (photo == null) "Take photo" else "Retake",
                 enabled = cameraGranted && !state.panelBusy && (photo != null || imageCapture != null),
@@ -283,7 +283,7 @@ fun AttendancePanel(
                         })
                     }
                 },
-                modifier = Modifier.weight(1f),
+                modifier = m,
             )
             KioskPrimaryButton(
                 text = if (state.panelBusy) "Please wait…" else title,
@@ -296,8 +296,19 @@ fun AttendancePanel(
                     }
                     controller.submit(photoBase64 = b64, photoAtElapsedMs = photoAt, fix = fix)
                 },
-                modifier = Modifier.weight(1f),
+                modifier = m,
             )
+        }
+        if (stacked) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) { actions(Modifier.fillMaxWidth()) }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) { actions(Modifier.weight(1f)) }
         }
         Spacer(Modifier.padding(8.dp))
     }

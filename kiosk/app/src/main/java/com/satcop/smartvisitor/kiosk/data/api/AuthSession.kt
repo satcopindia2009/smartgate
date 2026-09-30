@@ -32,6 +32,16 @@ class AuthSession {
     var faceRequired: Boolean = false
         private set
 
+    /** Epoch ms of the server cut-off (sessionExpiresAt / expiresIn); null = unknown. */
+    @Volatile
+    var expiresAtMs: Long? = null
+        private set
+
+    private val _sessionExpired = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+
+    /** Emitted once when the token is over (client clock passed the cut-off, or the server said 401 TOKEN_EXPIRED). */
+    val sessionExpiredEvents: SharedFlow<Unit> get() = _sessionExpired
+
     private val _faceRequired = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
 
     /** Emitted when the server answers 403 FACE_REQUIRED for the current token. */
@@ -44,8 +54,25 @@ class AuthSession {
     val dataAccessAllowed: Boolean
         get() = isSignedIn && faceVerified
 
-    fun accept(token: String, user: MeResponse?, faceVerified: Boolean = false, faceRequired: Boolean = true) {
+    fun isExpired(nowMs: Long = System.currentTimeMillis()): Boolean =
+        isSignedIn && SessionExpiry.isExpired(expiresAtMs, nowMs)
+
+    /** Returns true if it fired (the session was signed in). */
+    fun markExpired(): Boolean {
+        if (!isSignedIn) return false
+        _sessionExpired.tryEmit(Unit)
+        return true
+    }
+
+    fun accept(
+        token: String,
+        user: MeResponse?,
+        faceVerified: Boolean = false,
+        faceRequired: Boolean = true,
+        expiresAtMs: Long? = this.expiresAtMs,
+    ) {
         accessToken = token
+        this.expiresAtMs = expiresAtMs
         this.user = user
         this.faceVerified = faceVerified
         this.faceRequired = faceRequired
@@ -62,6 +89,7 @@ class AuthSession {
     }
 
     fun clear() {
+        expiresAtMs = null
         faceRequired = false
         accessToken = null
         user = null

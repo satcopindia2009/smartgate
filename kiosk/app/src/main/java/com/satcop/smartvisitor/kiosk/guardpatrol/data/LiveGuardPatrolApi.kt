@@ -53,7 +53,10 @@ class LiveGuardPatrolApi(
             .build()
         val parsed = json.decodeFromString<LoginResponse>(execute(req))
         val needsFace = com.satcop.smartvisitor.kiosk.ui.FaceGatePolicy.needsFace(parsed.faceVerified, parsed.faceRequired)
-        session.accept(parsed.accessToken, parsed.user, faceVerified = !needsFace, faceRequired = parsed.faceRequired)
+        session.accept(
+            parsed.accessToken, parsed.user, faceVerified = !needsFace, faceRequired = parsed.faceRequired,
+            expiresAtMs = com.satcop.smartvisitor.kiosk.data.api.SessionExpiry.expiresAtMs(parsed.sessionExpiresAt, parsed.expiresIn, System.currentTimeMillis()),
+        )
         return parsed
     }
 
@@ -200,6 +203,10 @@ class LiveGuardPatrolApi(
     private fun authorized(builder: Request.Builder): Request {
         val token = session.accessToken
             ?: throw ApiException("UNAUTHENTICATED", "Not logged in", 401)
+        if (session.isExpired()) {
+            session.markExpired()
+            throw ApiException("TOKEN_EXPIRED", com.satcop.smartvisitor.kiosk.data.api.ErrorCopy.SESSION_EXPIRED, 401)
+        }
         if (!session.faceVerified) throw ApiException("FACE_REQUIRED", "Face verification required", 403)
         return builder.header("Authorization", "Bearer $token").build()
     }
@@ -208,7 +215,12 @@ class LiveGuardPatrolApi(
         client.newCall(request).execute().use { resp ->
             val text = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
-                throw apiError(resp.code, text).also { if (it.code == "FACE_REQUIRED") session.markFaceRequired() }
+                throw apiError(resp.code, text).also {
+                    if (it.code == "FACE_REQUIRED") session.markFaceRequired()
+                    if (com.satcop.smartvisitor.kiosk.data.api.SessionExpiry.isSessionEnd(it.httpStatus, it.code, request.header("Authorization") != null)) {
+                        session.markExpired()
+                    }
+                }
             }
             return text
         }

@@ -437,14 +437,14 @@ fun UnsupportedRoleScreen(
         verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
     ) {
         Text(
-            text = "This role is not supported in this build",
+            text = "Access denied",
             color = KioskColors.text,
             fontSize = 22.sp,
             fontWeight = FontWeight.SemiBold,
             fontFamily = KioskFont,
         )
         Text(
-            text = "Signed in as $label. Use Log out, then sign in with a gate, host, or guard account.",
+            text = "You do not have permission to access this page.",
             color = KioskColors.textMuted,
             fontSize = 14.sp,
             fontFamily = KioskFont,

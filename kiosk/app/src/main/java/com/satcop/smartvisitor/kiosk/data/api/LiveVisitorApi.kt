@@ -100,7 +100,10 @@ class LiveVisitorApi(
         val parsed = json.decodeFromString<LoginResponse>(text)
         // 1059b: follow the server. Only a role with faceRequired && !faceVerified (guard) must do the face step.
         val needsFace = com.satcop.smartvisitor.kiosk.ui.FaceGatePolicy.needsFace(parsed.faceVerified, parsed.faceRequired)
-        session.accept(parsed.accessToken, parsed.user, faceVerified = !needsFace, faceRequired = parsed.faceRequired)
+        session.accept(
+            parsed.accessToken, parsed.user, faceVerified = !needsFace, faceRequired = parsed.faceRequired,
+            expiresAtMs = SessionExpiry.expiresAtMs(parsed.sessionExpiresAt, parsed.expiresIn, System.currentTimeMillis()),
+        )
         return parsed
     }
 
@@ -285,6 +288,10 @@ class LiveVisitorApi(
      */
     private fun authorized(builder: Request.Builder, allowUnverified: Boolean = false): Request {
         val token = session.accessToken ?: throw ApiException("UNAUTHENTICATED", "Not logged in", 401)
+        if (session.isExpired()) {
+            session.markExpired()
+            throw ApiException("TOKEN_EXPIRED", ErrorCopy.SESSION_EXPIRED, 401)
+        }
         if (!allowUnverified && !session.faceVerified) {
             throw ApiException("FACE_REQUIRED", "Face verification required", 403)
         }
@@ -295,7 +302,10 @@ class LiveVisitorApi(
         client.newCall(request).execute().use { resp ->
             val text = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
-                throw apiError(resp.code, text).also { noteFaceRequired(it) }
+                throw apiError(resp.code, text).also {
+                    noteFaceRequired(it)
+                    noteSessionEnd(it, request.header("Authorization") != null)
+                }
             }
             return text
         }
@@ -309,6 +319,10 @@ class LiveVisitorApi(
             }
             return resp.body?.bytes() ?: ByteArray(0)
         }
+    }
+
+    private fun noteSessionEnd(e: ApiException, hadToken: Boolean) {
+        if (SessionExpiry.isSessionEnd(e.httpStatus, e.code, hadToken)) session.markExpired()
     }
 
     private fun noteFaceRequired(e: ApiException) {
@@ -364,7 +378,11 @@ class LiveVisitorApi(
         val text = execute(builder.build())
         val parsed = json.decodeFromString<FaceVerifyResponse>(text)
         if (parsed.faceVerified && !parsed.accessToken.isNullOrBlank() && parsed.user != null) {
-            session.accept(parsed.accessToken, parsed.user, faceVerified = true, faceRequired = session.faceRequired)
+            session.accept(
+                parsed.accessToken, parsed.user, faceVerified = true, faceRequired = session.faceRequired,
+                expiresAtMs = SessionExpiry.expiresAtMs(parsed.sessionExpiresAt, parsed.expiresIn, System.currentTimeMillis())
+                    ?: session.expiresAtMs,
+            )
         }
         return parsed
     }

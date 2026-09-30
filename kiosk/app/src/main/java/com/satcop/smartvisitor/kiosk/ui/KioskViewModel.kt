@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.satcop.smartvisitor.kiosk.data.api.AppAuth
 import com.satcop.smartvisitor.kiosk.data.api.LiveVisitorApi
+import com.satcop.smartvisitor.kiosk.data.api.ErrorCopy
 import com.satcop.smartvisitor.kiosk.data.api.LoginErrors
 import com.satcop.smartvisitor.kiosk.data.api.LoginInput
 import com.satcop.smartvisitor.kiosk.data.face.FaceErrors
@@ -65,7 +66,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -135,6 +138,8 @@ data class KioskUiState(
     val historyKindFilter: String = "all",
     val historyStatusFilter: String = "all",
     val historySelected: GuardHistoryEvent? = null,
+    /** Host's reason for the selected rejected visit (GET /visits/{id}); null until loaded. */
+    val historyRejectReason: String? = null,
     val historyBusy: Boolean = false,
     val autofetchBusy: Boolean = false,
     val autofetchHint: String? = null,
@@ -216,6 +221,34 @@ class KioskViewModel(
         viewModelScope.launch {
             AppAuth.session.faceRequiredEvents.collect { onServerFaceRequired() }
         }
+        viewModelScope.launch {
+            AppAuth.session.sessionExpiredEvents.collect { endSession(ErrorCopy.SESSION_EXPIRED) }
+        }
+    }
+
+    /** App came back to the foreground: if the token's cut-off (guard: 00:00 IST) has passed, sign out now. */
+    fun onAppResumed() {
+        if (AppAuth.session.isExpired()) AppAuth.session.markExpired()
+    }
+
+    /**
+     * The token is over (client clock passed sessionExpiresAt, or the server said 401 TOKEN_EXPIRED):
+     * drop everything and show Login with a plain sentence. The next login needs password + face again.
+     */
+    private fun endSession(message: String) {
+        if (!_state.value.signedIn && _state.value.gateStage == GateStage.SIGNED_OUT) return
+        hostPollJob?.cancel()
+        hostPollJob = null
+        AppAuth.session.clear()
+        val clock = _state.value.clockLabel
+        val epoch = _state.value.sessionEpoch + 1
+        _state.value = KioskUiState(
+            clockLabel = clock,
+            sessionEpoch = epoch,
+            gateStage = GateStage.SIGNED_OUT,
+            loginError = message,
+        )
+        viewModelScope.launch { runCatching { repository.logout() } }
     }
 
     /** Server rejected the token with 403 FACE_REQUIRED -> force the face screen, hide all data. */
@@ -260,6 +293,18 @@ class KioskViewModel(
             _state.update { it.copy(loginBusy = true, loginError = null, toast = null) }
             try {
                 val me = repository.login(username, password)
+                if (me.role.trim().equals("admin", ignoreCase = true)) {
+                    // D1: Admin is web only. Never keep an admin token on the phone.
+                    runCatching { repository.logout() }
+                    AppAuth.session.clear()
+                    _state.update {
+                        it.copy(
+                            gateStage = GateStage.SIGNED_OUT, signedIn = false, loginBusy = false,
+                            loginPassword = "", loginError = ErrorCopy.ADMIN_USE_WEB, loginUsername = username,
+                        )
+                    }
+                    return@launch
+                }
                 val session = AppAuth.session
                 // AuthSession.faceVerified was already set from the server flags in LiveVisitorApi.login.
                 val needsFace = !session.faceVerified
@@ -495,7 +540,7 @@ class KioskViewModel(
                 _state.update {
                     it.copy(
                         hostBusy = false,
-                        toast = e.message ?: "Meeting-done failed",
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                     )
                 }
@@ -534,7 +579,7 @@ class KioskViewModel(
                     _state.update {
                         it.copy(
                             hostBusy = false,
-                            toast = e.message,
+                            toast = ErrorCopy.forThrowable(e),
                             toastKind = ToastKind.ERROR,
                         )
                     }
@@ -543,7 +588,7 @@ class KioskViewModel(
                 _state.update {
                     it.copy(
                         hostBusy = false,
-                        toast = e.message ?: "Approve failed",
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                     )
                 }
@@ -588,7 +633,7 @@ class KioskViewModel(
                 _state.update {
                     it.copy(
                         hostBusy = false,
-                        toast = e.message ?: "Reject failed",
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                     )
                 }
@@ -665,7 +710,7 @@ class KioskViewModel(
                     it.copy(
                         pickupBusy = false,
                         dataSource = repository.dataSource,
-                        toast = e.message ?: "Pickup failed",
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                     )
                 }
@@ -691,7 +736,7 @@ class KioskViewModel(
                 _state.update {
                     it.copy(
                         pickupBusy = false,
-                        toast = e.message ?: "Consent failed",
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                     )
                 }
@@ -724,7 +769,7 @@ class KioskViewModel(
                 _state.update {
                     it.copy(
                         pickupBusy = false,
-                        toast = e.message ?: "Release failed",
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                     )
                 }
@@ -926,7 +971,7 @@ class KioskViewModel(
             _state.update {
                 it.copy(
                     hostBusy = false,
-                    toast = if (showToast) (e.message ?: "Could not load pending") else it.toast,
+                    toast = if (showToast) ErrorCopy.forThrowable(e) else it.toast,
                     toastKind = if (showToast) ToastKind.ERROR else it.toastKind,
                     dataSource = repository.dataSource,
                 )
@@ -948,7 +993,7 @@ class KioskViewModel(
             _state.update {
                 it.copy(
                     students = emptyList(),
-                    toast = e.message ?: "Student search failed",
+                    toast = ErrorCopy.forThrowable(e),
                     toastKind = ToastKind.ERROR,
                     dataSource = repository.dataSource,
                 )
@@ -1054,7 +1099,7 @@ class KioskViewModel(
                     )
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(autofetchBusy = false, autofetchHint = e.message ?: "Lookup failed") }
+                _state.update { it.copy(autofetchBusy = false, autofetchHint = ErrorCopy.forThrowable(e)) }
             }
         }
     }
@@ -1364,7 +1409,7 @@ class KioskViewModel(
                     it.copy(
                         submitting = false,
                         blocked = true,
-                        toast = e.message,
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                         dataSource = repository.dataSource,
                     )
@@ -1373,7 +1418,7 @@ class KioskViewModel(
                 _state.update {
                     it.copy(
                         submitting = false,
-                        toast = e.message,
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                         dataSource = repository.dataSource,
                     )
@@ -1383,7 +1428,7 @@ class KioskViewModel(
             _state.update {
                 it.copy(
                     submitting = false,
-                    toast = e.message ?: "Submit failed",
+                    toast = ErrorCopy.forThrowable(e),
                     toastKind = ToastKind.ERROR,
                     dataSource = repository.dataSource,
                 )
@@ -1416,7 +1461,7 @@ class KioskViewModel(
                     it.copy(
                         outcomeBusy = false,
                         dataSource = repository.dataSource,
-                        toast = if (silent) it.toast else (e.message ?: "Refresh failed"),
+                        toast = if (silent) it.toast else ErrorCopy.forThrowable(e),
                         toastKind = if (silent) it.toastKind else ToastKind.ERROR,
                     )
                 }
@@ -1435,7 +1480,7 @@ class KioskViewModel(
                 _state.update {
                     it.copy(
                         outcomeBusy = false,
-                        toast = e.message ?: "Demo approve failed",
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                     )
                 }
@@ -1470,7 +1515,7 @@ class KioskViewModel(
                     it.copy(
                         outcomeBusy = false,
                         dataSource = repository.dataSource,
-                        toast = e.message ?: "Scan failed",
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                     )
                 }
@@ -1498,7 +1543,7 @@ class KioskViewModel(
                 _state.update {
                     it.copy(
                         outcomeBusy = false,
-                        toast = e.message ?: "Could not load P-4F21",
+                        toast = ErrorCopy.forThrowable(e),
                         toastKind = ToastKind.ERROR,
                         dataSource = repository.dataSource,
                     )
@@ -1592,8 +1637,18 @@ class KioskViewModel(
     fun toggleHistoryToday() { _state.update { it.copy(historyTodayOnly = !it.historyTodayOnly) }; viewModelScope.launch { refreshHistoryInternal() } }
     fun setHistoryKind(kind: String) { _state.update { it.copy(historyKindFilter = kind) }; viewModelScope.launch { refreshHistoryInternal() } }
     fun setHistoryStatus(status: String) { _state.update { it.copy(historyStatusFilter = status) }; viewModelScope.launch { refreshHistoryInternal() } }
-    fun selectHistory(event: GuardHistoryEvent) { _state.update { it.copy(historySelected = event, screen = KioskScreen.HISTORY_DETAIL) } }
-    fun clearHistoryDetail() { _state.update { it.copy(historySelected = null, screen = KioskScreen.HISTORY) } }
+    fun selectHistory(event: GuardHistoryEvent) {
+        _state.update { it.copy(historySelected = event, historyRejectReason = null, screen = KioskScreen.HISTORY_DETAIL) }
+        // /gate/history has no rejectReason: the Gate must still see why a visitor was rejected.
+        if (event.kind == "visit" && event.status.equals("rejected", ignoreCase = true)) {
+            viewModelScope.launch {
+                val reason = runCatching { withContext(Dispatchers.IO) { liveApi.getVisit(event.id) } }
+                    .getOrNull()?.rejectReason?.takeIf { it.isNotBlank() }
+                _state.update { if (it.historySelected?.id == event.id) it.copy(historyRejectReason = reason) else it }
+            }
+        }
+    }
+    fun clearHistoryDetail() { _state.update { it.copy(historySelected = null, historyRejectReason = null, screen = KioskScreen.HISTORY) } }
     fun refreshHistory() { viewModelScope.launch { refreshHistoryInternal() } }
     private suspend fun refreshHistoryInternal() {
         val s = _state.value
@@ -1601,7 +1656,7 @@ class KioskViewModel(
             val rows = repository.listGuardHistory(todayOnly = s.historyTodayOnly, kind = s.historyKindFilter, status = s.historyStatusFilter, gateId = s.selectedGate?.id)
             _state.update { it.copy(historyEvents = rows, historyBusy = false, dataSource = repository.dataSource) }
         } catch (e: Exception) {
-            _state.update { it.copy(historyBusy = false, toast = e.message ?: "History failed", toastKind = ToastKind.ERROR) }
+            _state.update { it.copy(historyBusy = false, toast = ErrorCopy.forThrowable(e), toastKind = ToastKind.ERROR) }
         }
     }
     fun openCourier() {
@@ -1675,7 +1730,7 @@ class KioskViewModel(
                     )
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(courierBusy = false, toast = e.message ?: "Courier save failed", toastKind = ToastKind.ERROR) }
+                _state.update { it.copy(courierBusy = false, toast = ErrorCopy.forThrowable(e), toastKind = ToastKind.ERROR) }
             }
         }
     }
@@ -1686,7 +1741,7 @@ class KioskViewModel(
                 repository.handOverCourier(id)
                 _state.update { it.copy(courierBusy = false, courierRecent = repository.listCouriers(), toast = "Handed over", toastKind = ToastKind.SUCCESS) }
             } catch (e: Exception) {
-                _state.update { it.copy(courierBusy = false, toast = e.message ?: "Handover failed", toastKind = ToastKind.ERROR) }
+                _state.update { it.copy(courierBusy = false, toast = ErrorCopy.forThrowable(e), toastKind = ToastKind.ERROR) }
             }
         }
     }
@@ -1702,7 +1757,7 @@ class KioskViewModel(
                 val inside = repository.listInside().data
                 _state.update { it.copy(checkoutInside = inside, checkoutBusy = false, recent = inside.take(4), dataSource = repository.dataSource) }
             } catch (e: Exception) {
-                _state.update { it.copy(checkoutBusy = false, toast = e.message ?: "Inside list failed", toastKind = ToastKind.ERROR) }
+                _state.update { it.copy(checkoutBusy = false, toast = ErrorCopy.forThrowable(e), toastKind = ToastKind.ERROR) }
             }
         }
     }
@@ -1717,7 +1772,7 @@ class KioskViewModel(
                 val inside = runCatching { repository.listInside().data }.getOrDefault(emptyList())
                 _state.update { it.copy(checkoutBusy = false, checkoutInside = inside, checkoutSelectedId = null, recent = inside.take(4), toast = "Checked out · ${updated.visitorName ?: id}", toastKind = ToastKind.SUCCESS) }
             } catch (e: Exception) {
-                _state.update { it.copy(checkoutBusy = false, toast = e.message ?: "Checkout rejected", toastKind = ToastKind.ERROR) }
+                _state.update { it.copy(checkoutBusy = false, toast = ErrorCopy.forThrowable(e), toastKind = ToastKind.ERROR) }
             }
         }
     }
@@ -1797,7 +1852,7 @@ class KioskViewModel(
                     )
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(lfBusy = false, toast = e.message ?: "LF create failed", toastKind = ToastKind.ERROR) }
+                _state.update { it.copy(lfBusy = false, toast = ErrorCopy.forThrowable(e), toastKind = ToastKind.ERROR) }
             }
         }
     }
@@ -1994,7 +2049,7 @@ class KioskViewModel(
                         it.copy(
                             faceBusy = false,
                             facePhase = FaceLoginPhase.HUB,
-                            faceMessage = e.message,
+                            faceMessage = GeoFenceCodes.toastMessage(e.message),
                             toast = GeoFenceCodes.toastMessage(e.message),
                             toastKind = ToastKind.ERROR,
                         )
@@ -2005,7 +2060,7 @@ class KioskViewModel(
                             faceBusy = false,
                             faceEnrolled = true,
                             facePhase = FaceLoginPhase.HUB,
-                            faceMessage = "Local demo enroll OK · live pending (${e.message.take(100)})",
+                            faceMessage = "Saved on this phone. Server enrolment is pending.",
                             toast = "Face enrolled · staff only",
                             toastKind = ToastKind.SUCCESS,
                         )
@@ -2017,7 +2072,7 @@ class KioskViewModel(
                         faceBusy = false,
                         faceEnrolled = true,
                         facePhase = FaceLoginPhase.HUB,
-                        faceMessage = "Local demo enroll OK · live pending (${e.message?.take(100) ?: "error"})",
+                        faceMessage = "Saved on this phone. Server enrolment is pending.",
                         toast = "Face enrolled · staff only",
                         toastKind = ToastKind.SUCCESS,
                     )

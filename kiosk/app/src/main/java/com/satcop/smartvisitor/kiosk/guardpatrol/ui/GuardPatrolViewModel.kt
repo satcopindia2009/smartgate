@@ -2,6 +2,7 @@ package com.satcop.smartvisitor.kiosk.guardpatrol.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.satcop.smartvisitor.kiosk.data.api.ErrorCopy
 import com.satcop.smartvisitor.kiosk.data.geo.CaptureGeo
 import com.satcop.smartvisitor.kiosk.data.geo.GeoFenceCodes
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
@@ -235,7 +236,7 @@ class GuardPatrolViewModel(
                             "Assignment required — start from Assigned today"
                         assignmentId == null ->
                             "Assignment required — pick an Admin schedule row"
-                        else -> err.message ?: "Start failed"
+                        else -> ErrorCopy.forThrowable(err)
                     }
                     _state.update {
                         it.copy(
@@ -379,7 +380,7 @@ class GuardPatrolViewModel(
                         )
                     }
                 }.onFailure { err ->
-                    val msg = (err as? ApiException)?.message ?: err.message ?: "Scan failed"
+                    val msg = ErrorCopy.forThrowable(err)
                     _state.update {
                         it.copy(
                             busy = false,
@@ -472,7 +473,7 @@ class GuardPatrolViewModel(
                             screen = GuardPatrolScreen.RESULT,
                             toast = ToastEvent(
                                 System.currentTimeMillis(),
-                                "Offline end · ${ended.status.display()} (${err.message ?: "live end failed"})",
+                                "Offline end · ${ended.status.display()} (could not reach the server)",
                                 kind,
                             ),
                         )
@@ -652,7 +653,7 @@ class GuardPatrolViewModel(
                         incidentBusy = false,
                         toast = ToastEvent(
                             System.currentTimeMillis(),
-                            if (geo) GeoFenceCodes.toastMessage(e.message) else (e.message),
+                            if (geo) GeoFenceCodes.toastMessage(e.message) else ErrorCopy.forThrowable(e),
                             ToastKind.ERROR,
                         ),
                     )
@@ -663,7 +664,7 @@ class GuardPatrolViewModel(
                         incidentBusy = false,
                         toast = ToastEvent(
                             System.currentTimeMillis(),
-                            e.message ?: "LIVE failed",
+                            ErrorCopy.forThrowable(e),
                             ToastKind.ERROR,
                         ),
                     )

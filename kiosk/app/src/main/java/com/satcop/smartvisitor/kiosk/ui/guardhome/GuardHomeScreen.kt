@@ -211,11 +211,26 @@ private fun VisitListBody(state: GuardHomeState, controller: GuardHomeController
         AppleShellTitle("Visitors")
         AppleShellSub("Today · ${state.today}")
         val options = VisitFilter.entries
-        AppleSegmented(
-            options = options.map { it.label },
-            selectedIndex = options.indexOf(state.listFilter),
-            onSelect = { controller.openList(options[it]) },
-        )
+        if (androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f) {
+            // Large text: a 4-way segmented control would clip labels, so show a plain list with a tick.
+            AppleInset {
+                options.forEachIndexed { i, f ->
+                    AppleCell(
+                        title = f.label,
+                        trailing = "${state.summary.countFor(f)}" + if (f == state.listFilter) "  ✓" else "",
+                        showChevron = false,
+                        showDivider = i < options.lastIndex,
+                        onClick = { controller.openList(f) },
+                    )
+                }
+            }
+        } else {
+            AppleSegmented(
+                options = options.map { it.label },
+                selectedIndex = options.indexOf(state.listFilter),
+                onSelect = { controller.openList(options[it]) },
+            )
+        }
         Spacer(Modifier.height(10.dp))
         if (rows.isEmpty()) {
             AppleInset { AppleCell("No visitors here yet", showChevron = false, showDivider = false) }

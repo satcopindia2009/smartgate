@@ -17,6 +17,9 @@ data class LoginResponse(
     /** Backend 1059 contract: face gate flags (informational; client policy is stricter). */
     val faceVerified: Boolean = false,
     val faceRequired: Boolean = false,
+    /** IST cut-off of this token (guard: next 00:00 IST). */
+    val sessionExpiresAt: String? = null,
+    val mustChangePassword: Boolean = false,
     val meta: Meta? = null,
 )
 
