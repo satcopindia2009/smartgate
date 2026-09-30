@@ -69,6 +69,15 @@ import java.util.concurrent.Executors
 
 enum class FaceCaptureMode { ENROLL, VERIFY }
 
+/** User-visible hint lines on the face capture screen. Plain copy only: never an internal resource key. */
+object FaceCaptureCopy {
+    const val LOCATION_HINT_EN =
+        "Face photos on school duty may record time and approximate GPS for campus safety and audit. " +
+            "Outside the school campus may block. Denying location is OK — coordinates are never invented."
+    const val LOCATION_HINT_HI =
+        "स्कूल ड्यूटी पर फेस फोटो के साथ समय और अनुमानित GPS दर्ज हो सकता है। जियो-फेंस के बाहर कार्रवाई ब्लॉक हो सकती है।"
+}
+
 private fun Context.findActivity(): Activity? {
     var c: Context? = this
     while (c is ContextWrapper) {
@@ -157,13 +166,13 @@ fun FaceCaptureScreen(
             fontFamily = KioskFont,
         )
         Text(
-            text = "EN: Face photos on school duty may record time and approximate GPS for campus safety and audit. Outside geo-fence may block. Denying location is OK — coordinates are never invented. (guard_capture_location_hint_en_hi_v1)",
+            text = FaceCaptureCopy.LOCATION_HINT_EN,
             color = KioskColors.textMuted,
             fontSize = 10.sp,
             fontFamily = KioskFont,
         )
         Text(
-            text = "HI: स्कूल ड्यूटी पर फेस फोटो के साथ समय और अनुमानित GPS दर्ज हो सकता है। जियो-फेंस के बाहर कार्रवाई ब्लॉक हो सकती है।",
+            text = FaceCaptureCopy.LOCATION_HINT_HI,
             color = KioskColors.textMuted,
             fontSize = 10.sp,
             fontFamily = KioskFont,

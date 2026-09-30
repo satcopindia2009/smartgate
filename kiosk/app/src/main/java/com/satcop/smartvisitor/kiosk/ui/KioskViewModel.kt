@@ -327,7 +327,7 @@ class KioskViewModel(
                 }
                 // Face gate: password alone NEVER opens the app for a face-required role (guard).
                 val store = faceStore
-                val enrolled = store?.isEnrolled(username) == true
+                val enrolled = withContext(Dispatchers.IO) { store?.isEnrolled(username) == true }
                 _state.update {
                     it.copy(
                         gateStage = FaceGateMachine.onPasswordLogin(it.gateStage),
@@ -390,7 +390,7 @@ class KioskViewModel(
         }
         runCatching { repository.warmup() }
         val me = runCatching { repository.me() }.getOrNull() ?: loginUser
-        val schoolMe = runCatching { liveApi.schoolMe() }.getOrNull()
+        val schoolMe = runCatching { io { liveApi.schoolMe() } }.getOrNull()
         if (schoolMe?.geoFenceMode != null) {
             _state.update { it.copy(geoFenceMode = schoolMe.geoFenceMode) }
         }
@@ -2181,9 +2181,9 @@ class KioskViewModel(
                     if (pw.isBlank()) {
                         error("Enter password on Sign-in first — enroll needs Bearer session")
                     }
-                    liveApi.login(user, pw)
+                    io { liveApi.login(user, pw) }
                 }
-                liveApi.faceEnroll(
+                io { liveApi.faceEnroll(
                     FaceEnrollRequest(
                         username = user,
                         imageBase64 = b64,
@@ -2197,7 +2197,7 @@ class KioskViewModel(
                         accuracyM = stamp.accuracyM,
                         gpsMissing = stamp.gpsMissing,
                     ),
-                )
+                ) }
                 val msg = if (stamp.gpsMissing) {
                     "Live enroll OK · GPS unavailable (gpsMissing)"
                 } else {
@@ -2252,6 +2252,9 @@ class KioskViewModel(
         }
     }
 
+    /** Blocking OkHttp calls must never run on the main thread (viewModelScope is Dispatchers.Main). */
+    private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) { block() }
+
     private fun verifyFace(jpegBytes: ByteArray) {
         val typedUser = LoginInput.normalizeUsername(_state.value.loginUsername)
             .ifBlank { faceStore?.enrolledUsername().orEmpty() }
@@ -2265,17 +2268,19 @@ class KioskViewModel(
             // GPS is OPTIONAL: lat/lng/accuracy are only sent when a real fix exists; gpsMissing=true otherwise.
             val stamp = CaptureGeo.read()
             val liveResult = runCatching {
-                liveApi.faceVerify(
-                    FaceVerifyRequest(
-                        imageBase64 = b64,
-                        username = user.ifBlank { null },
-                        capturedAt = stamp.capturedAt,
-                        lat = stamp.lat,
-                        lng = stamp.lng,
-                        accuracyM = stamp.accuracyM,
-                        gpsMissing = stamp.gpsMissing,
-                    ),
-                )
+                io {
+                    liveApi.faceVerify(
+                        FaceVerifyRequest(
+                            imageBase64 = b64,
+                            username = user.ifBlank { null },
+                            capturedAt = stamp.capturedAt,
+                            lat = stamp.lat,
+                            lng = stamp.lng,
+                            accuracyM = stamp.accuracyM,
+                            gpsMissing = stamp.gpsMissing,
+                        ),
+                    )
+                }
             }
             val live = liveResult.getOrNull()
             // The SERVER decides (face_verified token). No client-side template match gates success.

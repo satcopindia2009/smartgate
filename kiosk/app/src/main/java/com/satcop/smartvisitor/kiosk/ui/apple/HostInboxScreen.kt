@@ -19,7 +19,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -239,7 +241,7 @@ private fun InboxCard(
         HostVisitCard(
             visit, photo,
             onClick = onOpen,
-            chip = { SgStatusChip("Pending", SgStatusKind.PENDING) },
+            chip = { SgStatusChip("Pending approval", SgStatusKind.PENDING) },
             actions = if (rejecting) null else ({
                 SgSmallPill("Reject", onClick = { onStartReject(visit.id) }, style = SgPillStyle.OUTLINE_DANGER, enabled = !busy, modifier = Modifier.weight(1f))
                 SgSmallPill("Approve", onClick = { onApprove(visit.id) }, enabled = !busy, modifier = Modifier.weight(1f))
@@ -290,7 +292,8 @@ private fun DetailSection(title: String, rows: List<Pair<String, String?>>) {
 
 /**
  * Host visit detail: photo + name, sections Visitor / Host / Visit, pinned Approve / Reject.
- * Mobile and ID are shown exactly as the API returns them (masked by the server).
+ * Mobile is always shown masked (XXXXXX1234) with a Call link (ACTION_DIAL) when the API gave a dialable number.
+ * ID is shown exactly as the API returns it (masked by the server).
  */
 @Composable
 private fun HostVisitDetail(
@@ -339,7 +342,7 @@ private fun HostVisitDetail(
                     }
                 }
                 Text(name, style = SgType.ScreenTitle, color = KioskColors.text)
-                if (isPending) SgStatusChip("Pending", SgStatusKind.PENDING)
+                if (isPending) SgStatusChip("Pending approval", SgStatusKind.PENDING)
                 else SgStatusChip(visit.status.replace('_', ' ').replaceFirstChar { it.uppercase() }, SgStatusKind.IN_PROGRESS)
             }
             DetailSection(
@@ -347,10 +350,26 @@ private fun HostVisitDetail(
                 listOf(
                     "Type" to visit.visitorType?.replaceFirstChar { it.uppercase() },
                     "Company" to visit.company,
-                    "Mobile number" to visit.mobile,
+                    "Mobile number" to HostCall.maskedMobile(visit.mobile).ifBlank { null },
                     "ID" to listOfNotNull(visit.idType, visit.idNumber).filter { it.isNotBlank() }.joinToString(" ").ifBlank { null },
                 ),
             )
+            HostCall.dialNumber(visit.mobile)?.let { number ->
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                        .clickable(role = Role.Button) { HostCall.dial(ctx, number) }
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    androidx.compose.material3.Icon(
+                        Icons.Filled.Call, contentDescription = null,
+                        tint = KioskColors.primary, modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Call", style = SgType.BodyStrong, color = KioskColors.primary)
+                }
+            }
             DetailSection("Host", listOf("Name" to hostName))
             DetailSection("Visit", listOf(
                 "Purpose" to visit.purpose,
