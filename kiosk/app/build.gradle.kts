@@ -16,7 +16,7 @@ android {
         minSdk = 23
         targetSdk = 35
         versionCode = 1064
-        versionName = "1.0.13-1role-add-visitor-rework"
+        versionName = "1.0.13-1role-PREVIEW"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
