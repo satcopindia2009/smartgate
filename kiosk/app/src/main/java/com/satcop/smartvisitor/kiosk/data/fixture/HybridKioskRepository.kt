@@ -609,5 +609,5 @@ class HybridKioskRepository(
 
     private fun allowDemoFixtures(): Boolean = !SchoolIds.hidesDemoStory(signedIn?.schoolId)
 
-    private fun emptyInside() = InsideListResponse(data = emptyList(), meta = Meta(watermark = "DEMO"))
+    private fun emptyInside() = InsideListResponse(data = emptyList(), meta = Meta(watermark = ""))
 }

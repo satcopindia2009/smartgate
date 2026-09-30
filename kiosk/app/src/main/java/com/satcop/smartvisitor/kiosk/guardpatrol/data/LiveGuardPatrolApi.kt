@@ -240,7 +240,7 @@ class LiveGuardPatrolApi(
 
         const val DEMO_USERNAME = "guard"
         const val DEMO_PASSWORD = "guard123"
-        const val DEMO_SCHOOL_ID = "SCH-DEMO-01"
+        const val DEFAULT_SCHOOL_ID = "SCH-DEMO-01"
         const val DEMO_DEVICE_ID = "guard-phone-G1"
 
         /** Optional secondary seed (Pranay school). */

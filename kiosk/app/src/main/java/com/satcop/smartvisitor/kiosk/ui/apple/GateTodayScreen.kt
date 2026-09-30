@@ -103,7 +103,6 @@ fun GateTodayScreen(
                         ) {
                             AppleShellNav(leading = "Home", trailing = " ", onLeading = { /* stay */ })
                             AppleShellTitle(if (registrationStep == 2) "Add Visitor" else "Check-in")
-                            AppleShellSub("Step $registrationStep · under shell · tabs stay")
                             registrationContent()
                         }
                     } else {

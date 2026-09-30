@@ -66,7 +66,7 @@ class LocalFaceTemplateStore(context: Context) {
             matched = matched,
             username = key,
             message = if (matched) {
-                "Local demo match (d=$distance) · Backend verify pending"
+                "Face matched on this device (d=$distance) · server check pending"
             } else {
                 "Face mismatch (d=$distance) — use password (AC-FL3)"
             },

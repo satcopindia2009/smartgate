@@ -53,7 +53,7 @@ fun SignaturePad(
     ) {
         if (strokes.isEmpty() && current.isEmpty()) {
             Text(
-                text = "Sign here with finger / stylus",
+                text = "Sign here",
                 color = KioskColors.textDim,
                 fontSize = 13.sp,
                 fontFamily = KioskFont,

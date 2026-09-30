@@ -46,8 +46,8 @@ data class GuardPatrolUiState(
     val screen: GuardPatrolScreen = GuardPatrolScreen.START,
     val templates: List<RoundTemplate> = emptyList(),
     val checkpoints: Map<String, Checkpoint> = emptyMap(),
-    val schoolName: String = "Demo Public School — Campus A",
-    val schoolId: String = LiveGuardPatrolApi.DEMO_SCHOOL_ID,
+    val schoolName: String = "Campus patrol",
+    val schoolId: String = LiveGuardPatrolApi.DEFAULT_SCHOOL_ID,
     val guardLabel: String = "Guard G1",
     val guardId: String = GuardPatrolFixtures.DEFAULT_GUARD_ID,
     val selectedTemplateId: String? = null,
@@ -715,14 +715,14 @@ class GuardPatrolViewModel(
                     checkpoints = checkpoints.ifEmpty {
                         GuardPatrolFixtures.checkpoints.associateBy { cp -> cp.id }
                     },
-                    schoolId = user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID,
-                    schoolName = "Demo Public School — Campus A",
+                    schoolId = user?.schoolId ?: LiveGuardPatrolApi.DEFAULT_SCHOOL_ID,
+                    schoolName = "Campus patrol",
                     guardId = guardId,
                     guardLabel = user?.displayName ?: "Guard G1",
                     assignments = assignments,
                     assignmentsFromLive = fromLive,
                     requireAssignment = true,
-                    statusLine = "LIVE · ${user?.displayName ?: "guard"} · ${user?.schoolId ?: LiveGuardPatrolApi.DEMO_SCHOOL_ID}" +
+                    statusLine = "LIVE · ${user?.displayName ?: "guard"} · ${user?.schoolId ?: LiveGuardPatrolApi.DEFAULT_SCHOOL_ID}" +
                         " · my-schedules ${assignments.size}",
                     toast = ToastEvent(
                         System.currentTimeMillis(),

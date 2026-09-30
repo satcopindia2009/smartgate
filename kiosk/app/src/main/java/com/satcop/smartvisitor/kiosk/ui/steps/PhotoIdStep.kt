@@ -56,6 +56,9 @@ import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.components.PanelDivider
 import com.satcop.smartvisitor.kiosk.ui.components.SignaturePad
+import com.satcop.smartvisitor.kiosk.ui.components.SgPrimaryButton
+import com.satcop.smartvisitor.kiosk.ui.components.SgSecondaryButton
+import com.satcop.smartvisitor.kiosk.ui.theme.PillShape
 import com.satcop.smartvisitor.kiosk.ui.components.strokesToBitmap
 import com.satcop.smartvisitor.kiosk.ui.media.PlaceholderBitmap
 import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
@@ -80,8 +83,8 @@ fun PhotoIdStep(
     onIdImage: (Bitmap?) -> Unit,
     onSignature: (Bitmap?) -> Unit,
     onClearSignature: () -> Unit,
-    onBlockSample: () -> Unit,
-    onAlertSample: () -> Unit,
+    onBlockSample: () -> Unit = {},
+    onAlertSample: () -> Unit = {},
     onAgreeConsent: () -> Unit,
     onDeclineConsent: () -> Unit,
     onUseSavedId: (Boolean) -> Unit = {},
@@ -93,26 +96,22 @@ fun PhotoIdStep(
     var strokes by remember { mutableStateOf<List<List<Offset>>>(emptyList()) }
     // Pending capture target: live visitor photo vs govt ID document (camera only — no gallery).
     var pendingCapture by remember { mutableStateOf("live") }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp ->
-        when (pendingCapture) {
-            "id" -> onIdImage(bmp)
-            else -> onLivePhoto(bmp)
-        }
-    }
-    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) camera.launch(null)
-        else if (pendingCapture == "id") onIdImage(null)
-        else onLivePhoto(null)
-    }
+    // In-app camera (screens 24 / 25): null = the capture screen is closed.
+    var cameraTarget by remember { mutableStateOf<com.satcop.smartvisitor.kiosk.ui.addvisitor.AvCameraTarget?>(null) }
     fun captureWithCamera(target: String) {
-        pendingCapture = target
-        QaHooks.frame(if (target == "id") "ID photo" else "Visitor photo")?.let { f ->
-            if (target == "id") onIdImage(f) else onLivePhoto(f)
-            return
-        }
-        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-            PackageManager.PERMISSION_GRANTED
-        if (granted) camera.launch(null) else cameraPermission.launch(Manifest.permission.CAMERA)
+        cameraTarget = if (target == "id") com.satcop.smartvisitor.kiosk.ui.addvisitor.AvCameraTarget.ID
+        else com.satcop.smartvisitor.kiosk.ui.addvisitor.AvCameraTarget.PHOTO
+    }
+    cameraTarget?.let { t ->
+        com.satcop.smartvisitor.kiosk.ui.addvisitor.AddVisitorCamera(
+            target = t,
+            onCaptured = { bmp ->
+                if (t == com.satcop.smartvisitor.kiosk.ui.addvisitor.AvCameraTarget.ID) onIdImage(bmp) else onLivePhoto(bmp)
+                cameraTarget = null
+            },
+            onCancel = { cameraTarget = null },
+        )
+        return
     }
     if (!draft.consentAgreed) {
         Column(
@@ -139,36 +138,9 @@ fun PhotoIdStep(
         Column(Modifier.fillMaxWidth()) {
             FormHeader(
                 title = "Photo, ID & signature",
-                subtitle = "Step 3 · live photo + ID capture · ID number required",
+                subtitle = "Take the visitor photo and the ID photo, then enter the ID number.",
                 modifier = Modifier.padding(bottom = 0.dp),
             )
-            if (compact) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = FormTokens.FieldToField),
-                    verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
-                ) {
-                    KioskGhostButton(
-                        text = "Block sample",
-                        onClick = onBlockSample,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    KioskGhostButton(
-                        text = "Alert sample",
-                        onClick = onAlertSample,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            } else {
-                Row(
-                    modifier = Modifier.padding(top = FormTokens.FieldToField),
-                    horizontalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
-                ) {
-                    KioskGhostButton(text = "Block sample", onClick = onBlockSample)
-                    KioskGhostButton(text = "Alert sample", onClick = onAlertSample)
-                }
-            }
         }
 
         if (blocked && blacklistHit != null) {
@@ -263,7 +235,7 @@ fun PhotoIdStep(
                     .padding(horizontal = FormTokens.ControlHPad, vertical = 12.dp),
             )
             Text(
-                text = "Using saved ID. Required for every entry.",
+                text = "Required for every entry.",
                 color = KioskColors.textMuted,
                 fontSize = 12.sp,
                 fontFamily = KioskFont,
@@ -289,18 +261,13 @@ fun PhotoIdStep(
                         modifier = Modifier
                             .heightIn(min = FormTokens.MinTouch)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(if (selected) KioskColors.purpleDim else KioskColors.card)
-                            .border(
-                                1.dp,
-                                if (selected) KioskColors.purple else KioskColors.border,
-                                RoundedCornerShape(999.dp),
-                            )
+                            .background(if (selected) KioskColors.primary else KioskColors.secondaryFill)
                             .clickable { onIdType(type.apiValue) }
                             .padding(horizontal = 14.dp, vertical = 10.dp),
                     ) {
                         Text(
                             text = type.apiValue,
-                            color = if (selected) Color.White else KioskColors.textMuted,
+                            color = if (selected) KioskColors.onPrimary else KioskColors.text,
                             fontSize = 13.sp,
                             fontFamily = KioskFont,
                         )
@@ -334,14 +301,14 @@ fun PhotoIdStep(
         errors[FieldKeys.ID_IMAGE]?.let {
             Text(
                 text = it,
-                color = KioskColors.errorText,
+                color = KioskColors.danger,
                 fontSize = 12.sp,
                 fontFamily = KioskFont,
                 modifier = Modifier.padding(top = FormTokens.ErrorGap),
             )
         }
 
-        FormLabel("Digital signature (optional)", modifier = Modifier.padding(top = FormTokens.FieldToField))
+        FormLabel("Visitor signature", modifier = Modifier.padding(top = FormTokens.FieldToField))
         SignaturePad(
             strokes = strokes,
             onStrokes = { next ->
@@ -349,49 +316,28 @@ fun PhotoIdStep(
                 onSignature(strokesToBitmap(next, 800, 220))
             },
         )
-        KioskGhostButton(
+        SgSecondaryButton(
             text = "Clear signature",
             onClick = {
                 strokes = emptyList()
                 onClearSignature()
             },
-            modifier = Modifier.padding(top = FormTokens.ButtonGap),
+            modifier = Modifier.padding(top = FormTokens.ButtonGap).fillMaxWidth(),
         )
 
-        PanelDivider()
-        if (compact) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = FormTokens.SectionGap),
-                verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
-            ) {
-                KioskGhostButton(
-                    text = "Back",
-                    onClick = onBack,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                CyanSubmitButton(
-                    text = if (submitting) "Submitting…" else "Issue pass",
-                    enabled = !submitting && !blocked && (draft.idNumber.trim().isNotEmpty() || (draft.useSavedId && draft.savedId != null)),
-                    onClick = onSubmit,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = FormTokens.SectionGap),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                KioskGhostButton(text = "Back", onClick = onBack)
-                CyanSubmitButton(
-                    text = if (submitting) "Submitting…" else "Issue pass",
-                    enabled = !submitting && !blocked && (draft.idNumber.trim().isNotEmpty() || (draft.useSavedId && draft.savedId != null)),
-                    onClick = onSubmit,
-                )
-            }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = FormTokens.SectionGap),
+            verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap),
+        ) {
+            SgPrimaryButton(
+                text = if (submitting) "Submitting…" else "Submit",
+                enabled = !submitting && !blocked && (draft.idNumber.trim().isNotEmpty() || (draft.useSavedId && draft.savedId != null)),
+                onClick = onSubmit,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SgSecondaryButton(text = "Back", onClick = onBack, modifier = Modifier.fillMaxWidth())
         }
     }
 }
@@ -408,8 +354,8 @@ private fun CaptureBox(
     preview: @Composable () -> Unit,
 ) {
     val border = when {
-        error != null -> KioskColors.red
-        filled -> KioskColors.cyan
+        error != null -> KioskColors.danger
+        filled -> KioskColors.primary
         else -> KioskColors.border
     }
     Column(modifier) {
@@ -419,8 +365,8 @@ private fun CaptureBox(
                 .fillMaxWidth()
                 .heightIn(min = 140.dp)
                 .clip(RoundedCornerShape(RadiusLg))
-                .background(if (filled) KioskColors.cyanDim else KioskColors.bg)
-                .border(2.dp, border, RoundedCornerShape(RadiusLg))
+                .background(if (filled) KioskColors.brandSoft else KioskColors.inputBg)
+                .border(1.5.dp, border, RoundedCornerShape(RadiusLg))
                 .clickable(onClick = onClick)
                 .padding(FormTokens.HeaderToForm),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -428,8 +374,11 @@ private fun CaptureBox(
         ) {
             preview()
             Spacer(Modifier.height(10.dp))
-            Text(title, color = if (filled) KioskColors.cyanBright else KioskColors.text, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(title, color = if (filled) KioskColors.primary else KioskColors.primary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, fontFamily = KioskFont, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             Text(subtitle, color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
+        if (error != null) {
+            Text(error, color = KioskColors.danger, fontSize = 12.sp, fontFamily = KioskFont, modifier = Modifier.padding(top = FormTokens.ErrorGap))
         }
     }
 }
@@ -440,10 +389,10 @@ private fun InitialsBubble(initials: String) {
         modifier = Modifier
             .size(72.dp)
             .clip(CircleShape)
-            .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))),
+            .background(KioskColors.brandSoft),
         contentAlignment = Alignment.Center,
     ) {
-        Text(initials, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+        Text("📷", fontSize = 26.sp)
     }
 }
 
@@ -454,11 +403,11 @@ private fun BlockBanner(hit: BlacklistEntry) {
             .fillMaxWidth()
             .padding(top = FormTokens.FieldToField)
             .clip(RoundedCornerShape(RadiusMd))
-            .background(KioskColors.redDim)
-            .border(1.dp, KioskColors.red, RoundedCornerShape(RadiusMd))
+            .background(KioskColors.dangerSoft)
+            .border(1.dp, KioskColors.danger, RoundedCornerShape(RadiusMd))
             .padding(14.dp),
     ) {
-        Text("BLACKLIST BLOCK", color = KioskColors.red, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+        Text("Entry not allowed", color = KioskColors.danger, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
         Text(
             "${hit.name ?: "Visitor"} · ${hit.reason ?: "Do not issue pass"}",
             color = KioskColors.text,
@@ -466,7 +415,7 @@ private fun BlockBanner(hit: BlacklistEntry) {
             fontFamily = KioskFont,
             modifier = Modifier.padding(top = 4.dp),
         )
-        Text("Pass not issued. Escalate to Security Head.", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+        Text("Do not let this visitor in. Call the security head.", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
     }
 }
 
@@ -477,37 +426,16 @@ private fun AlertBanner(hit: BlacklistEntry) {
             .fillMaxWidth()
             .padding(top = FormTokens.FieldToField)
             .clip(RoundedCornerShape(RadiusMd))
-            .background(KioskColors.orangeDim)
+            .background(KioskColors.warningSoft)
             .padding(14.dp),
     ) {
-        Text("BLACKLIST ALERT", color = KioskColors.peakAmberBright, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+        Text("Watch-list alert", color = KioskColors.warning, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
         Text(
             "${hit.name ?: "Visitor"} · ${hit.reason ?: "Watch only"}",
-            color = KioskColors.peakAmber,
+            color = KioskColors.warning,
             fontSize = 13.sp,
             fontFamily = KioskFont,
             modifier = Modifier.padding(top = 4.dp),
         )
-    }
-}
-
-@Composable
-private fun CyanSubmitButton(
-    text: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val brush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))
-    Box(
-        modifier = modifier
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (enabled) brush else androidx.compose.ui.graphics.Brush.linearGradient(listOf(KioskColors.border, KioskColors.border)))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium, fontFamily = KioskFont)
     }
 }
