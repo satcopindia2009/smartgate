@@ -91,7 +91,7 @@ object GuardPatrolFixtures {
                 status = AssignmentStatus.ASSIGNED,
                 assignedBy = "SH1",
                 assignedAtEpochMs = System.currentTimeMillis() - 3_600_000L,
-                notes = "Evening perimeter — demo seed",
+                notes = "Evening perimeter",
             ),
             PatrolAssignment(
                 id = "asg-demo-spot-$today",
@@ -104,7 +104,7 @@ object GuardPatrolFixtures {
                 status = AssignmentStatus.ASSIGNED,
                 assignedBy = "SH1",
                 assignedAtEpochMs = System.currentTimeMillis() - 7_200_000L,
-                notes = "Spot check — demo seed",
+                notes = "Spot check",
             ),
         )
     }

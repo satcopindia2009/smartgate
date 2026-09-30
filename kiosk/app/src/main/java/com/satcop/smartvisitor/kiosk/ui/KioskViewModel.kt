@@ -88,7 +88,7 @@ data class KioskUiState(
     val loginError: String? = null,
     val loginBusy: Boolean = false,
     val step: Int = 1,
-    val schoolName: String = DemoFixtures.school.name,
+    val schoolName: String = "",
     val schoolId: String = "",
     val timezone: String = DemoFixtures.SCHOOL_TZ,
     val clockLabel: String = "",

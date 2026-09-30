@@ -17,7 +17,7 @@ import com.satcop.smartvisitor.kiosk.data.model.StaffListResponse
  * Wave 1 is fixtures-first — no live network.
  */
 object DemoFixtures {
-    const val WATERMARK = "DEMO"
+    const val WATERMARK = ""
     const val SCHOOL_ID = "SCH-DEMO-01"
     const val SCHOOL_TZ = "Asia/Calcutta"
     const val GATE_MAIN_ID = "G-MAIN"
@@ -32,7 +32,7 @@ object DemoFixtures {
 
     val school: School = School(
         id = SCHOOL_ID,
-        name = "Demo International School",
+        name = "School",
         timezone = SCHOOL_TZ,
         overdueHoursDefault = 4,
         config = SchoolConfig(hostNotifyChannels = listOf("in_app")),

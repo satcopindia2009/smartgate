@@ -235,7 +235,7 @@ fun AddVisitorFormStep(
                 modifier = Modifier.fillMaxWidth(),
             )
             KioskField(
-                label = if (kind == ProfileKind.VENDOR) "Contact name" else "Full name",
+                label = "Name",
                 value = draft.visitorName,
                 onValueChange = onName,
                 placeholder = "Full name",
