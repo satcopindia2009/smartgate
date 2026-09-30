@@ -169,17 +169,14 @@ fun IncidentReportScreen(
                 .fillMaxWidth()
                 .heightIn(min = 100.dp),
             placeholder = {
-                Text("Describe what happened…", color = KioskColors.textMuted, fontFamily = KioskFont)
+                Text("Describe what happened…", color = KioskColors.inputHint, fontFamily = KioskFont)
             },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = KioskColors.text,
-                unfocusedTextColor = KioskColors.text,
-                focusedBorderColor = KioskColors.cyan,
-                unfocusedBorderColor = KioskColors.border,
-                cursorColor = KioskColors.cyan,
-                focusedContainerColor = KioskColors.card,
-                unfocusedContainerColor = KioskColors.card,
+            textStyle = androidx.compose.ui.text.TextStyle(
+                color = KioskColors.inputText,
+                fontFamily = KioskFont,
+                fontSize = 15.sp,
             ),
+            colors = com.satcop.smartvisitor.kiosk.ui.theme.kioskOutlinedFieldColors(container = KioskColors.card),
             maxLines = 5,
         )
 

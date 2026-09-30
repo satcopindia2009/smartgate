@@ -141,6 +141,7 @@ fun KioskApp(
                                 consentAt = state.faceConsentAt,
                                 busy = state.faceBusy,
                                 message = state.faceMessage,
+                                messageIsError = state.faceError,
                                 onUsername = viewModel::updateFaceUsername,
                                 onAgreeConsent = viewModel::agreeFaceConsent,
                                 onDeclineConsent = viewModel::declineFaceConsent,

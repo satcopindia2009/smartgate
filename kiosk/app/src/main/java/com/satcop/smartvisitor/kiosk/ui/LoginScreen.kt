@@ -16,8 +16,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.ui.components.KioskField
@@ -101,9 +101,11 @@ fun LoginScreen(
             label = "Username",
             value = username,
             onValueChange = onUsername,
-            placeholder = "pranay.gate",
+            placeholder = "username",
             keyboardType = KeyboardType.Ascii,
             capitalization = KeyboardCapitalization.None,
+            autoCorrect = false,
+            imeAction = ImeAction.Next,
             modifier = Modifier.fillMaxWidth(),
         )
         KioskField(
@@ -113,7 +115,10 @@ fun LoginScreen(
             placeholder = "password",
             keyboardType = KeyboardType.Password,
             capitalization = KeyboardCapitalization.None,
-            visualTransformation = PasswordVisualTransformation(),
+            autoCorrect = false,
+            passwordToggle = true,
+            imeAction = ImeAction.Go,
+            onImeAction = onSubmit,
             error = error,
             modifier = Modifier.fillMaxWidth(),
         )

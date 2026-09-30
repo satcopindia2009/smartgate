@@ -13,8 +13,8 @@ android {
         applicationId = "com.satcop.smartvisitor.kiosk"
         minSdk = 23
         targetSdk = 35
-        versionCode = 1059
-        versionName = "1.0.11-1role-theme-facegate-hostnotify"
+        versionCode = 1060
+        versionName = "1.0.11b-1role-hotfix-login-face-text"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }

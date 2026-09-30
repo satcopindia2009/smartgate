@@ -19,10 +19,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.satcop.smartvisitor.kiosk.ui.theme.kioskTextFieldColors
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -186,11 +194,18 @@ fun KioskField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     singleLine: Boolean = true,
     minLines: Int = 1,
+    autoCorrect: Boolean = true,
+    imeAction: ImeAction = ImeAction.Default,
+    onImeAction: (() -> Unit)? = null,
+    /** Password field: shows a Show/Hide toggle; [visualTransformation] is ignored while shown. */
+    passwordToggle: Boolean = false,
 ) {
+    var shown by remember { mutableStateOf(false) }
+    val masked = passwordToggle && !shown
     Column(modifier = modifier) {
         Text(
             text = label,
-            color = KioskColors.textMuted,
+            color = KioskColors.inputLabel,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
@@ -204,43 +219,63 @@ fun KioskField(
                 .heightIn(min = 48.dp)
                 .border(
                     1.dp,
-                    if (error != null) KioskColors.red else KioskColors.border,
+                    if (error != null) KioskColors.errorText else KioskColors.inputBorder,
                     ControlShape,
                 )
                 .clip(ControlShape),
+            // Explicit colour on the text style itself: it wins over any inherited LocalTextStyle colour.
+            textStyle = TextStyle(
+                color = KioskColors.inputText,
+                fontFamily = KioskFont,
+                fontSize = 16.sp,
+            ),
             placeholder = {
-                Text(placeholder, color = KioskColors.textDim, fontFamily = KioskFont)
+                Text(placeholder, color = KioskColors.inputHint, fontFamily = KioskFont)
             },
             singleLine = singleLine,
             minLines = minLines,
-            visualTransformation = visualTransformation,
+            visualTransformation = if (passwordToggle) {
+                if (masked) PasswordVisualTransformation() else VisualTransformation.None
+            } else {
+                visualTransformation
+            },
             isError = error != null,
             keyboardOptions = KeyboardOptions(
                 keyboardType = keyboardType,
                 capitalization = capitalization,
+                autoCorrectEnabled = autoCorrect,
+                imeAction = imeAction,
             ),
+            keyboardActions = KeyboardActions(
+                onDone = { onImeAction?.invoke() },
+                onGo = { onImeAction?.invoke() },
+                onNext = { onImeAction?.invoke() },
+            ),
+            trailingIcon = if (passwordToggle) {
+                {
+                    Text(
+                        text = if (shown) "Hide" else "Show",
+                        color = KioskColors.systemBlue,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = KioskFont,
+                        modifier = Modifier
+                            .clickable { shown = !shown }
+                            .heightIn(min = 48.dp)
+                            .padding(horizontal = 12.dp, vertical = 14.dp),
+                    )
+                }
+            } else {
+                null
+            },
             shape = ControlShape,
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = KioskColors.bg,
-                unfocusedContainerColor = KioskColors.bg,
-                disabledContainerColor = KioskColors.bg,
-                errorContainerColor = KioskColors.bg,
-                focusedTextColor = KioskColors.text,
-                unfocusedTextColor = KioskColors.text,
-                cursorColor = KioskColors.purpleBright,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent,
-                errorIndicatorColor = Color.Transparent,
-                focusedPlaceholderColor = KioskColors.textDim,
-                unfocusedPlaceholderColor = KioskColors.textDim,
-            ),
+            colors = kioskTextFieldColors(),
         )
         Spacer(Modifier.height(4.dp))
         AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {
             Text(
                 text = error.orEmpty(),
-                color = KioskColors.red,
+                color = KioskColors.errorText,
                 fontSize = 12.sp,
                 fontFamily = KioskFont,
             )

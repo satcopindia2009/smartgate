@@ -12,11 +12,23 @@ package com.satcop.smartvisitor.kiosk.ui
  */
 enum class GateStage { SIGNED_OUT, FACE_PENDING, VERIFIED }
 
+/** Client follows the SERVER on who must face-verify (1059b): only `faceRequired && !faceVerified` does. */
+object FaceGatePolicy {
+    fun needsFace(faceVerified: Boolean, faceRequired: Boolean): Boolean = faceRequired && !faceVerified
+}
+
 object FaceGateMachine {
     val initial: GateStage = GateStage.SIGNED_OUT
 
     /** Password accepted: NEVER grants access by itself. */
     fun onPasswordLogin(s: GateStage): GateStage = GateStage.FACE_PENDING
+
+    /**
+     * Login result (1059b): server flags decide. guard = faceRequired:true -> FACE_PENDING;
+     * host/admin (faceVerified:true) and gate (faceRequired:false, not enforced) -> VERIFIED, no face step.
+     */
+    fun onLoginResult(s: GateStage, faceVerified: Boolean, faceRequired: Boolean): GateStage =
+        if (FaceGatePolicy.needsFace(faceVerified, faceRequired)) GateStage.FACE_PENDING else GateStage.VERIFIED
 
     /** [serverVerified] must be the `faceVerified` flag of the token returned by the face-verify step. */
     fun onFaceResult(s: GateStage, serverVerified: Boolean): GateStage =

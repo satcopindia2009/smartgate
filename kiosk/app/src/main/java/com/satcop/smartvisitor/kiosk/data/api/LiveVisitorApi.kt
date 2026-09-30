@@ -90,12 +90,14 @@ class LiveVisitorApi(
         val body = json.encodeToString(LoginRequest(username, password))
         val req = Request.Builder()
             .url("$baseUrl/auth/login")
+            .header("Accept", "application/json")
             .post(body.toRequestBody(JSON))
             .build()
         val text = execute(req)
         val parsed = json.decodeFromString<LoginResponse>(text)
-        // Face gate policy 1059: a password token is NEVER treated as verified by the client.
-        session.accept(parsed.accessToken, parsed.user, faceVerified = false)
+        // 1059b: follow the server. Only a role with faceRequired && !faceVerified (guard) must do the face step.
+        val needsFace = com.satcop.smartvisitor.kiosk.ui.FaceGatePolicy.needsFace(parsed.faceVerified, parsed.faceRequired)
+        session.accept(parsed.accessToken, parsed.user, faceVerified = !needsFace, faceRequired = parsed.faceRequired)
         return parsed
     }
 
@@ -358,8 +360,8 @@ class LiveVisitorApi(
         if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer $token")
         val text = execute(builder.build())
         val parsed = json.decodeFromString<FaceVerifyResponse>(text)
-        if (parsed.faceVerified && parsed.matched && !parsed.accessToken.isNullOrBlank() && parsed.user != null) {
-            session.accept(parsed.accessToken, parsed.user, faceVerified = true)
+        if (parsed.faceVerified && !parsed.accessToken.isNullOrBlank() && parsed.user != null) {
+            session.accept(parsed.accessToken, parsed.user, faceVerified = true, faceRequired = session.faceRequired)
         }
         return parsed
     }

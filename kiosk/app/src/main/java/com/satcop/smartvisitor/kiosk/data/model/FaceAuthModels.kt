@@ -56,7 +56,7 @@ data class FaceVerifyRequest(
 
 @Serializable
 data class FaceVerifyResponse(
-    val matched: Boolean = false,
+    val matched: Boolean = true,
     val accessToken: String? = null,
     val tokenType: String = "Bearer",
     val expiresIn: Int? = null,
@@ -65,5 +65,7 @@ data class FaceVerifyResponse(
     val faceVerified: Boolean = false,
     val username: String? = null,
     val message: String? = null,
+    /** Server soft warning (e.g. outside campus in soft geo-fence mode). */
+    val warn: String? = null,
     val meta: Meta? = null,
 )

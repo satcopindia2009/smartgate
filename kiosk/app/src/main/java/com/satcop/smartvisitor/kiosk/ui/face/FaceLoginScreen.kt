@@ -44,6 +44,7 @@ fun FaceLoginScreen(
     consentAt: String?,
     busy: Boolean,
     message: String?,
+    messageIsError: Boolean = false,
     onUsername: (String) -> Unit,
     onAgreeConsent: () -> Unit,
     onDeclineConsent: () -> Unit,
@@ -95,6 +96,7 @@ fun FaceLoginScreen(
                 mode = FaceCaptureMode.ENROLL,
                 busy = busy,
                 message = message,
+                messageIsError = messageIsError,
                 onCaptured = onCaptured,
                 onCancel = onCancelCapture,
             )
@@ -102,6 +104,7 @@ fun FaceLoginScreen(
                 mode = FaceCaptureMode.VERIFY,
                 busy = busy,
                 message = message,
+                messageIsError = messageIsError,
                 onCaptured = onCaptured,
                 onCancel = onCancelCapture,
             )
@@ -142,9 +145,10 @@ fun FaceLoginScreen(
                     label = "Username (staff)",
                     value = username,
                     onValueChange = onUsername,
-                    placeholder = "guard / pranay.gate / pranay.host",
+                    placeholder = "username",
                     keyboardType = KeyboardType.Ascii,
                     capitalization = KeyboardCapitalization.None,
+                    autoCorrect = false,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 KioskPrimaryButton(
@@ -166,7 +170,7 @@ fun FaceLoginScreen(
                 )
                 if (!message.isNullOrBlank()) {
                     Spacer(Modifier.height(4.dp))
-                    Text(message, color = KioskColors.cyanBright, fontSize = 12.sp, fontFamily = KioskFont)
+                    Text(message, color = if (messageIsError) KioskColors.errorText else KioskColors.systemBlue, fontSize = 13.sp, fontFamily = KioskFont)
                 }
             }
         }

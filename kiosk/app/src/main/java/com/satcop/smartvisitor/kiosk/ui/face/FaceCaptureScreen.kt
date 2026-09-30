@@ -5,7 +5,16 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.util.Size
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.satcop.smartvisitor.kiosk.data.face.FaceImage
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -33,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,6 +68,21 @@ import java.util.concurrent.Executors
 
 enum class FaceCaptureMode { ENROLL, VERIFY }
 
+private fun Context.findActivity(): Activity? {
+    var c: Context? = this
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
+}
+
+private fun openAppSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
+}
+
 @Composable
 fun FaceCaptureScreen(
     mode: FaceCaptureMode,
@@ -65,25 +90,44 @@ fun FaceCaptureScreen(
     message: String?,
     onCaptured: (ByteArray) -> Unit,
     onCancel: () -> Unit,
+    messageIsError: Boolean = false,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    var granted by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                PackageManager.PERMISSION_GRANTED,
-        )
-    }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
-        granted = it
+    fun hasPermission() = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+        PackageManager.PERMISSION_GRANTED
+    var granted by remember { mutableStateOf(hasPermission()) }
+    var asked by remember { mutableStateOf(false) }
+    var permanentlyDenied by remember { mutableStateOf(false) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        granted = ok
+        asked = true
+        val act = context.findActivity()
+        // Denied AND the system will no longer show the dialog => only Settings can fix it.
+        permanentlyDenied = !ok && act != null &&
+            !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(act, Manifest.permission.CAMERA)
     }
     LaunchedEffect(Unit) {
         if (!granted) permission.launch(Manifest.permission.CAMERA)
+    }
+    // Coming back from Settings: pick up a newly granted permission.
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val now = hasPermission()
+                if (now != granted) granted = now
+                if (now) permanentlyDenied = false
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
 
     var previewBmp by remember { mutableStateOf<Bitmap?>(null) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var cameraError by remember { mutableStateOf<String?>(null) }
+    var cameraKey by remember { mutableStateOf(0) }
+    var capturing by remember { mutableStateOf(false) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val mainExecutor = remember { ContextCompat.getMainExecutor(context) }
     // Crashfix 1046: unbind camera on leave; never touch Compose state off main.
@@ -99,14 +143,14 @@ fun FaceCaptureScreen(
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = if (mode == FaceCaptureMode.ENROLL) "Enroll face · CameraX" else "Face unlock · CameraX",
+            text = if (mode == FaceCaptureMode.ENROLL) "Enroll face" else "Face verification",
             color = KioskColors.text,
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
             fontFamily = KioskFont,
         )
         Text(
-            text = "Staff only (Gate · Host · Guard) · visitor face OUT · front camera",
+            text = "Look at the front camera, then tap Capture. Staff only.",
             color = KioskColors.textMuted,
             fontSize = 13.sp,
             fontFamily = KioskFont,
@@ -128,61 +172,119 @@ fun FaceCaptureScreen(
                 .fillMaxWidth()
                 .height(280.dp)
                 .clip(RoundedCornerShape(RadiusLg))
-                .background(KioskColors.sidebar)
+                .background(KioskColors.secondaryFill)
                 .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusLg)),
             contentAlignment = Alignment.Center,
         ) {
             when {
-                !granted -> Text("Camera permission required", color = KioskColors.orange, fontFamily = KioskFont)
+                !granted -> Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        if (permanentlyDenied) {
+                            "Camera access is turned off. Open Settings → Permissions → Camera and allow it, then come back."
+                        } else {
+                            "Camera permission is needed to take your face photo for sign-in."
+                        },
+                        color = KioskColors.text,
+                        fontFamily = KioskFont,
+                        fontSize = 14.sp,
+                    )
+                    if (permanentlyDenied) {
+                        KioskPrimaryButton(
+                            text = "Open settings",
+                            onClick = { openAppSettings(context) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        )
+                    } else {
+                        KioskPrimaryButton(
+                            text = "Allow camera",
+                            onClick = { permission.launch(Manifest.permission.CAMERA) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                        )
+                        if (asked) {
+                            KioskGhostButton(
+                                text = "Open settings",
+                                onClick = { openAppSettings(context) },
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            )
+                        }
+                    }
+                }
                 previewBmp != null -> Image(
                     bitmap = previewBmp!!.asImageBitmap(),
                     contentDescription = "Captured face",
                     modifier = Modifier.fillMaxWidth().height(280.dp),
                     contentScale = ContentScale.Crop,
                 )
-                cameraError != null -> Text(
-                    cameraError!!,
-                    color = KioskColors.orange,
-                    fontFamily = KioskFont,
-                    modifier = Modifier.padding(12.dp),
-                )
-                else -> AndroidView(
-                    factory = { ctx ->
-                        PreviewView(ctx).also { pv ->
-                            pv.scaleType = PreviewView.ScaleType.FILL_CENTER
-                            val future = ProcessCameraProvider.getInstance(ctx)
-                            future.addListener({
-                                runCatching {
-                                    val provider = future.get()
-                                    val preview = Preview.Builder()
-                                        .setTargetResolution(Size(640, 480))
-                                        .build()
-                                        .also { it.setSurfaceProvider(pv.surfaceProvider) }
-                                    val capture = ImageCapture.Builder()
-                                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                                        .setTargetResolution(Size(640, 480))
-                                        .build()
-                                    provider.unbindAll()
-                                    provider.bindToLifecycle(
-                                        lifecycleOwner,
-                                        CameraSelector.DEFAULT_FRONT_CAMERA,
-                                        preview,
-                                        capture,
-                                    )
-                                    imageCapture = capture
-                                    cameraError = null
-                                }.onFailure { e ->
-                                    cameraError = "Camera failed: ${e.message ?: e.javaClass.simpleName}"
-                                }
-                            }, ContextCompat.getMainExecutor(ctx))
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().height(280.dp),
-                )
+                cameraError != null -> Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(cameraError!!, color = KioskColors.text, fontFamily = KioskFont, fontSize = 14.sp)
+                    KioskGhostButton(
+                        text = "Retry camera",
+                        onClick = { cameraError = null; cameraKey++ },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    )
+                }
+                else -> key(cameraKey) {
+                    AndroidView(
+                        factory = { ctx ->
+                            PreviewView(ctx).also { pv ->
+                                pv.scaleType = PreviewView.ScaleType.FILL_CENTER
+                                val future = ProcessCameraProvider.getInstance(ctx)
+                                future.addListener({
+                                    runCatching {
+                                        val provider = future.get()
+                                        // Front camera first; fall back to back, then to whatever exists.
+                                        val selector = when {
+                                            provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) ->
+                                                CameraSelector.DEFAULT_FRONT_CAMERA
+                                            provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) ->
+                                                CameraSelector.DEFAULT_BACK_CAMERA
+                                            provider.availableCameraInfos.isNotEmpty() ->
+                                                CameraSelector.Builder().addCameraFilter { it.take(1) }.build()
+                                            else -> error("no camera")
+                                        }
+                                        val preview = Preview.Builder()
+                                            .setTargetResolution(Size(640, 480))
+                                            .build()
+                                            .also { it.setSurfaceProvider(pv.surfaceProvider) }
+                                        val capture = ImageCapture.Builder()
+                                            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                                            .setTargetResolution(Size(640, 480))
+                                            .build()
+                                        provider.unbindAll()
+                                        provider.bindToLifecycle(lifecycleOwner, selector, preview, capture)
+                                        imageCapture = capture
+                                        cameraError = null
+                                    }.onFailure { e ->
+                                        cameraError = if (e.message == "no camera") {
+                                            "No camera was found on this phone."
+                                        } else {
+                                            "Could not start the camera. Close other apps using it and try again."
+                                        }
+                                    }
+                                }, ContextCompat.getMainExecutor(ctx))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth().height(280.dp),
+                    )
+                }
             }
         }
         if (!message.isNullOrBlank()) {
-            Text(message, color = KioskColors.cyanBright, fontSize = 12.sp, fontFamily = KioskFont)
+            Text(
+                message,
+                color = if (messageIsError) KioskColors.errorText else KioskColors.systemBlue,
+                fontSize = 14.sp,
+                fontWeight = if (messageIsError) FontWeight.Medium else FontWeight.Normal,
+                fontFamily = KioskFont,
+            )
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             KioskGhostButton(
@@ -202,32 +304,39 @@ fun FaceCaptureScreen(
                 text = when {
                     busy -> "Working…"
                     previewBmp == null -> "Capture"
+                    messageIsError -> "Retry"
                     mode == FaceCaptureMode.ENROLL -> "Use for enroll"
                     else -> "Verify face"
                 },
                 onClick = {
                     if (previewBmp == null) {
                         val cap = imageCapture ?: return@KioskPrimaryButton
+                        if (capturing) return@KioskPrimaryButton
+                        capturing = true
                         cap.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
                             override fun onCaptureSuccess(image: ImageProxy) {
-                                val bmp = imageProxyToBitmap(image)
+                                val bmp = runCatching { imageProxyToBitmap(image) }.getOrNull()
                                 image.close()
                                 // Compose state only on main — off-thread set crashes ("keeps stopping").
-                                mainExecutor.execute { previewBmp = bmp }
+                                mainExecutor.execute {
+                                    capturing = false
+                                    if (bmp != null) previewBmp = bmp
+                                    else cameraError = "Could not read the photo. Please try again."
+                                }
                             }
                             override fun onError(exception: ImageCaptureException) {
                                 mainExecutor.execute {
-                                    cameraError = "Capture failed: ${exception.message ?: "error"}"
+                                    capturing = false
+                                    cameraError = "Could not take the photo. Please try again."
                                 }
                             }
                         })
                     } else {
-                        val out = java.io.ByteArrayOutputStream()
-                        previewBmp!!.compress(Bitmap.CompressFormat.JPEG, 90, out)
-                        onCaptured(out.toByteArray())
+                        // <=1024px, JPEG q80: small, fast upload over mobile data.
+                        onCaptured(FaceImage.prepareJpeg(previewBmp!!))
                     }
                 },
-                enabled = !busy && granted,
+                enabled = !busy && granted && (previewBmp != null || imageCapture != null),
                 modifier = Modifier.weight(1f).heightIn(min = 52.dp),
             )
         }
@@ -239,10 +348,6 @@ private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
     val buffer: ByteBuffer = image.planes[0].buffer
     val bytes = ByteArray(buffer.remaining())
     buffer.get(bytes)
-    val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        ?: Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-    val rotation = image.imageInfo.rotationDegrees
-    if (rotation == 0) return bmp
-    val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
-    return Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true)
+    return FaceImage.decodeCapture(bytes, image.imageInfo.rotationDegrees)
+        ?: error("undecodable capture")
 }

@@ -52,7 +52,8 @@ class LiveGuardPatrolApi(
             .post(body.toRequestBody(JSON))
             .build()
         val parsed = json.decodeFromString<LoginResponse>(execute(req))
-        session.accept(parsed.accessToken, parsed.user, faceVerified = false)
+        val needsFace = com.satcop.smartvisitor.kiosk.ui.FaceGatePolicy.needsFace(parsed.faceVerified, parsed.faceRequired)
+        session.accept(parsed.accessToken, parsed.user, faceVerified = !needsFace, faceRequired = parsed.faceRequired)
         return parsed
     }
 
