@@ -87,7 +87,7 @@ fun SignaturePad(
                     moveTo(pts.first().x, pts.first().y)
                     pts.drop(1).forEach { lineTo(it.x, it.y) }
                 }
-                drawPath(path, Color(0xFFA78BFA), style = stroke)
+                drawPath(path, KioskColors.text, style = stroke)
             }
         }
     }
@@ -97,9 +97,9 @@ fun strokesToBitmap(strokes: List<List<Offset>>, width: Int, height: Int): Bitma
     if (strokes.isEmpty() || width <= 0 || height <= 0) return null
     val bmp = Bitmap.createBitmap(width.coerceAtLeast(200), height.coerceAtLeast(80), Bitmap.Config.ARGB_8888)
     val canvas = AndroidCanvas(bmp)
-    canvas.drawColor(0xFF0F1115.toInt())
+    canvas.drawColor(0xFFFFFFFF.toInt()) // document artifact: black ink on white, theme independent
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFA78BFA.toInt()
+        color = 0xFF000000.toInt()
         style = Paint.Style.STROKE
         strokeWidth = 5f
         strokeCap = Paint.Cap.ROUND

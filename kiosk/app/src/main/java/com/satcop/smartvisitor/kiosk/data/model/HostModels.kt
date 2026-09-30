@@ -65,3 +65,47 @@ object RejectReasons {
         "Host unavailable",
     )
 }
+
+/** Backend 2026-09-30 host feed item (GET /notifications?unreadOnly=true&since=). Legacy extras ignored. */
+@Serializable
+data class HostFeedItem(
+    val id: String,
+    val type: String? = null,
+    val event: String? = null,
+    val visitId: String? = null,
+    val visitorName: String? = null,
+    val visitorPhotoUrl: String? = null,
+    val purpose: String? = null,
+    val gateLabel: String? = null,
+    val hostId: String? = null,
+    val createdAt: String? = null,
+    val readAt: String? = null,
+    val actions: List<String> = emptyList(),
+) {
+    val kind: String get() = type ?: event.orEmpty()
+    val isPendingVisit: Boolean get() = kind == "visit.pending"
+}
+
+@Serializable
+data class HostFeedMeta(
+    val watermark: String? = null,
+    val count: Int? = null,
+    val lastId: String? = null,
+    val unreadCount: Int? = null,
+    val serverTime: String? = null,
+)
+
+@Serializable
+data class HostFeedResponse(
+    val data: List<HostFeedItem> = emptyList(),
+    val meta: HostFeedMeta? = null,
+)
+
+@Serializable
+data class MarkReadBody(val ids: List<String>)
+
+@Serializable
+data class DeviceRegisterBody(val token: String, val platform: String = "android")
+
+@Serializable
+data class DeviceRegisterResponse(val id: String? = null)

@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Arrangement
@@ -46,7 +47,7 @@ private val gateTabs = listOf(
     AppleTabItem("Home", Icons.Filled.Home),
     AppleTabItem("Inside", Icons.Filled.Groups),
     AppleTabItem("Log", Icons.Filled.ListAlt),
-    AppleTabItem("More", Icons.Filled.MoreHoriz),
+    AppleTabItem("Settings", Icons.Filled.Settings),
 )
 
 /**
@@ -189,7 +190,7 @@ fun GateTodayScreen(
                 }
                 else -> { // More
                     AppleShellNav(leading = " ", trailing = " ")
-                    AppleShellTitle("More")
+                    AppleShellTitle("Settings")
                     AppearanceSegmentedRow()
                     AppleSectionHeader("Account")
                     AppleInset {

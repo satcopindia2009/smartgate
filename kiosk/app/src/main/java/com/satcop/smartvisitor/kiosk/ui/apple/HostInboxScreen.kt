@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,13 +44,14 @@ private val hostTabs = listOf(
     AppleTabItem("Inbox", Icons.Filled.Inbox),
     AppleTabItem("Done", Icons.Filled.CheckCircle),
     AppleTabItem("Inside", Icons.Filled.Person),
-    AppleTabItem("More", Icons.Filled.MoreHoriz),
+    AppleTabItem("Settings", Icons.Filled.Settings),
 )
 
 /**
  * Host shell from phone-apple-bottomnav (host-home / host-done).
  * Approve/Decline above fold · pinned tab bar · no long-scroll home.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HostInboxScreen(
     displayName: String,
@@ -71,9 +74,17 @@ fun HostInboxScreen(
     onShowAfterHours: () -> Unit,
     showingAfterHours: Boolean,
     onLogout: () -> Unit = {},
+    /** Pull-to-refresh spinner state + handler (silent list reload, no toast spam). */
+    refreshing: Boolean = false,
+    onPullRefresh: () -> Unit = onRefresh,
+    /** Visit to show first in the Inbox (tapped system notification). */
+    focusVisitId: String? = null,
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    val topPending = pending.take(1)
+    androidx.compose.runtime.LaunchedEffect(focusVisitId) { if (focusVisitId != null) tab = 0 }
+    val ordered = if (focusVisitId == null) pending
+    else pending.sortedByDescending { it.id == focusVisitId }
+    val topPending = ordered.take(1)
     val approvedToday = active.size
 
     Column(
@@ -81,16 +92,23 @@ fun HostInboxScreen(
             .fillMaxSize()
             .background(KioskColors.bg),
     ) {
-        Column(
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = onPullRefresh,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
+        ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(androidx.compose.foundation.rememberScrollState()),
         ) {
             when (tab) {
                 0 -> { // Inbox home — host-home.png
                     AppleShellNav(leading = "Roles", trailing = "Edit", onTrailing = onRefresh)
                     AppleShellTitle("Host")
-                    AppleShellSub("Needs you · ${pending.size}")
+                    AppleShellSub("Needs you · ${pending.size}" + if (pending.size > 1) " · pull to refresh" else "")
                     if (afterHours) {
                         Text(
                             AfterHoursCopy.HOST_NO_OP,
@@ -188,7 +206,7 @@ fun HostInboxScreen(
                 }
                 else -> { // More
                     AppleShellNav(leading = " ", trailing = " ")
-                    AppleShellTitle("More")
+                    AppleShellTitle("Settings")
                     val identity = listOf(displayName, schoolId, staffId)
                         .filter { it.isNotBlank() }
                         .joinToString(" · ")
@@ -205,6 +223,7 @@ fun HostInboxScreen(
                     }
                 }
             }
+        }
         }
         AppleTabBar(tabs = hostTabs, selectedIndex = tab, onSelect = { tab = it })
     }

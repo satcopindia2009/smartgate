@@ -14,6 +14,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -70,17 +75,19 @@ fun KioskApp(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val activity = LocalContext.current as? Activity
+    HostNotifyEffects(viewModel = viewModel, state = state)
     BackHandler {
         val consumed = viewModel.onSystemBack()
         if (!consumed) {
             activity?.finishAffinity()
         }
     }
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(KioskColors.bg)
             .statusBarsPadding()
+            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
             .imePadding(),
     ) {
         // AC-PH1/PH2: always phone-portrait compact — ignore tablet width branch.
@@ -93,8 +100,10 @@ fun KioskApp(
             // Crashfix 1045/1046: outer phone verticalScroll only for password login.
             // FACE_LOGIN has its own scroll + CameraX — nesting crashes on Face login tap.
             // Signed-in roles own their own scroll (Gate/Host/Guard).
-            val signedIn = state.signedIn
-            val faceLogin = !signedIn && state.screen == KioskScreen.FACE_LOGIN
+            // Hard face gate: role screens compose ONLY when the gate machine says VERIFIED.
+            val signedIn = state.signedIn && FaceGateMachine.canShowData(state.gateStage)
+            val faceStage = state.gateStage == GateStage.FACE_PENDING
+            val faceLogin = !signedIn && (state.screen == KioskScreen.FACE_LOGIN || faceStage)
             val outerPhoneScroll = compact && !signedIn && !faceLogin
             Column(
                 modifier = Modifier
@@ -114,7 +123,7 @@ fun KioskApp(
             ) {
                 val faceCtx = LocalContext.current
                 if (!signedIn) {
-                    if (state.screen == KioskScreen.FACE_LOGIN) {
+                    if (state.screen == KioskScreen.FACE_LOGIN || faceStage) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -204,6 +213,7 @@ fun KioskApp(
                         // AC-APP1: GuardPatrolApp always wraps GuardTodayShell + M3 NavigationBar
                         // (Today|Patrol|Desk|More). Patrol tab = assign→perform.
                         GuardPatrolApp(
+                            vm = viewModel(key = "guard-patrol-${state.sessionEpoch}"),
                             onExit = null,
                             onCourier = viewModel::openCourier,
                             onLostFound = viewModel::openLostFound,
@@ -221,6 +231,9 @@ fun KioskApp(
                             rejectingVisitId = state.rejectingVisitId,
                             rejectReason = state.rejectReason,
                             onRefresh = viewModel::refreshHostPending,
+                            refreshing = state.hostBusy,
+                            onPullRefresh = viewModel::refreshHostNow,
+                            focusVisitId = state.hostFocusVisitId,
                             onApprove = viewModel::approvePending,
                             onStartReject = viewModel::startReject,
                             onPickRejectReason = viewModel::pickRejectReason,
@@ -714,3 +727,84 @@ private fun GateMenu(
     }
 }
 
+
+/**
+ * Host new-visitor plumbing at the composition root:
+ * - lifecycle => foreground 3 s polling + refresh on resume, slower when backgrounded
+ * - POST_NOTIFICATIONS request (Android 13+) once a Host session is face-verified
+ * - foreground popup, system notification when backgrounded, tap => Inbox at that visit
+ */
+@Composable
+private fun HostNotifyEffects(viewModel: KioskViewModel, state: KioskUiState) {
+    val context = LocalContext.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val isHost = state.signedIn && state.homeRole() == KioskRole.HOST &&
+        FaceGateMachine.canShowData(state.gateStage)
+    var foreground by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) { viewModel.bindNotifyStore(context) }
+
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            when (e) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> { foreground = true; viewModel.setHostForeground(true) }
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> { foreground = false; viewModel.setHostForeground(false) }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+
+    val permLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { }
+    LaunchedEffect(isHost) {
+        if (isHost) {
+            com.satcop.smartvisitor.kiosk.ui.notify.HostAlertNotifier.ensureChannel(context)
+            if (com.satcop.smartvisitor.kiosk.ui.notify.HostAlertNotifier.needsPermissionRequest(context)) {
+                permLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    // System notification for every new visitor while the app is not in the foreground.
+    LaunchedEffect(isHost) {
+        if (!isHost) return@LaunchedEffect
+        viewModel.newVisitorEvents.collect { item ->
+            if (!foreground) com.satcop.smartvisitor.kiosk.ui.notify.HostAlertNotifier.show(context, item)
+        }
+    }
+
+    // Deep link from a tapped notification (intent extra) — honoured only once face-verified as Host.
+    val activity = context as? Activity
+    val pendingOpen = remember { mutableStateOf(activity?.intent?.getStringExtra(
+        com.satcop.smartvisitor.kiosk.ui.notify.HostAlertNotifier.EXTRA_OPEN_VISIT_ID)) }
+    LaunchedEffect(isHost, pendingOpen.value) {
+        val vid = pendingOpen.value
+        if (isHost && !vid.isNullOrBlank()) {
+            viewModel.openHostVisit(vid)
+            pendingOpen.value = null
+            activity?.intent?.removeExtra(com.satcop.smartvisitor.kiosk.ui.notify.HostAlertNotifier.EXTRA_OPEN_VISIT_ID)
+        }
+    }
+    androidx.compose.runtime.DisposableEffect(activity) {
+        val a = activity as? androidx.activity.ComponentActivity
+        val l = androidx.core.util.Consumer<android.content.Intent> { i ->
+            pendingOpen.value = i.getStringExtra(com.satcop.smartvisitor.kiosk.ui.notify.HostAlertNotifier.EXTRA_OPEN_VISIT_ID)
+        }
+        a?.addOnNewIntentListener(l)
+        onDispose { a?.removeOnNewIntentListener(l) }
+    }
+
+    val head = state.hostAlerts.firstOrNull()
+    if (isHost && head != null && foreground) {
+        com.satcop.smartvisitor.kiosk.ui.notify.HostAlertDialog(
+            alert = head,
+            more = state.hostAlerts.size - 1,
+            onApprove = { viewModel.approveFromAlert(head) },
+            onReject = { viewModel.rejectFromAlert(head) },
+            onLater = viewModel::dismissHostAlert,
+        )
+    }
+}

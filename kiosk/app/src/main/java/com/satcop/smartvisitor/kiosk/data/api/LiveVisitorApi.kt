@@ -18,6 +18,10 @@ import com.satcop.smartvisitor.kiosk.data.model.LoginResponse
 import com.satcop.smartvisitor.kiosk.data.model.MeResponse
 import com.satcop.smartvisitor.kiosk.data.model.School
 import com.satcop.smartvisitor.kiosk.data.model.MediaUploadResponse
+import com.satcop.smartvisitor.kiosk.data.model.DeviceRegisterBody
+import com.satcop.smartvisitor.kiosk.data.model.DeviceRegisterResponse
+import com.satcop.smartvisitor.kiosk.data.model.HostFeedResponse
+import com.satcop.smartvisitor.kiosk.data.model.MarkReadBody
 import com.satcop.smartvisitor.kiosk.data.model.NotificationListResponse
 import com.satcop.smartvisitor.kiosk.data.model.PassOut
 import com.satcop.smartvisitor.kiosk.data.model.PassScanRequest
@@ -90,7 +94,8 @@ class LiveVisitorApi(
             .build()
         val text = execute(req)
         val parsed = json.decodeFromString<LoginResponse>(text)
-        session.accept(parsed.accessToken, parsed.user)
+        // Face gate policy 1059: a password token is NEVER treated as verified by the client.
+        session.accept(parsed.accessToken, parsed.user, faceVerified = false)
         return parsed
     }
 
@@ -98,7 +103,7 @@ class LiveVisitorApi(
         session.clear()
     }
 
-    fun me(): MeResponse = get<MeResponse>("/auth/me").also { session.updateUser(it) }
+    fun me(): MeResponse = get<MeResponse>("/auth/me", allowUnverified = true).also { session.updateUser(it) }
 
     /** GET /schools/me — faceLoginEnabled + geoFenceMode when Backend READY. */
     fun schoolMe(): School = get("/schools/me")
@@ -145,6 +150,42 @@ class LiveVisitorApi(
 
     fun listNotifications(limit: Int = 50): NotificationListResponse =
         get("/notifications?limit=$limit")
+
+    /** Host feed (Backend contract 2026-09-30): newest first, `since` exclusive (NTF id or ISO). */
+    fun hostFeed(sinceId: String?, limit: Int = 50): HostFeedResponse {
+        val path = buildString {
+            append("/notifications?unreadOnly=true&limit=").append(limit)
+            if (!sinceId.isNullOrBlank()) {
+                append("&since=").append(java.net.URLEncoder.encode(sinceId, Charsets.UTF_8.name()))
+            }
+        }
+        return get(path)
+    }
+
+    fun markNotificationRead(id: String) {
+        val req = authorized(
+            Request.Builder().url("$baseUrl/notifications/$id/read").post("{}".toRequestBody(JSON)),
+        )
+        execute(req)
+    }
+
+    fun markNotificationsRead(ids: List<String>) {
+        val body = json.encodeToString(MarkReadBody(ids = ids))
+        val req = authorized(
+            Request.Builder().url("$baseUrl/notifications/read").post(body.toRequestBody(JSON)),
+        )
+        execute(req)
+    }
+
+    /** POST /devices {token,platform} -> 201 {id}. Allowed before face verify. Stored only (no push yet). */
+    fun registerDevice(token: String, platform: String = "android"): String? {
+        val body = json.encodeToString(DeviceRegisterBody(token = token, platform = platform))
+        val req = authorized(
+            Request.Builder().url("$baseUrl/devices").post(body.toRequestBody(JSON)),
+            allowUnverified = true,
+        )
+        return runCatching { json.decodeFromString<DeviceRegisterResponse>(execute(req)).id }.getOrNull()
+    }
 
     fun listHours(): HoursListResponse = get("/access-rules/hours")
 
@@ -220,20 +261,28 @@ class LiveVisitorApi(
         return json.decodeFromString(execute(req))
     }
 
-    private inline fun <reified T> get(path: String): T {
-        val req = authorized(Request.Builder().url("$baseUrl$path").get())
+    private inline fun <reified T> get(path: String, allowUnverified: Boolean = false): T {
+        val req = authorized(Request.Builder().url("$baseUrl$path").get(), allowUnverified)
         return json.decodeFromString(execute(req))
     }
 
-    private inline fun <reified T> post(path: String, body: String): T {
+    private inline fun <reified T> post(path: String, body: String, allowUnverified: Boolean = false): T {
         val req = authorized(
             Request.Builder().url("$baseUrl$path").post(body.toRequestBody(JSON)),
+            allowUnverified,
         )
         return json.decodeFromString(execute(req))
     }
 
-    private fun authorized(builder: Request.Builder): Request {
+    /**
+     * Client-side face gate: no data request leaves the device before face verification
+     * (server enforces the same with 403 FACE_REQUIRED). Auth/face/devices routes pass [allowUnverified].
+     */
+    private fun authorized(builder: Request.Builder, allowUnverified: Boolean = false): Request {
         val token = session.accessToken ?: throw ApiException("UNAUTHENTICATED", "Not logged in", 401)
+        if (!allowUnverified && !session.faceVerified) {
+            throw ApiException("FACE_REQUIRED", "Face verification required", 403)
+        }
         return builder.header("Authorization", "Bearer $token").build()
     }
 
@@ -241,7 +290,7 @@ class LiveVisitorApi(
         client.newCall(request).execute().use { resp ->
             val text = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
-                throw apiError(resp.code, text)
+                throw apiError(resp.code, text).also { noteFaceRequired(it) }
             }
             return text
         }
@@ -255,6 +304,10 @@ class LiveVisitorApi(
             }
             return resp.body?.bytes() ?: ByteArray(0)
         }
+    }
+
+    private fun noteFaceRequired(e: ApiException) {
+        if (e.code == "FACE_REQUIRED") session.markFaceRequired()
     }
 
     private fun apiError(code: Int, text: String): ApiException {
@@ -289,24 +342,30 @@ class LiveVisitorApi(
             faceConsentAt = (consentAt ?: body.faceConsentAt),
         )
         val payload = json.encodeToString(primary)
-        return post("/auth/face/enroll", payload)
+        return post("/auth/face/enroll", payload, allowUnverified = true)
     }
 
+    /**
+     * POST /auth/face-verify (Backend 1059). With a login Bearer it upgrades the session and returns a NEW
+     * token with faceVerified=true; without a token it needs `username`. Only a response that says
+     * faceVerified=true is accepted as verified — the old unverified token is replaced, never reused.
+     */
     fun faceVerify(body: FaceVerifyRequest): FaceVerifyResponse {
-        val req = Request.Builder()
-            .url("$baseUrl/auth/face/verify")
+        val builder = Request.Builder()
+            .url("$baseUrl/auth/face-verify")
             .post(json.encodeToString(body).toRequestBody(JSON))
-            .build()
-        val text = execute(req)
+        val token = session.accessToken
+        if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer $token")
+        val text = execute(builder.build())
         val parsed = json.decodeFromString<FaceVerifyResponse>(text)
-        if (!parsed.accessToken.isNullOrBlank() && parsed.user != null) {
-            session.accept(parsed.accessToken, parsed.user)
+        if (parsed.faceVerified && parsed.matched && !parsed.accessToken.isNullOrBlank() && parsed.user != null) {
+            session.accept(parsed.accessToken, parsed.user, faceVerified = true)
         }
         return parsed
     }
 
     fun faceDeleteTemplate(): FaceEnrollResponse {
-        val req = authorized(Request.Builder().url("$baseUrl/auth/face/template").delete())
+        val req = authorized(Request.Builder().url("$baseUrl/auth/face/template").delete(), allowUnverified = true)
         val text = execute(req)
         return runCatching { json.decodeFromString<FaceEnrollResponse>(text) }.getOrElse {
             FaceEnrollResponse(ok = true, message = text.take(120))

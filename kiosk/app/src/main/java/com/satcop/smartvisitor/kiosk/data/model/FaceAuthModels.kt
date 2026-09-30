@@ -61,6 +61,8 @@ data class FaceVerifyResponse(
     val tokenType: String = "Bearer",
     val expiresIn: Int? = null,
     val user: MeResponse? = null,
+    /** Backend 1059: true only on the NEW face_verified token. Absent/false => not verified. */
+    val faceVerified: Boolean = false,
     val username: String? = null,
     val message: String? = null,
     val meta: Meta? = null,

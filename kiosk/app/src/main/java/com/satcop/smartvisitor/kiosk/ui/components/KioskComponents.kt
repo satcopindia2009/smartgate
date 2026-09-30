@@ -91,7 +91,7 @@ fun KioskPrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val brush = Brush.linearGradient(listOf(Color(0xFF8B5CF6), Color(0xFF6366F1)))
+    val brush = Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))
     Box(
         modifier = modifier
             .height(52.dp)
@@ -121,7 +121,7 @@ fun KioskCyanButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val brush = Brush.linearGradient(listOf(Color(0xFF22D3EE), Color(0xFF06B6D4)))
+    val brush = Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))
     Box(
         modifier = modifier
             .height(52.dp)
@@ -133,7 +133,7 @@ fun KioskCyanButton(
     ) {
         Text(
             text = text,
-            color = if (enabled) KioskColors.bg else KioskColors.textDim,
+            color = if (enabled) Color.White else KioskColors.textDim,
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
@@ -333,7 +333,7 @@ fun RecentChip(label: String) {
     Row(
         modifier = Modifier
             .clip(ChipShape)
-            .background(Color(0x0AFFFFFF))
+            .background(KioskColors.secondaryFill)
             .border(1.dp, KioskColors.borderSubtle, ChipShape)
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -371,7 +371,7 @@ fun ShieldMark() {
         modifier = Modifier
             .size(36.dp)
             .clip(RoundedCornerShape(RadiusLg))
-            .background(Brush.linearGradient(listOf(Color(0xFF06B6D4), Color(0xFF8B5CF6)))),
+            .background(Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))),
         contentAlignment = Alignment.Center,
     ) {
         Text("🛡", fontSize = 16.sp)

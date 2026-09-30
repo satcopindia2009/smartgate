@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SatcopGateKiosk" parent="android:Theme.Material.NoActionBar">
+    <!-- 1059: DayNight base. Old theme was forced dark (Theme.Material + #0F1115 window/status/nav),
+         so Light mode painted dark behind insets and status/nav icons. Compose SatcopKioskTheme
+         re-applies window colors at runtime from the chosen Light/Dark/System mode. -->
+    <style name="Theme.SatcopGateKiosk" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/kiosk_bg</item>
         <item name="android:statusBarColor">@color/kiosk_bg</item>
         <item name="android:navigationBarColor">@color/kiosk_bg</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:colorPrimary">#8B5CF6</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:colorPrimary">#007AFF</item>
     </style>
 </resources>

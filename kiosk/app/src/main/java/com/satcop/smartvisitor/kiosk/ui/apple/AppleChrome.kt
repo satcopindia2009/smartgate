@@ -323,7 +323,7 @@ fun AppleTabBar(
     NavigationBar(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .heightIn(min = 60.dp) // grows with large font scale instead of clipping
             .navigationBarsPadding(),
         containerColor = KioskColors.tabBarBg,
         contentColor = KioskColors.systemBlue,
@@ -368,7 +368,7 @@ fun AppleTabBar(
 fun AppearanceSegmentedRow() {
     val mode = LocalAppearanceMode.current
     val setMode = LocalSetAppearanceMode.current
-    val options = listOf("Light", "Dark", "Auto")
+    val options = listOf("Light", "Dark", "System")
     val selected = when (mode) {
         AppearanceMode.LIGHT -> 0
         AppearanceMode.DARK -> 1
@@ -400,7 +400,7 @@ fun AppearanceSegmentedRow() {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Follows Apple Light / Dark tokens. Auto uses system setting.",
+                    "Light, Dark, or follow this phone's system setting (default).",
                     color = KioskColors.textMuted,
                     fontSize = 13.sp,
                     fontFamily = KioskFont,

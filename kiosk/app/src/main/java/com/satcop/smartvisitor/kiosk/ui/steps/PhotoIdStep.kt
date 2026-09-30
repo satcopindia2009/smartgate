@@ -408,7 +408,7 @@ private fun InitialsBubble(initials: String) {
         modifier = Modifier
             .size(72.dp)
             .clip(CircleShape)
-            .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF8B5CF6), Color(0xFF6366F1)))),
+            .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))),
         contentAlignment = Alignment.Center,
     ) {
         Text(initials, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
@@ -422,11 +422,11 @@ private fun BlockBanner(hit: BlacklistEntry) {
             .fillMaxWidth()
             .padding(top = 12.dp)
             .clip(RoundedCornerShape(RadiusMd))
-            .background(Color(0x26EF4444))
+            .background(KioskColors.redDim)
             .border(1.dp, KioskColors.red, RoundedCornerShape(RadiusMd))
             .padding(14.dp),
     ) {
-        Text("BLACKLIST BLOCK", color = Color(0xFFF87171), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
+        Text("BLACKLIST BLOCK", color = KioskColors.red, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = KioskFont)
         Text(
             "${hit.name ?: "Visitor"} · ${hit.reason ?: "Do not issue pass"}",
             color = KioskColors.text,
@@ -466,7 +466,7 @@ private fun CyanSubmitButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val brush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(Color(0xFF06B6D4), Color(0xFF0891B2)))
+    val brush = androidx.compose.ui.graphics.Brush.linearGradient(listOf(KioskColors.systemBlue, KioskColors.systemBlue))
     Box(
         modifier = modifier
             .heightIn(min = 52.dp)

@@ -305,6 +305,16 @@ class HybridKioskRepository(
             }
         }
 
+    override suspend fun hostFeed(sinceId: String?) =
+        withContext(Dispatchers.IO) { live.hostFeed(sinceId) }
+
+    override suspend fun markNotificationsRead(ids: List<String>) = withContext(Dispatchers.IO) {
+        if (ids.size == 1) live.markNotificationRead(ids.first()) else if (ids.isNotEmpty()) live.markNotificationsRead(ids)
+    }
+
+    override suspend fun registerDeviceToken(token: String): String? =
+        withContext(Dispatchers.IO) { runCatching { live.registerDevice(token) }.getOrNull() }
+
     override suspend fun listHours(): List<CampusHoursRow> = withContext(Dispatchers.IO) {
         if (dataSource != DataSource.LIVE) return@withContext emptyList()
         try {

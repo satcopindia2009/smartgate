@@ -74,7 +74,6 @@ class RoleHomeTest {
         assertFalse(AfterHoursCopy.HOST_NO_OP.contains("SH-only"))
         assertEquals("AFTER_HOURS_SH_REQUIRED", AfterHoursCopy.CODE)
     }
-}
 
 
     @Test
@@ -101,3 +100,4 @@ class RoleHomeTest {
         assertTrue(guard.showsGuardPatrol())
         assertEquals(KioskRole.GUARD, guard.homeRole())
     }
+}

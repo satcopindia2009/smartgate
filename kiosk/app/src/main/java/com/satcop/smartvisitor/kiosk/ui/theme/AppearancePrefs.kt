@@ -1,7 +1,8 @@
 package com.satcop.smartvisitor.kiosk.ui.theme
 
 import android.content.Context
-import android.content.SharedPreferences
+import com.satcop.smartvisitor.kiosk.data.store.SharedPrefsStringStore
+import com.satcop.smartvisitor.kiosk.data.store.StringStore
 
 enum class AppearanceMode {
     LIGHT,
@@ -10,18 +11,18 @@ enum class AppearanceMode {
 }
 
 object AppearancePrefs {
-    private const val PREFS = "satcop_appearance"
-    private const val KEY = "appearance_mode"
+    const val PREFS = "satcop_appearance"
+    const val KEY = "appearance_mode"
 
-    private fun prefs(context: Context): SharedPreferences =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-    fun load(context: Context): AppearanceMode {
-        val raw = prefs(context).getString(KEY, AppearanceMode.AUTO.name) ?: AppearanceMode.AUTO.name
+    /** Default = System (AUTO). Unknown/corrupt values also fall back to System. */
+    fun loadFrom(store: StringStore): AppearanceMode {
+        val raw = store.get(KEY) ?: return AppearanceMode.AUTO
         return runCatching { AppearanceMode.valueOf(raw) }.getOrDefault(AppearanceMode.AUTO)
     }
 
-    fun save(context: Context, mode: AppearanceMode) {
-        prefs(context).edit().putString(KEY, mode.name).apply()
-    }
+    fun saveTo(store: StringStore, mode: AppearanceMode) = store.put(KEY, mode.name)
+
+    fun load(context: Context): AppearanceMode = loadFrom(SharedPrefsStringStore(context, PREFS))
+
+    fun save(context: Context, mode: AppearanceMode) = saveTo(SharedPrefsStringStore(context, PREFS), mode)
 }

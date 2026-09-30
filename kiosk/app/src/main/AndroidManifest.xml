@@ -3,6 +3,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-feature
@@ -37,14 +38,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Guard Patrol shell — JWT role after MainActivity login; not a product launcher. -->
-        <activity
-            android:name=".guardpatrol.GuardPatrolActivity"
-            android:exported="false"
-            android:label="@string/guard_patrol_launcher"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.SatcopGateKiosk"
-            android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

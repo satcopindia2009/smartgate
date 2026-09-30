@@ -68,7 +68,7 @@ const val APPLE_THEME_MARKER = "AppearanceMode-Apple-LD-1055-bottomnav"
  * Active palette set by [SatcopKioskTheme] from AppearanceMode.
  */
 object AppleThemeState {
-    var palette by mutableStateOf(AppleDark)
+    var palette by mutableStateOf(AppleLight)
         private set
 
     fun apply(palette: ApplePalette) {

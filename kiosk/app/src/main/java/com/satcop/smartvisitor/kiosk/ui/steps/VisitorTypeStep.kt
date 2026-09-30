@@ -239,7 +239,7 @@ private fun TypeCard(
         )
         Text(
             text = type.help,
-            color = if (selected) Color(0xBFF3F4F6) else KioskColors.textMuted,
+            color = if (selected) KioskColors.text else KioskColors.textMuted,
             fontSize = 12.sp,
             lineHeight = 16.sp,
             fontFamily = KioskFont,

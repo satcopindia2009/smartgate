@@ -11,10 +11,10 @@ android {
 
     defaultConfig {
         applicationId = "com.satcop.smartvisitor.kiosk"
-        minSdk = 26
+        minSdk = 23
         targetSdk = 35
-        versionCode = 1057
-        versionName = "1.0.9-1role-api-retarget"
+        versionCode = 1059
+        versionName = "1.0.11-1role-theme-facegate-hostnotify"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -37,6 +37,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // minSdk 23 (Android 6): java.time etc. via core library desugaring
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -56,6 +58,7 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     val composeBom = platform("androidx.compose:compose-bom:2024.10.01")
     implementation(composeBom)
     androidTestImplementation(composeBom)

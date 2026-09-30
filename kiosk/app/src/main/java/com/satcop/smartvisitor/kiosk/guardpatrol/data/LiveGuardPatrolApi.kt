@@ -42,6 +42,8 @@ class LiveGuardPatrolApi(
     val accessToken: String? get() = session.accessToken
     val signedInUser: MeResponse? get() = session.user
     val isSignedIn: Boolean get() = session.isSignedIn
+    /** Guard data may only be requested with a face-verified session (no auto demo login). */
+    val dataAccessAllowed: Boolean get() = session.dataAccessAllowed
 
     fun login(username: String, password: String): LoginResponse {
         val body = json.encodeToString(LoginRequest(username, password))
@@ -50,7 +52,7 @@ class LiveGuardPatrolApi(
             .post(body.toRequestBody(JSON))
             .build()
         val parsed = json.decodeFromString<LoginResponse>(execute(req))
-        session.accept(parsed.accessToken, parsed.user)
+        session.accept(parsed.accessToken, parsed.user, faceVerified = false)
         return parsed
     }
 
@@ -197,13 +199,16 @@ class LiveGuardPatrolApi(
     private fun authorized(builder: Request.Builder): Request {
         val token = session.accessToken
             ?: throw ApiException("UNAUTHENTICATED", "Not logged in", 401)
+        if (!session.faceVerified) throw ApiException("FACE_REQUIRED", "Face verification required", 403)
         return builder.header("Authorization", "Bearer $token").build()
     }
 
     private fun execute(request: Request): String {
         client.newCall(request).execute().use { resp ->
             val text = resp.body?.string().orEmpty()
-            if (!resp.isSuccessful) throw apiError(resp.code, text)
+            if (!resp.isSuccessful) {
+                throw apiError(resp.code, text).also { if (it.code == "FACE_REQUIRED") session.markFaceRequired() }
+            }
             return text
         }
     }

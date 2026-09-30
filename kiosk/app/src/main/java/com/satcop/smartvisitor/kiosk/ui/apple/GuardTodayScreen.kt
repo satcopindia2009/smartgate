@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,7 @@ private val guardTabs = listOf(
     AppleTabItem("Today", Icons.Filled.CalendarToday),
     AppleTabItem("Patrol", Icons.Filled.Security),
     AppleTabItem("Desk", Icons.Filled.Inventory2),
-    AppleTabItem("More", Icons.Filled.MoreHoriz),
+    AppleTabItem("Settings", Icons.Filled.Settings),
 )
 
 /**
@@ -135,7 +136,7 @@ fun GuardTodayShell(
                 }
                 else -> { // More
                     AppleShellNav(leading = " ", trailing = " ")
-                    AppleShellTitle("More")
+                    AppleShellTitle("Settings")
                     AppearanceSegmentedRow()
                     AppleSectionHeader("Account")
                     AppleInset {

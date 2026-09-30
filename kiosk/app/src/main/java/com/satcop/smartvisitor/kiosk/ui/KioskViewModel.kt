@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.satcop.smartvisitor.kiosk.data.api.AppAuth
 import com.satcop.smartvisitor.kiosk.data.api.LiveVisitorApi
 import com.satcop.smartvisitor.kiosk.data.api.LoginErrors
 import com.satcop.smartvisitor.kiosk.data.face.LocalFaceTemplateStore
@@ -19,6 +20,14 @@ import com.satcop.smartvisitor.kiosk.data.model.CampusHours
 import com.satcop.smartvisitor.kiosk.data.model.DataSource
 import com.satcop.smartvisitor.kiosk.data.model.DemoStory
 import com.satcop.smartvisitor.kiosk.data.model.Gate
+import com.satcop.smartvisitor.kiosk.data.model.HostFeedItem
+import com.satcop.smartvisitor.kiosk.data.store.MemoryStringStore
+import com.satcop.smartvisitor.kiosk.data.store.SharedPrefsStringStore
+import com.satcop.smartvisitor.kiosk.data.store.StringStore
+import com.satcop.smartvisitor.kiosk.ui.notify.HostFeedTracker
+import com.satcop.smartvisitor.kiosk.ui.notify.PollBackoff
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import com.satcop.smartvisitor.kiosk.data.fixture.LocalVisitStore
 import com.satcop.smartvisitor.kiosk.data.model.LostFoundCreate
 import com.satcop.smartvisitor.kiosk.data.model.GuardHistoryEvent
@@ -51,6 +60,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,6 +70,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class KioskUiState(
+    /** Face gate stage (1059). Role screens/data only when [GateStage.VERIFIED]. */
+    val gateStage: GateStage = GateStage.SIGNED_OUT,
+    /** Bumped on every logout so per-session ViewModels (Guard patrol) are never reused across users. */
+    val sessionEpoch: Int = 0,
     val signedIn: Boolean = false,
     val loginUsername: String = "pranay.gate",
     val loginPassword: String = "PranayGate@2026",
@@ -148,6 +162,10 @@ data class KioskUiState(
     val faceBusy: Boolean = false,
     val faceMessage: String? = null,
     val facePhase: FaceLoginPhase = FaceLoginPhase.HUB,
+    /** Host: queue of new pending-visitor alerts (head = shown in the foreground popup). */
+    val hostAlerts: List<HostFeedItem> = emptyList(),
+    /** Host: visit id requested by tapping a system notification (opens Inbox at that visit). */
+    val hostFocusVisitId: String? = null,
 ) {
     val selectedGate: Gate?
         get() = gates.firstOrNull { it.id == draft.gateId } ?: gates.firstOrNull()
@@ -169,8 +187,47 @@ class KioskViewModel(
     )
     private var hostPollJob: Job? = null
 
+    // --- Host new-visitor feed (Backend contract 2026-09-30) ---
+    private var feedStore: StringStore = MemoryStringStore()
+    private var feedTracker = HostFeedTracker(feedStore)
+    private val pollBackoff = PollBackoff()
+    @Volatile private var hostForeground = true
+    @Volatile private var pollInFlight = false
+    private var pollNow: CompletableDeferred<Unit>? = null
+    private var feedUnsupported = false
+    private var fallbackSeenPending: MutableSet<String>? = null
+    private var lastFullRefreshMs = 0L
+    private val _newVisitorEvents = MutableSharedFlow<HostFeedItem>(extraBufferCapacity = 16)
+
+    /** Emits every de-duplicated new pending visitor; the UI layer turns it into a system notification. */
+    val newVisitorEvents: SharedFlow<HostFeedItem> get() = _newVisitorEvents
+
     init {
+        // Cold start / new Activity = new session: never inherit a verified token from a warm process.
+        AppAuth.session.clear()
         viewModelScope.launch { tickClock() }
+        viewModelScope.launch {
+            AppAuth.session.faceRequiredEvents.collect { onServerFaceRequired() }
+        }
+    }
+
+    /** Server rejected the token with 403 FACE_REQUIRED -> force the face screen, hide all data. */
+    private fun onServerFaceRequired() {
+        val s = _state.value
+        val next = FaceGateMachine.onServerFaceRequired(s.gateStage)
+        if (next == s.gateStage) return
+        hostPollJob?.cancel()
+        hostPollJob = null
+        _state.update {
+            it.copy(
+                gateStage = next,
+                signedIn = false,
+                screen = KioskScreen.FACE_LOGIN,
+                facePhase = FaceLoginPhase.HUB,
+                faceMessage = "Face verification required",
+                faceBusy = false,
+            )
+        }
     }
 
     fun updateLoginUsername(value: String) {
@@ -193,21 +250,23 @@ class KioskViewModel(
         viewModelScope.launch {
             _state.update { it.copy(loginBusy = true, loginError = null, toast = null) }
             try {
-                val user = repository.login(username, password)
-                try {
-                    loadAfterLogin(user)
-                } catch (e: Exception) {
-                    // Never hard-crash post-auth — land on minimal Gate/home shell.
-                    applyIdentityHome(user, warning = true)
-                    _state.update {
-                        it.copy(
-                            toast = "Signed in · home load issue: ${e.message?.take(80) ?: "error"}",
-                            toastKind = ToastKind.WARNING,
-                            loginBusy = false,
-                            loaded = true,
-                            screen = KioskScreen.HOME,
-                        )
-                    }
+                repository.login(username, password)
+                // Face gate: password alone NEVER opens the app. Go to the face step; no data calls yet.
+                val store = faceStore
+                val enrolled = store?.isEnrolled(username) == true
+                _state.update {
+                    it.copy(
+                        gateStage = FaceGateMachine.onPasswordLogin(it.gateStage),
+                        signedIn = false,
+                        loginBusy = false,
+                        loginError = null,
+                        loginPassword = "",
+                        screen = KioskScreen.FACE_LOGIN,
+                        facePhase = FaceLoginPhase.HUB,
+                        faceEnrolled = enrolled || it.faceEnrolled,
+                        faceMessage = "Password accepted — face verification required to continue",
+                        toast = null,
+                    )
                 }
             } catch (e: Exception) {
                 _state.update {
@@ -227,12 +286,31 @@ class KioskViewModel(
             hostPollJob?.cancel()
             hostPollJob = null
             runCatching { repository.logout() }
+            AppAuth.session.clear()
             val clock = _state.value.clockLabel
-            _state.value = KioskUiState(clockLabel = clock)
+            val epoch = _state.value.sessionEpoch + 1
+            _state.value = KioskUiState(
+                clockLabel = clock,
+                sessionEpoch = epoch,
+                gateStage = FaceGateMachine.onLogout(_state.value.gateStage),
+            )
         }
     }
 
     private suspend fun loadAfterLogin(loginUser: MeResponse) {
+        // Hard gate: refuse to load ANY role data unless the session token is face-verified.
+        if (!AppAuth.session.dataAccessAllowed) {
+            _state.update {
+                it.copy(
+                    gateStage = if (AppAuth.session.isSignedIn) GateStage.FACE_PENDING else GateStage.SIGNED_OUT,
+                    signedIn = false,
+                    screen = KioskScreen.FACE_LOGIN,
+                    faceMessage = "Face verification required",
+                    faceBusy = false,
+                )
+            }
+            return
+        }
         runCatching { repository.warmup() }
         val me = runCatching { repository.me() }.getOrNull() ?: loginUser
         val schoolMe = runCatching { liveApi.schoolMe() }.getOrNull()
@@ -281,6 +359,7 @@ class KioskViewModel(
             _state.update {
                 it.copy(
                     signedIn = true,
+                    gateStage = GateStage.VERIFIED,
                     loginBusy = false,
                     loginError = null,
                     loginPassword = "",
@@ -328,6 +407,7 @@ class KioskViewModel(
         _state.update {
             it.copy(
                 signedIn = true,
+                gateStage = GateStage.VERIFIED,
                 loginBusy = false,
                 loginError = null,
                 loginPassword = "",
@@ -623,21 +703,161 @@ class KioskViewModel(
         }
     }
 
+    /** Persist the `since` cursor per app install (SharedPreferences); memory-only until bound. */
+    fun bindNotifyStore(context: Context) {
+        if (feedStore is MemoryStringStore) {
+            feedStore = SharedPrefsStringStore(context, "satcop_host_feed")
+            feedTracker = HostFeedTracker(feedStore)
+        }
+    }
+
+    /** Lifecycle hook: foreground => 3 s polling + immediate refresh on resume. */
+    fun setHostForeground(foreground: Boolean) {
+        val was = hostForeground
+        hostForeground = foreground
+        if (foreground && !was) pollNow?.complete(Unit)
+    }
+
+    /** Called by the pull-to-refresh / resume paths: never starts a second in-flight request. */
+    fun refreshHostNow() {
+        pollNow?.complete(Unit)
+        if (hostPollJob == null) return
+        viewModelScope.launch { loadHostHome(showToast = false) }
+    }
+
     private fun startHostPendingPoll() {
         hostPollJob?.cancel()
+        feedUnsupported = false
+        fallbackSeenPending = null
         hostPollJob = viewModelScope.launch {
             while (true) {
-                delay(15_000)
                 val snap = _state.value
-                if (!snap.signedIn || snap.homeRole() != KioskRole.HOST) return@launch
-                loadHostHome(showToast = false)
+                if (!snap.signedIn || snap.homeRole() != KioskRole.HOST ||
+                    !FaceGateMachine.canShowData(snap.gateStage)
+                ) return@launch
+                if (!pollInFlight) {
+                    pollInFlight = true
+                    try {
+                        pollHostOnce()
+                        pollBackoff.onSuccess()
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        pollBackoff.onFailure()
+                    } finally {
+                        pollInFlight = false
+                    }
+                }
+                val wake = CompletableDeferred<Unit>().also { pollNow = it }
+                kotlinx.coroutines.withTimeoutOrNull(pollBackoff.nextDelayMs(hostForeground)) { wake.await() }
             }
         }
     }
 
+    private fun hostKey(): String = _state.value.meStaffId.ifBlank { "host" }
+
+    private suspend fun pollHostOnce() {
+        val key = hostKey()
+        val alerts: List<HostFeedItem>
+        if (!feedUnsupported) {
+            try {
+                val resp = repository.hostFeed(feedTracker.lastId(key))
+                alerts = feedTracker.ingest(
+                    hostKey = key,
+                    items = resp.data,
+                    metaLastId = resp.meta?.lastId,
+                    parseTime = { runCatching { java.time.OffsetDateTime.parse(it).toInstant().toEpochMilli() }.getOrNull() },
+                )
+            } catch (e: ApiException) {
+                if (e.httpStatus == 404 || e.httpStatus == 405) {
+                    feedUnsupported = true // /notifications feed not live -> fall back to pending list diff
+                    return
+                }
+                throw e
+            }
+        } else {
+            val pending = repository.listPendingVisits(_state.value.meStaffId.ifBlank { null })
+                .filter { it.status == "pending" }
+            val seen = fallbackSeenPending
+            if (seen == null) {
+                fallbackSeenPending = pending.map { it.id }.toMutableSet()
+                alerts = emptyList()
+            } else {
+                alerts = pending.filter { seen.add(it.id) }.map {
+                    HostFeedItem(
+                        id = "V-" + it.id, type = "visit.pending", visitId = it.id,
+                        visitorName = it.visitorName, purpose = it.purpose, gateLabel = it.gateId,
+                        hostId = it.hostId, createdAt = it.createdAt, actions = listOf("approve", "reject", "view"),
+                    )
+                }
+            }
+        }
+        val now = System.currentTimeMillis()
+        val due = alerts.isNotEmpty() || now - lastFullRefreshMs > 15_000
+        if (due) {
+            lastFullRefreshMs = now
+            loadHostHome(showToast = false)
+        }
+        if (alerts.isNotEmpty()) {
+            _state.update { it.copy(hostAlerts = (it.hostAlerts + alerts).distinctBy { a -> a.id }) }
+            alerts.forEach { _newVisitorEvents.tryEmit(it) }
+        }
+    }
+
+    /** Popup "Later"/dismiss: drop head alert and mark it read (best effort). */
+    fun dismissHostAlert() {
+        val head = _state.value.hostAlerts.firstOrNull() ?: return
+        _state.update { it.copy(hostAlerts = it.hostAlerts.drop(1)) }
+        markAlertRead(head)
+    }
+
+    fun approveFromAlert(alert: HostFeedItem) {
+        val vid = alert.visitId ?: return dismissHostAlert()
+        _state.update { it.copy(hostAlerts = it.hostAlerts.filterNot { a -> a.id == alert.id }) }
+        markAlertRead(alert)
+        approvePending(vid)
+    }
+
+    fun rejectFromAlert(alert: HostFeedItem) {
+        // Reject needs a reason: hand over to the Inbox decline flow for that visit.
+        val vid = alert.visitId
+        _state.update { it.copy(hostAlerts = it.hostAlerts.filterNot { a -> a.id == alert.id }) }
+        markAlertRead(alert)
+        if (vid != null) startReject(vid)
+    }
+
+    private fun markAlertRead(alert: HostFeedItem) {
+        if (alert.id.startsWith("V-")) return // synthetic (fallback mode) — nothing to mark
+        viewModelScope.launch { runCatching { repository.markNotificationsRead(listOf(alert.id)) } }
+    }
+
+    /** Tapped system notification (only honoured once face-verified as Host). */
+    fun openHostVisit(visitId: String?) {
+        if (visitId.isNullOrBlank()) return
+        _state.update { it.copy(hostFocusVisitId = visitId) }
+        refreshHostNow()
+    }
+
+    fun clearHostFocus() { _state.update { it.copy(hostFocusVisitId = null) } }
+
+    /** Device-token hook for future FCM: no-op until a token exists (Backend /devices is ready). */
+    fun registerPushToken(token: String?) {
+        if (token.isNullOrBlank()) return
+        viewModelScope.launch { runCatching { repository.registerDeviceToken(token) } }
+    }
+
+    private var hostLoadInFlight = false
+
     private suspend fun loadHostHome(showToast: Boolean = false) {
+        if (hostLoadInFlight) return // avoid duplicate in-flight requests (poll + resume + pull-to-refresh)
+        hostLoadInFlight = true
+        try { loadHostHomeInner(showToast) } finally { hostLoadInFlight = false }
+    }
+
+    private suspend fun loadHostHomeInner(showToast: Boolean) {
         val hostId = _state.value.meStaffId.ifBlank { null }
-        _state.update { it.copy(hostBusy = true) }
+        // Silent background refreshes must not flip hostBusy (it disables Approve/Decline buttons).
+        if (showToast) _state.update { it.copy(hostBusy = true) }
         try {
             val pending = repository.listPendingVisits(hostId)
                 .filter { it.status == "pending" }
@@ -655,8 +875,6 @@ class KioskViewModel(
                 visit.id to bmp
             }.filterValues { it != null }.mapValues { it.value as Bitmap }
             val active = repository.listHostActiveVisits(hostId)
-            val notes = repository.listNotifications()
-            val pendingNote = notes.firstOrNull { it.event == "visit.pending" }
             _state.update {
                 it.copy(
                     hostBusy = false,
@@ -667,25 +885,20 @@ class KioskViewModel(
                     rejectingVisitId = it.rejectingVisitId?.takeIf { id -> pending.any { row -> row.id == id } },
                     dataSource = repository.dataSource,
                     toast = when {
-                        pendingNote != null -> pendingNote.body ?: "New visit pending"
                         showToast && pending.isEmpty() -> "No pending visits"
                         showToast -> "Pending · ${pending.size}"
                         else -> it.toast
                     },
-                    toastKind = when {
-                        pendingNote != null -> ToastKind.INFO
-                        showToast -> ToastKind.INFO
-                        else -> it.toastKind
-                    },
+                    toastKind = if (showToast) ToastKind.INFO else it.toastKind,
                 )
             }
         } catch (e: Exception) {
+            // Keep the last good list on transient errors (no empty-inbox flash while polling).
             _state.update {
                 it.copy(
                     hostBusy = false,
-                    pendingVisits = emptyList(),
-                    toast = e.message ?: "Could not load pending",
-                    toastKind = ToastKind.ERROR,
+                    toast = if (showToast) (e.message ?: "Could not load pending") else it.toast,
+                    toastKind = if (showToast) ToastKind.ERROR else it.toastKind,
                     dataSource = repository.dataSource,
                 )
             }
@@ -1584,8 +1797,14 @@ class KioskViewModel(
     }
 
     fun closeFaceLogin() {
+        // Leaving the face step ("use password" / back) drops any half-open password session:
+        // nothing behind the gate becomes reachable.
+        if (AppAuth.session.isSignedIn && !AppAuth.session.faceVerified) {
+            viewModelScope.launch { runCatching { repository.logout() }; AppAuth.session.clear() }
+        }
         _state.update {
             it.copy(
+                gateStage = FaceGateMachine.onBack(it.gateStage),
                 screen = KioskScreen.HOME,
                 facePhase = FaceLoginPhase.HUB,
                 faceMessage = null,
@@ -1779,7 +1998,10 @@ class KioskViewModel(
     }
 
     private fun verifyFace(jpegBytes: ByteArray) {
-        val user = _state.value.loginUsername.trim().ifBlank { faceStore?.enrolledUsername().orEmpty() }
+        val typedUser = _state.value.loginUsername.trim().ifBlank { faceStore?.enrolledUsername().orEmpty() }
+        // With a password session the server takes the username from the token (mismatch => 403).
+        val hasSession = AppAuth.session.isSignedIn
+        val user = if (hasSession) "" else typedUser
         val store = faceStore
         viewModelScope.launch {
             _state.update { it.copy(faceBusy = true, faceMessage = "Verifying…") }
@@ -1815,7 +2037,7 @@ class KioskViewModel(
                 }
             }
             val live = liveResult.getOrNull()
-            if (live != null && !live.accessToken.isNullOrBlank() && live.user != null) {
+            if (live != null && live.faceVerified && live.matched && !live.accessToken.isNullOrBlank() && live.user != null) {
                 val warn = if (stamp.gpsMissing) " · GPS unavailable (allowed)" else ""
                 _state.update {
                     it.copy(
@@ -1829,36 +2051,17 @@ class KioskViewModel(
                 loadAfterLogin(live.user)
                 return@launch
             }
-            if (live != null && live.matched && live.user != null && !live.accessToken.isNullOrBlank()) {
-                _state.update { it.copy(faceBusy = false) }
-                loadAfterLogin(live.user)
-                return@launch
-            }
-            val local = store?.localVerify(user, jpegBytes)
-            if (local?.matched == true) {
-                _state.update {
-                    it.copy(
-                        faceBusy = false,
-                        facePhase = FaceLoginPhase.HUB,
-                        screen = KioskScreen.HOME,
-                        loginUsername = local.username ?: it.loginUsername,
-                        faceMessage = local.message,
-                        toast = "Face OK (local demo) · enter password (AC-FL1)",
-                        toastKind = ToastKind.INFO,
-                    )
-                }
-            } else {
-                _state.update {
-                    it.copy(
-                        faceBusy = false,
-                        facePhase = FaceLoginPhase.HUB,
-                        faceMessage = local?.message
-                            ?: live?.message
-                            ?: "Face match failed — use password (AC-FL3)",
-                        toast = "Face failed · use password",
-                        toastKind = ToastKind.WARNING,
-                    )
-                }
+            // A local template match is NOT a login: only a server face_verified token opens the app.
+            val liveMsg = liveErr?.message?.take(140)
+            _state.update {
+                it.copy(
+                    faceBusy = false,
+                    facePhase = FaceLoginPhase.HUB,
+                    screen = KioskScreen.FACE_LOGIN,
+                    faceMessage = liveMsg ?: live?.message ?: "Face not verified — try again",
+                    toast = "Face not verified",
+                    toastKind = ToastKind.WARNING,
+                )
             }
         }
     }
@@ -1866,8 +2069,8 @@ class KioskViewModel(
     /** true = nested pop consumed; false = finish app (AC-BP1/BP2). */
     fun onSystemBack(): Boolean {
         val s = _state.value
-        if (!s.signedIn) {
-            if (s.screen == KioskScreen.FACE_LOGIN) {
+        if (!s.signedIn || !FaceGateMachine.canShowData(s.gateStage)) {
+            if (s.screen == KioskScreen.FACE_LOGIN || s.gateStage == GateStage.FACE_PENDING) {
                 when (s.facePhase) {
                     FaceLoginPhase.HUB -> { closeFaceLogin(); return true }
                     FaceLoginPhase.CONSENT_ENROLL -> { declineFaceConsent(); return true }

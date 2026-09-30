@@ -683,9 +683,8 @@ class GuardPatrolViewModel(
             _state.update { it.copy(busy = true, statusLine = "Signing in…") }
             val ok = runCatching {
                 withContext(Dispatchers.IO) {
-                    if (!api.isSignedIn) {
-                        api.login(LiveGuardPatrolApi.DEMO_USERNAME, LiveGuardPatrolApi.DEMO_PASSWORD)
-                    }
+                    // Face gate 1059: no silent demo login. Guard data needs a face-verified session.
+                    check(api.dataAccessAllowed) { "FACE_REQUIRED" }
                     val templates = api.listTemplates().map(GuardPatrolMapper::toDomain).filter { it.active }
                     val checkpoints = api.listCheckpoints().map(GuardPatrolMapper::toDomain)
                         .filter { it.active }

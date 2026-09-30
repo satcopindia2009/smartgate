@@ -28,6 +28,17 @@ val RadiusXl = 14.dp
 val LocalAppearanceMode = staticCompositionLocalOf { AppearanceMode.AUTO }
 val LocalSetAppearanceMode = staticCompositionLocalOf<(AppearanceMode) -> Unit> { {} }
 
+/** Palette for the persisted mode, usable before composition (avoids a wrong-colour first frame). */
+fun initialPalette(context: android.content.Context): ApplePalette {
+    val systemDark = (context.resources.configuration.uiMode and
+        android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+    return when (AppearancePrefs.load(context)) {
+        AppearanceMode.LIGHT -> AppleLight
+        AppearanceMode.DARK -> AppleDark
+        AppearanceMode.AUTO -> if (systemDark) AppleDark else AppleLight
+    }
+}
+
 @Composable
 fun SatcopKioskTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
@@ -81,7 +92,12 @@ fun SatcopKioskTheme(content: @Composable () -> Unit) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
             window.statusBarColor = palette.bg.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !dark
+            window.navigationBarColor = palette.tabBarBg.toArgb()
+            // Window background follows the CHOSEN mode (not the system one) so insets never show dark in Light.
+            window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(palette.bg.toArgb()))
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.isAppearanceLightStatusBars = !dark
+            controller.isAppearanceLightNavigationBars = !dark
         }
     }
 

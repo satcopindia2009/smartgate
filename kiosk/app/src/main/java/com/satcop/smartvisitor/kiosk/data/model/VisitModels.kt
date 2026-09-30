@@ -14,6 +14,9 @@ data class LoginResponse(
     val tokenType: String = "Bearer",
     val expiresIn: Int? = null,
     val user: MeResponse? = null,
+    /** Backend 1059 contract: face gate flags (informational; client policy is stricter). */
+    val faceVerified: Boolean = false,
+    val faceRequired: Boolean = false,
     val meta: Meta? = null,
 )
 

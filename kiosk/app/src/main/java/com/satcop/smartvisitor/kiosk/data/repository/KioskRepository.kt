@@ -47,6 +47,10 @@ interface KioskRepository : DirectoryRepository {
     suspend fun meetingDone(id: String): VisitOut
     suspend fun listHostActiveVisits(hostId: String?): List<VisitOut>
     suspend fun listNotifications(limit: Int = 50): List<HostNotification>
+    /** Host feed poll. Throws on failure (caller backs off). */
+    suspend fun hostFeed(sinceId: String?): com.satcop.smartvisitor.kiosk.data.model.HostFeedResponse
+    suspend fun markNotificationsRead(ids: List<String>)
+    suspend fun registerDeviceToken(token: String): String?
     suspend fun listHours(): List<CampusHoursRow>
     suspend fun loadMediaBytes(key: String): ByteArray?
     suspend fun listStudents(q: String?): List<StudentOut>

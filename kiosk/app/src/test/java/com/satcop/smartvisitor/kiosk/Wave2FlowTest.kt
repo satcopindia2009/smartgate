@@ -37,13 +37,14 @@ class Wave2FlowTest {
     }
 
     @Test
-    fun step3AcceptsIdImageWithoutNumber() {
+    fun step3RequiresIdNumberEvenWithIdImage() {
         val draft = RegistrationDraft(
             livePhotoCaptured = true,
             idType = IdType.DL.apiValue,
             idImageCaptured = true,
         )
-        assertTrue(RegistrationValidator.validateStep3(draft).isEmpty())
+        // Product rule (visit-idnumber-required, 2026-09-19): Govt ID number is mandatory.
+        assertTrue(RegistrationValidator.validateStep3(draft).isNotEmpty())
     }
 
     @Test

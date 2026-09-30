@@ -49,7 +49,7 @@ class GuardAsapTest {
             "U-GATE",
         )
         assertEquals("Received", c.status)
-        val hist = GuardAsapFixtures.listHistory(true, null, "courier", null, null)
+        val hist = GuardAsapFixtures.listHistory(false, null, "courier", null, null)
         assertTrue(hist.any { it.relatedId == c.id })
     }
 }
