@@ -259,6 +259,9 @@ fun KioskApp(
                             onShowAfterHours = viewModel::toggleAfterHoursPanel,
                             showingAfterHours = state.showingAfterHours,
                             onLogout = viewModel::logout,
+                            notice = state.hostNotice,
+                            onDismissNotice = viewModel::dismissHostNotice,
+                            gateNames = state.gates.associate { it.id to it.name },
                         )
                     } else if (role == KioskRole.GATE && state.screen == KioskScreen.HOME) {
                         // AC-APP1: Gate shell ALWAYS on HOME (not only step==1).

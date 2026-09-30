@@ -86,6 +86,10 @@ fun HostInboxScreen(
     onPullRefresh: () -> Unit = onRefresh,
     /** Visit to show first in the Inbox (tapped system notification). */
     focusVisitId: String? = null,
+    /** Persistent message for a failed Approve (after hours etc.). */
+    notice: String? = null,
+    onDismissNotice: () -> Unit = {},
+    gateNames: Map<String, String> = emptyMap(),
 ) {
     var tab by remember { mutableIntStateOf(0) }
     var detailId by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
@@ -104,7 +108,9 @@ fun HostInboxScreen(
             busy = busy,
             rejecting = rejectingVisitId == detailVisit.id,
             rejectReason = rejectReason,
-            onBack = { detailId = null; onCancelReject() },
+            onBack = { detailId = null; onCancelReject(); onDismissNotice() },
+            notice = notice,
+            gateName = detailVisit.gateId?.let { gateNames[it] },
             onApprove = onApprove,
             onStartReject = onStartReject,
             onPickRejectReason = onPickRejectReason,
@@ -127,6 +133,7 @@ fun HostInboxScreen(
                 when (tab) {
                     0 -> {
                         Text("Needs you · ${pending.size}", style = SgType.ScreenTitle, color = KioskColors.text)
+                        if (notice != null) NoticeBanner(notice)
                         if (afterHours) Text(AfterHoursCopy.HOST_NO_OP, style = SgType.Label, color = KioskColors.warning)
                         if (ordered.isEmpty()) {
                             Text("No pending visits", style = SgType.Body, color = KioskColors.textMuted)
@@ -305,6 +312,8 @@ private fun HostVisitDetail(
     rejecting: Boolean,
     rejectReason: String?,
     onBack: () -> Unit,
+    notice: String? = null,
+    gateName: String? = null,
     onApprove: (String) -> Unit,
     onStartReject: (String) -> Unit,
     onPickRejectReason: (String) -> Unit,
@@ -373,7 +382,7 @@ private fun HostVisitDetail(
             DetailSection("Host", listOf("Name" to hostName))
             DetailSection("Visit", listOf(
                 "Purpose" to visit.purpose,
-                "Gate" to visit.gateId,
+                "Gate" to gateName,
                 "Requested" to whenText(visit.createdAt ?: visit.timeIn),
                 "Notes" to visit.notes,
             ))
@@ -392,6 +401,9 @@ private fun HostVisitDetail(
                 }
             }
         }
+        if (isPending && notice != null) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = SgSpacing.ScreenMargin).padding(bottom = 8.dp)) { NoticeBanner(notice) }
+        }
         if (isPending) {
             Row(
                 Modifier.fillMaxWidth().background(KioskColors.tabBarBg)
@@ -409,6 +421,14 @@ private fun HostVisitDetail(
             }
         }
     }
+}
+
+@Composable
+private fun NoticeBanner(text: String) {
+    Text(
+        text, style = SgType.Body, color = KioskColors.warning,
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(KioskColors.warningSoft).padding(12.dp),
+    )
 }
 
 private fun Modifier.androidx_navPad(): Modifier = this.navigationBarsPadding()

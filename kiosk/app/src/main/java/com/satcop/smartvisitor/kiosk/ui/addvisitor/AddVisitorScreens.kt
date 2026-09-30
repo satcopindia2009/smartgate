@@ -212,6 +212,7 @@ fun AddVisitorNumberStep(
         when (val n = state.notice) {
             AvNotice.Blocked -> BlockedPanel(onClose = onCloseNotice)
             is AvNotice.Open -> OpenVisitCard(n.open, state.checkoutBusy, onCheckInOpen, onCloseNotice)
+            is AvNotice.CheckedIn -> CheckedInCard(n.hostName, onCloseNotice)
             is AvNotice.Inside -> InsideCard(n.active, state.checkoutBusy, onCheckout, onCloseNotice)
             else -> {
                 Text(
@@ -288,6 +289,14 @@ private fun InsideCard(active: ActiveVisit, busy: Boolean, onCheckout: (ActiveVi
             SgPrimaryButton(text = if (busy) "Checking out…" else "Check out", enabled = !busy, onClick = { onCheckout(active) }, modifier = Modifier.fillMaxWidth())
         }
         SgSecondaryButton(text = "Close", onClick = onClose, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+private fun CheckedInCard(hostName: String?, onClose: () -> Unit) {
+    Column(Modifier.padding(top = FormTokens.FieldToField), verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField)) {
+        InfoBar("Checked in" + (hostName?.takeIf { it.isNotBlank() }?.let { " · visiting $it" } ?: ""), KioskColors.successSoft, KioskColors.success)
+        SgPrimaryButton(text = "Done", onClick = onClose, modifier = Modifier.fillMaxWidth())
     }
 }
 

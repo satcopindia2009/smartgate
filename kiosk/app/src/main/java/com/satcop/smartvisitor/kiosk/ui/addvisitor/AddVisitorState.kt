@@ -12,6 +12,8 @@ sealed interface AvNotice {
     data class Inside(val active: ActiveVisit) : AvNotice
     data class Open(val open: com.satcop.smartvisitor.kiosk.data.addvisitor.OpenVisitInfo) : AvNotice
     data class Failed(val message: String) : AvNotice
+    /** Confirmation after "Check in now" on an approved open visit. */
+    data class CheckedIn(val hostName: String?) : AvNotice
 }
 
 /**
