@@ -56,6 +56,7 @@ import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.ShieldMark
 import com.satcop.smartvisitor.kiosk.ui.components.SourcePill
 import com.satcop.smartvisitor.kiosk.ui.components.StepDots
+import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.components.ToastBanner
 import com.satcop.smartvisitor.kiosk.ui.steps.OutcomeStep
 import com.satcop.smartvisitor.kiosk.ui.steps.PhotoIdStep
@@ -92,9 +93,9 @@ fun KioskApp(
     ) {
         // AC-PH1/PH2: always phone-portrait compact — ignore tablet width branch.
         val compact = true
-        val hPad = 16.dp
+        val hPad = FormTokens.ScreenHPad
         val vPad = 12.dp
-        val cardHPad = 16.dp
+        val cardHPad = FormTokens.ScreenHPad
         val cardVPad = 16.dp
         CompositionLocalProvider(LocalKioskCompact provides compact) {
             // Crashfix 1045/1046: outer phone verticalScroll only for password login.
@@ -265,12 +266,20 @@ fun KioskApp(
                             registrationStep = state.step,
                             registrationContent = if (state.step > 1) {
                                 {
-                                    StepDots(current = state.step)
-                                    KioskStep(
-                                        step = state.step,
-                                        state = state,
-                                        viewModel = viewModel,
-                                    )
+                                    // 1061b: ONE horizontal margin for the whole step (dots, header, labels, inputs, host).
+                                    Column(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = FormTokens.ScreenHPad)
+                                            .padding(bottom = FormTokens.SectionGap),
+                                    ) {
+                                        StepDots(current = state.step)
+                                        KioskStep(
+                                            step = state.step,
+                                            state = state,
+                                            viewModel = viewModel,
+                                        )
+                                    }
                                 }
                             } else null,
                         )
@@ -481,6 +490,7 @@ private fun KioskStep(
             errors = state.fieldErrors,
             autofetchHint = state.autofetchHint,
             autofetchBusy = state.autofetchBusy,
+            hostsLoading = !state.loaded,
             onName = viewModel::updateName,
             onMobile = viewModel::updateMobile,
             onCompany = viewModel::updateCompany,

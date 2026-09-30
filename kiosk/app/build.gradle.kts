@@ -13,8 +13,8 @@ android {
         applicationId = "com.satcop.smartvisitor.kiosk"
         minSdk = 23
         targetSdk = 35
-        versionCode = 1062
-        versionName = "1.0.12-1role-attendance-guardhome-errors"
+        versionCode = 1063
+        versionName = "1.0.12b-1role-checkin-host-dropdown-align"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }

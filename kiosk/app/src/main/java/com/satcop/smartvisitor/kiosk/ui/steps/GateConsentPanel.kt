@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.data.model.GateConsent
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
+import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
@@ -40,8 +41,8 @@ fun GateConsentPanel(
             .clip(RoundedCornerShape(RadiusLg))
             .background(KioskColors.card)
             .border(1.dp, KioskColors.border, RoundedCornerShape(RadiusLg))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(FormTokens.ScreenHPad),
+        verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LangChip("English", selected = !langHi) { langHi = false }
@@ -61,16 +62,16 @@ fun GateConsentPanel(
             fontFamily = KioskFont,
             lineHeight = 18.sp,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap), modifier = Modifier.fillMaxWidth()) {
             KioskGhostButton(
                 text = GateConsent.DECLINE,
                 onClick = onDecline,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                modifier = Modifier.weight(1f).heightIn(min = FormTokens.MinTouch),
             )
             KioskPrimaryButton(
                 text = if (langHi) GateConsent.AGREE_HI else GateConsent.AGREE_EN,
                 onClick = onAgree,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                modifier = Modifier.weight(1f).heightIn(min = FormTokens.MinTouch),
             )
         }
     }

@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.satcop.smartvisitor.kiosk.ui.LocalKioskCompact
 import com.satcop.smartvisitor.kiosk.ui.theme.ChipShape
 import com.satcop.smartvisitor.kiosk.ui.theme.ControlShape
+import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
@@ -71,7 +72,7 @@ fun StepDots(current: Int, total: Int = 4) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = if (compact) 12.dp else 24.dp),
+            .padding(bottom = if (compact) FormTokens.FieldToField else FormTokens.HeaderToForm),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         repeat(total) { index ->
@@ -209,14 +210,14 @@ fun KioskField(
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = KioskFont,
-            modifier = Modifier.padding(bottom = 6.dp),
+            modifier = Modifier.padding(bottom = FormTokens.LabelToField),
         )
         TextField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp)
+                .heightIn(min = FormTokens.MinTouch)
                 .border(
                     1.dp,
                     if (error != null) KioskColors.errorText else KioskColors.inputBorder,
@@ -271,13 +272,13 @@ fun KioskField(
             shape = ControlShape,
             colors = kioskTextFieldColors(),
         )
-        Spacer(Modifier.height(4.dp))
         AnimatedVisibility(visible = error != null, enter = fadeIn(), exit = fadeOut()) {
             Text(
                 text = error.orEmpty(),
                 color = KioskColors.errorText,
                 fontSize = 12.sp,
                 fontFamily = KioskFont,
+                modifier = Modifier.padding(top = FormTokens.ErrorGap),
             )
         }
     }
@@ -394,7 +395,7 @@ fun PanelDivider() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 20.dp)
+            .padding(top = FormTokens.SectionGap)
             .height(1.dp)
             .background(KioskColors.borderSubtle),
     )

@@ -31,10 +31,12 @@ import com.satcop.smartvisitor.kiosk.data.model.Gate
 import com.satcop.smartvisitor.kiosk.data.model.InsideVisit
 import com.satcop.smartvisitor.kiosk.data.model.VisitorType
 import com.satcop.smartvisitor.kiosk.ui.LocalKioskCompact
+import com.satcop.smartvisitor.kiosk.ui.components.FormHeader
 import com.satcop.smartvisitor.kiosk.ui.components.KioskGhostButton
 import com.satcop.smartvisitor.kiosk.ui.components.KioskPrimaryButton
 import com.satcop.smartvisitor.kiosk.ui.components.PanelDivider
 import com.satcop.smartvisitor.kiosk.ui.components.RecentChip
+import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskFont
 import com.satcop.smartvisitor.kiosk.ui.theme.RadiusLg
@@ -59,48 +61,40 @@ fun VisitorTypeStep(
     Column(Modifier.fillMaxWidth()) {
         if (compact) {
             Column(Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Who is visiting?",
-                    color = KioskColors.text,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = KioskFont,
+                FormHeader(
+                    title = "Who is visiting?",
+                    subtitle = "Select visitor type to begin registration",
+                    modifier = Modifier.padding(bottom = 0.dp),
                 )
-                Text(
-                    text = "Select visitor type to begin registration",
-                    color = KioskColors.textMuted,
-                    fontSize = 14.sp,
-                    fontFamily = KioskFont,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-                KioskGhostButton(
-                    text = "Student pickup",
-                    onClick = onPickup,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp)
-                        .heightIn(min = 48.dp),
-                )
-                if (showPrefill) {
+                Column(verticalArrangement = Arrangement.spacedBy(FormTokens.ButtonGap)) {
                     KioskGhostButton(
-                        text = "Prefill sample",
-                        onClick = onPrefill,
+                        text = "Student pickup",
+                        onClick = onPickup,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 48.dp),
+                            .heightIn(min = FormTokens.MinTouch),
                     )
+                    if (showPrefill) {
+                        KioskGhostButton(
+                            text = "Prefill sample",
+                            onClick = onPrefill,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = FormTokens.MinTouch),
+                        )
+                    }
                 }
             }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(top = FormTokens.HeaderToForm),
+                verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
             ) {
                 VisitorType.entries.chunked(2).forEach { row ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
                     ) {
                         row.forEach { type ->
                             TypeCard(
@@ -190,7 +184,7 @@ fun VisitorTypeStep(
                 onClick = onContinue,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 20.dp)
+                    .padding(top = FormTokens.SectionGap)
                     .heightIn(min = 52.dp),
             )
         } else {
