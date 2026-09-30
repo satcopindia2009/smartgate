@@ -2,4 +2,5 @@
 <resources>
     <color name="kiosk_bg">#0E1513</color>
     <color name="kiosk_icon_bg">#15171C</color>
+    <color name="splash_teal">#1E806A</color>
 </resources>
