@@ -44,6 +44,14 @@ object AddVisitorLogic {
         return OpenVisitInfo(id, details["status"].orEmpty().ifBlank { "pending" }, details["hostName"], details["hostId"])
     }
 
+    /**
+     * Payload of the display-only QR on the pass screen. The backend issues passId/qrToken only at APPROVE
+     * (see the MVP contract, approve step), so right after create both are null. Order:
+     * qrToken, passId, then the visit id, so the QR is present whenever the visit exists.
+     */
+    fun qrPayload(qrToken: String?, passId: String?, visitId: String?): String? =
+        listOf(qrToken, passId, visitId).firstOrNull { !it.isNullOrBlank() }?.trim()
+
     /** "XXXXXX1234" for the read-only mobile row; never more than the last 4 digits. */
     fun maskedMobileForForm(raw: String): String {
         val d = digitsOnly(raw)

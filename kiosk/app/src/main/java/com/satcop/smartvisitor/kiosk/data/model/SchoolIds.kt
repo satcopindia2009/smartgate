@@ -15,6 +15,14 @@ object AfterHoursCopy {
     const val CODE = "AFTER_HOURS_SH_REQUIRED"
 }
 
+/** Visible sentence for a failed host Approve. Never silent, never a raw code. */
+object HostApproveCopy {
+    fun forError(e: Throwable): String {
+        if (e is ApiException && e.code == AfterHoursCopy.CODE) return AfterHoursCopy.HOST_NO_OP
+        return com.satcop.smartvisitor.kiosk.data.api.ErrorCopy.forThrowable(e)
+    }
+}
+
 object CampusHours {
     fun isAfterHours(
         rows: List<CampusHoursRow>,

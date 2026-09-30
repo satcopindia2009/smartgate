@@ -62,7 +62,7 @@ fun OutcomeStep(
     val host = hosts.firstOrNull { it.id == (visit?.hostId ?: draft.hostId) }
     val gate = gates.firstOrNull { it.id == (visit?.gateId ?: draft.gateId) }
     val status = visit?.status ?: "pending"
-    val qrPayload = visit?.qrToken?.takeIf { it.isNotBlank() } ?: visit?.passId?.takeIf { it.isNotBlank() }
+    val qrPayload = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.qrPayload(visit?.qrToken, visit?.passId, visit?.id)
     // Product ruling: the QR is display only and shows for every status, including pending.
     val showQr = qrPayload != null
     val timeLabel = visit?.timeOut ?: visit?.timeIn
@@ -106,11 +106,12 @@ fun OutcomeStep(
                         contentDescription = "Visitor pass QR",
                         modifier = Modifier.padding(top = 8.dp).size(200.dp).clip(RoundedCornerShape(8.dp)).background(Color.White),
                     )
-                    Text("Visitor pass QR · display only", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
                 }
-            } else if (status == "pending") {
+                Text("Visitor pass QR · display only", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
+            }
+            if (status == "pending") {
                 Text(
-                    "Waiting for host approval. The pass is issued once the host approves.",
+                    "Waiting for host approval.",
                     color = KioskColors.textMuted, fontSize = 14.sp, fontFamily = KioskFont, textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 4.dp),
                 )

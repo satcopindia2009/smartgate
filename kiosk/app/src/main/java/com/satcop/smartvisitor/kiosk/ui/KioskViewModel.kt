@@ -120,6 +120,8 @@ data class KioskUiState(
     val hostActiveVisits: List<VisitOut> = emptyList(),
     val pendingPhotos: Map<String, Bitmap> = emptyMap(),
     val hostBusy: Boolean = false,
+    /** Persistent (non-toast) message for a failed host Approve/Reject; cleared on the next action or Back. */
+    val hostNotice: String? = null,
     val rejectingVisitId: String? = null,
     val rejectReason: String? = null,
     val afterHours: Boolean = false,
@@ -212,6 +214,8 @@ class KioskViewModel(
     private var feedUnsupported = false
     private var fallbackSeenPending: MutableSet<String>? = null
     private var lastFullRefreshMs = 0L
+    /** The first poll after host login only finds what the Inbox already lists; no pop-up for that backlog. */
+    private var hostFirstPollDone = false
     private val _newVisitorEvents = MutableSharedFlow<HostFeedItem>(extraBufferCapacity = 16)
 
     /** Emits every de-duplicated new pending visitor; the UI layer turns it into a system notification. */
@@ -555,7 +559,7 @@ class KioskViewModel(
 
     fun approvePending(visitId: String) {
         viewModelScope.launch {
-            _state.update { it.copy(hostBusy = true, toast = null) }
+            _state.update { it.copy(hostBusy = true, toast = null, hostNotice = null) }
             try {
                 repository.approveVisit(visitId)
                 loadHostHome(showToast = false)
@@ -566,39 +570,26 @@ class KioskViewModel(
                         hostBusy = false,
                     )
                 }
-            } catch (e: ApiException) {
-                if (e.code == AfterHoursCopy.CODE) {
-                    _state.update {
-                        it.copy(
-                            hostBusy = false,
-                            afterHours = true,
-                            toast = AfterHoursCopy.HOST_NO_OP,
-                            toastKind = ToastKind.WARNING,
-                        )
-                    }
-                } else {
-                    _state.update {
-                        it.copy(
-                            hostBusy = false,
-                            toast = ErrorCopy.forThrowable(e),
-                            toastKind = ToastKind.ERROR,
-                        )
-                    }
-                }
             } catch (e: Exception) {
+                val msg = com.satcop.smartvisitor.kiosk.data.model.HostApproveCopy.forError(e)
+                val after = (e as? ApiException)?.code == AfterHoursCopy.CODE
                 _state.update {
                     it.copy(
                         hostBusy = false,
-                        toast = ErrorCopy.forThrowable(e),
-                        toastKind = ToastKind.ERROR,
+                        afterHours = it.afterHours || after,
+                        hostNotice = msg,
+                        toast = msg,
+                        toastKind = if (after) ToastKind.WARNING else ToastKind.ERROR,
                     )
                 }
             }
         }
     }
 
+    fun dismissHostNotice() { _state.update { it.copy(hostNotice = null) } }
+
     fun startReject(visitId: String) {
-        _state.update { it.copy(rejectingVisitId = visitId, rejectReason = null) }
+        _state.update { it.copy(rejectingVisitId = visitId, rejectReason = null, hostNotice = null) }
     }
 
     fun pickRejectReason(reason: String) {
@@ -804,6 +795,7 @@ class KioskViewModel(
         hostPollJob?.cancel()
         feedUnsupported = false
         fallbackSeenPending = null
+        hostFirstPollDone = false
         hostPollJob = viewModelScope.launch {
             while (true) {
                 val snap = _state.value
@@ -876,7 +868,9 @@ class KioskViewModel(
             lastFullRefreshMs = now
             loadHostHome(showToast = false)
         }
-        if (alerts.isNotEmpty()) {
+        val firstPoll = !hostFirstPollDone
+        hostFirstPollDone = true
+        if (alerts.isNotEmpty() && !firstPoll) {
             _state.update { it.copy(hostAlerts = (it.hostAlerts + alerts).distinctBy { a -> a.id }) }
             alerts.forEach { _newVisitorEvents.tryEmit(it) }
         }
@@ -1393,7 +1387,10 @@ class KioskViewModel(
                 repository.checkInVisit(open.visitId, gateId)
                 _state.update {
                     it.copy(
-                        addVisitor = it.addVisitor.copy(checkoutBusy = false, notice = null),
+                        addVisitor = it.addVisitor.copy(
+                            checkoutBusy = false,
+                            notice = com.satcop.smartvisitor.kiosk.ui.addvisitor.AvNotice.CheckedIn(open.hostName),
+                        ),
                         toast = "Checked in", toastKind = ToastKind.SUCCESS,
                     )
                 }
