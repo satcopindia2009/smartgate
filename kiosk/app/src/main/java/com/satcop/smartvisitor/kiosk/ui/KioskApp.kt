@@ -193,6 +193,8 @@ fun KioskApp(
                             displayName = state.meDisplayName,
                             schoolName = state.schoolName,
                             onLogout = viewModel::logout,
+                            initialCheckInRow = state.clockInRow,
+                            onInitialRowConsumed = viewModel::consumeClockInRow,
                         ) { requestLogout ->
                     if (state.screen == KioskScreen.COURIER) {
                         CourierLogScreen(

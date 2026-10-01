@@ -46,13 +46,31 @@ object GuardGeoLogic {
     const val SHIFT_END_PROMPT = "Your shift time is over. Clock out now?"
     const val SHIFT_END_CLOCK_OUT = "Clock out"
     const val SHIFT_END_LATER = "Later"
-    const val MOCK_LOCATION_NOTE = "Your location appears to be changed by another app. Turn that app off. This check-in will be flagged for review."
+    /** Soft/unknown mode: allowed, flagged MOCK_LOCATION (Product 1 Oct). */
+    const val MOCK_LOCATION_NOTE = "Mock location detected. Your check-in will be flagged for review."
+    /** Restrict mode, and every clock-out: blocked. */
+    const val MOCK_BLOCKED = "Fake location detected. Turn off mock-location apps and try again."
+    const val CLOCK_OUT_OUTSIDE_NOTE = "You clocked out from outside the campus. This will be flagged for review."
+    /** Face login card: neutral wording (demo accepts a face without enrolment). */
+    const val FACE_CARD_NEUTRAL = "Verify your face to clock in"
+
+    /** Mock-location rule: restrict mode and any clock-out are blocked; soft/off/unknown mode goes out flagged. */
+    fun mockBlock(mode: AttendanceMode, geo: GeoMode, isMock: Boolean): String? =
+        if (isMock && (mode == AttendanceMode.CLOCK_OUT || geo == GeoMode.RESTRICT)) MOCK_BLOCKED else null
+
+    /** Business date: the IST clock minus the school cutoff ("HH:mm", default 00:00). */
+    fun businessDate(now: Instant, cutoff: String?): LocalDate {
+        val c = parseShiftEnd(cutoff) ?: LocalTime.MIDNIGHT
+        return now.atZone(GuardHomeLogic.IST).minusHours(c.hour.toLong()).minusMinutes(c.minute.toLong()).toLocalDate()
+    }
 
     /** Hindi equivalents from the Product ruling. NOT displayed yet: the app has no language switch outside Login. */
     object Hi {
         const val OUTSIDE_WITH_DISTANCE = "आप परिसर से लगभग %1\$s मीटर दूर हैं; सीमा %2\$s मीटर है। परिसर के अंदर आकर दोबारा कोशिश करें।"
         const val LOCATION_OFF_RESTRICT = "लोकेशन बंद है। चेक इन के लिए इसे चालू करें।"
         const val OPEN_LOCATION_SETTINGS = "लोकेशन सेटिंग खोलें"
+        const val MOCK_BLOCKED = "नकली लोकेशन मिली है। मॉक-लोकेशन ऐप बंद करें और दोबारा कोशिश करें।"
+        const val MOCK_LOCATION_NOTE = "मॉक लोकेशन मिली है। आपका चेक इन समीक्षा के लिए चिह्नित किया जाएगा।"
         const val SOFT_OUTSIDE_NOTE = "आपने परिसर के बाहर से चेक इन किया है। इसे समीक्षा के लिए चिह्नित किया जाएगा।"
     }
 

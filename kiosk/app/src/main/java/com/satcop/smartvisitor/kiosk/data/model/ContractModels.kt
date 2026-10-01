@@ -28,6 +28,8 @@ data class School(
     val faceLoginEnabled: Boolean? = null,
     /** off | soft | restrict — default restrict (Viren HARD). Backend enforces 403. */
     val geoFenceMode: String? = null,
+    /** "HH:mm" school time at which the guard business day rolls over (default 00:00). */
+    val guardSessionCutoff: String? = null,
 )
 
 @Serializable

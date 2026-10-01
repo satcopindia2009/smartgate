@@ -148,7 +148,9 @@ private fun HomeBody(
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text("Start patrol", color = KioskColors.onPrimary, style = SgType.ScreenTitle)
-                    Text("$routeSubtitle · $progressLabel", color = KioskColors.onPrimary.copy(alpha = 0.85f), style = SgType.Label)
+                    // 1074: honest and consistent with the Progress card: when the server says nothing is assigned, say so.
+                    val noRounds = state.todaySummary != null && !GuardTodayLogic.hasRounds(state.todaySummary)
+                    Text(if (noRounds) GuardTodayLogic.NO_ROUNDS else "$routeSubtitle · $progressLabel", color = KioskColors.onPrimary.copy(alpha = 0.85f), style = SgType.Label)
                 }
                 Box(Modifier.size(40.dp).clip(CircleShape).background(KioskColors.onPrimary.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
                     Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = KioskColors.onPrimary)

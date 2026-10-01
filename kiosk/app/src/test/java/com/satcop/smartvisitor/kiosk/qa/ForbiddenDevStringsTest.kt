@@ -16,6 +16,10 @@ class ForbiddenDevStringsTest {
         "compact home", "no long scroll", "Demo host approve", "(stub)", "ID captured (demo)", "Sample parent visit loaded", "Issue pass", "Contact name", "Step 2 of", "Step 3 of",
     )
     // Literal contexts that are not shown to users (identifiers, API keys, logs).
+    private val productCopy = setOf(
+        "Mock location detected. Your check-in will be flagged for review.",
+        "Fake location detected. Turn off mock-location apps and try again.",
+    )
     private val allowedContains = listOf("placeholder =", "hint")
 
     private fun root() = File(System.getProperty("user.dir"), "src/main")
@@ -32,6 +36,8 @@ class ForbiddenDevStringsTest {
                     if (lit == "DEMO" || lit == "FIXTURES") { hits += "${f.name}: \"$lit\""; return@forEach }
                     // Identifier-like tokens (ids, keys, api values) are not copy shown to users.
                     if (lit.length < 3 || lit.none { it == ' ' }) return@forEach
+                    // Product-approved copy about phone mock-location apps (1 Oct rulings) is real user text, not dev text.
+                    if (lit in productCopy) return@forEach
                     forbidden.forEach { bad ->
                         if (lit.contains(bad, ignoreCase = true)) hits += "${f.name}: \"$lit\" ~ $bad"
                     }

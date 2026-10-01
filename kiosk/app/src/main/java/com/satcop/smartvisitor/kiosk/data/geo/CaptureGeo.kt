@@ -22,6 +22,8 @@ data class CaptureStamp(
     val lng: Double? = null,
     val accuracyM: Float? = null,
     val gpsMissing: Boolean = true,
+    /** The OS flags the reading as coming from a mock-location provider. */
+    val isMock: Boolean = false,
 )
 
 object CaptureGeo {
@@ -59,6 +61,7 @@ object CaptureGeo {
                 lng = loc.longitude,
                 accuracyM = if (loc.hasAccuracy()) loc.accuracy else null,
                 gpsMissing = false,
+                isMock = if (android.os.Build.VERSION.SDK_INT >= 31) loc.isMock else @Suppress("DEPRECATION") loc.isFromMockProvider,
             )
         }
     }

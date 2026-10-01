@@ -88,6 +88,8 @@ import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.draw.alpha
@@ -147,9 +149,15 @@ fun GuardClockInGate(
     displayName: String,
     schoolName: String,
     onLogout: () -> Unit,
+    /** 1074: the check-in response of the face step; shown once as the "Checked In!" card. */
+    initialCheckInRow: com.satcop.smartvisitor.kiosk.data.model.AttendanceRow? = null,
+    onInitialRowConsumed: () -> Unit = {},
     content: @Composable (requestLogout: () -> Unit) -> Unit,
 ) {
     val state by controller.state.collectAsState()
+    LaunchedEffect(initialCheckInRow) {
+        if (initialCheckInRow != null) { controller.showCheckInResult(initialCheckInRow); onInitialRowConsumed() }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     var confirmSignOut by remember { mutableStateOf(false) }
     var lastSelfie by remember { mutableStateOf<Bitmap?>(null) }
@@ -161,13 +169,17 @@ fun GuardClockInGate(
     }
 
     // 1072 E: a row from an earlier IST day never unlocks the app.
-    val lock = ClockInLogic.lockState(state.attendance, state.attendanceLoaded, GuardHomeLogic.todayIst())
+    // 1074: the business day (IST minus the school cutoff). A row or a "Shift complete" from an earlier business day never counts.
+    val businessDate = GuardGeoLogic.businessDate(java.time.Instant.now(), state.sessionCutoff)
+    val lock = ClockInLogic.lockState(state.attendance, state.attendanceLoaded, businessDate)
     val lockGateLabel = state.attendance?.gateName?.takeIf { it.isNotBlank() } ?: ""
     val result = state.result
     val panel = state.panel
     BackHandler(enabled = panel != null || result != null) {
         if (result != null) controller.clearResult() else controller.back()
     }
+    // 1074: Back on the lock / Shift complete screen does nothing (no exit, no logout); only Sign Out leaves.
+    BackHandler(enabled = panel == null && result == null && lock != LockState.UNLOCKED) { }
 
     when {
         result != null -> ClockResultScreen(
@@ -177,7 +189,7 @@ fun GuardClockInGate(
             onDone = { controller.clearResult(); lastSelfie = null; controller.refresh() },
         )
         panel != null && state.step == ClockStep.INFO -> ClockInfoScreen(
-            mode = panel, today = state.attendance?.takeUnless { ClockInLogic.isStaleDay(it, GuardHomeLogic.todayIst()) }, schoolName = schoolName,
+            mode = panel, today = state.attendance?.takeUnless { ClockInLogic.isStaleDay(it, businessDate) }, schoolName = schoolName,
             gateLabel = state.attendance?.gateName?.takeIf { it.isNotBlank() } ?: state.attendance?.attendance?.let { ClockInLogic.gateLabel(it) } ?: "Campus",
             onBack = controller::closePanel, onProceed = controller::proceedToSelfie,
         )
@@ -269,10 +281,6 @@ fun LockScreen(
                 style = SgType.ScreenTitle.copy(fontSize = 26.sp, lineHeight = 32.sp),
             )
             Text(subtitle, color = Color.White.copy(alpha = 0.9f), style = SgType.Body, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
-            // Server shift text only; hidden when the guard has no shift.
-            if (!shiftText.isNullOrBlank()) {
-                Text(shiftText, color = Color.White.copy(alpha = 0.85f), style = SgType.Label, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
-            }
             Spacer(Modifier.height(24.dp))
             Row(
                 Modifier.clip(PillShape).background(Color.Black.copy(alpha = 0.22f)).padding(horizontal = 14.dp, vertical = 8.dp),
@@ -396,11 +404,10 @@ fun ClockInfoScreen(
             GuardBanner(GuardCopy.infoBanner(mode), GuardBannerKind.INFO, Icons.Outlined.Info)
             GuardCard {
                 Text(GuardCopy.HOW_IT_WORKS, color = KioskColors.text, style = SgType.SectionTitle)
+                val stepIcons = listOf(Icons.Outlined.CameraAlt, Icons.Outlined.CloudUpload, Icons.Outlined.CheckCircle)
                 GuardCopy.HOW_STEPS.forEachIndexed { i, step ->
                     Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(28.dp).clip(CircleShape).background(KioskColors.primary), contentAlignment = Alignment.Center) {
-                            Text("${i + 1}", color = KioskColors.onPrimary, style = SgType.Label)
-                        }
+                        GuardIconBadge(stepIcons[i.coerceAtMost(stepIcons.lastIndex)], size = 32.dp, iconSize = 18.dp)
                         Spacer(Modifier.width(12.dp))
                         Text(step, color = KioskColors.text, style = SgType.Body, modifier = Modifier.weight(1f))
                     }
@@ -496,7 +503,10 @@ fun SelfieScreen(
     val geoMode = state.geoMode
     val showLocationNotice = asked && (!locationGranted || !serviceOn) && mode == AttendanceMode.CHECK_IN && geoMode != GeoMode.RESTRICT
     val preGate = if (asked) GuardGeoLogic.locationGate(mode, geoMode, locationGranted, serviceOn) else null
-    val restrictHint = GuardGeoLogic.restrictHint(geoMode, fix, state.fence)
+    // 1074: the up-front distance hint only uses a reading taken after the last Retry (never a stale one).
+    var hintAfterMs by remember { mutableStateOf(0L) }
+    val freshFix = fix?.takeIf { it.elapsedMs > hintAfterMs && it.ageMs(SystemClock.elapsedRealtime()) <= com.satcop.smartvisitor.kiosk.data.geo.GpsPolicy.MAX_FIX_AGE_MS }
+    val restrictHint = GuardGeoLogic.restrictHint(geoMode, freshFix, state.fence)
     val msg = state.panelMessage
     val showErrorCard = (state.panelError && !msg.isNullOrBlank() && !state.panelBusy) || preGate != null
     val shownMsg = if (state.panelError && !msg.isNullOrBlank()) msg else preGate?.message
@@ -515,12 +525,12 @@ fun SelfieScreen(
             verticalArrangement = Arrangement.spacedBy(FormTokens.FieldToField),
         ) {
             Row(
-                Modifier.clip(PillShape).background(KioskColors.brandSoft).padding(horizontal = 14.dp, vertical = 6.dp),
+                Modifier.clip(PillShape).background(KioskColors.brandSoft).padding(horizontal = 18.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.CameraAlt, contentDescription = null, tint = KioskColors.primary, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(GuardCopy.photoPill(mode), color = KioskColors.primary, style = SgType.Label)
+                Icon(Icons.Outlined.CameraAlt, contentDescription = null, tint = KioskColors.primary, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(GuardCopy.photoPill(mode), color = KioskColors.primary, style = SgType.BodyStrong)
             }
             Box(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp).aspectRatio(3f / 4f).clip(RoundedCornerShape(24.dp)).background(Color(0xFF111111)),
@@ -647,11 +657,13 @@ fun SelfieScreen(
             Spacer(Modifier.height(16.dp))
             if (locationServiceProblem) {
                 SgPrimaryButton(GuardCopy.OPEN_LOCATION_SETTINGS, { openLocationSettings(context) }, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(FormTokens.ButtonGap))
+                GuardOutlineButton(GuardCopy.RETRY, { hintAfterMs = SystemClock.elapsedRealtime(); controller.onPhotoRetaken() }, Modifier.fillMaxWidth())
             } else if (needsSettings) {
                 SgPrimaryButton(GuardCopy.OPEN_SETTINGS, { openAppSettings(context) }, Modifier.fillMaxWidth())
             } else {
                 // Retry always recaptures: clear the message and go back to the camera (attemptNo already dropped the held selfie).
-                SgPrimaryButton(GuardCopy.RETRY, { controller.onPhotoRetaken() }, Modifier.fillMaxWidth())
+                SgPrimaryButton(GuardCopy.RETRY, { hintAfterMs = SystemClock.elapsedRealtime(); controller.onPhotoRetaken() }, Modifier.fillMaxWidth())
             }
             Spacer(Modifier.height(FormTokens.ButtonGap))
             GuardOutlineButton(GuardCopy.BACK, { if (!state.panelBusy) controller.closePanel() }, Modifier.fillMaxWidth())
@@ -723,6 +735,8 @@ fun ClockResultScreen(
     }
     val shownSelfie = selfie ?: serverSelfie
     val out = result.mode == AttendanceMode.CLOCK_OUT
+    // 1074: after a check-in the card shows for ~4 s, then the guard goes to Today (Done goes earlier).
+    if (!out) LaunchedEffect(result) { kotlinx.coroutines.delay(4_000L); onDone() }
     val headerSubtitle = listOf(GuardCopy.ROLE, schoolName).filter { it.isNotBlank() }.joinToString(" · ")
     Column(Modifier.fillMaxSize().background(KioskColors.bg).navigationBarsPadding()) {
         // Header says "Self Check In" / "Self Check Out" to match the action (the reference screenshot shows the wrong one).

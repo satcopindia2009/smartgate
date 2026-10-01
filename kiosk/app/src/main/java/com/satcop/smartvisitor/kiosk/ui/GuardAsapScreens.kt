@@ -549,7 +549,7 @@ fun FaceLoginScaffoldScreen(enrolled: Boolean, consentAgreed: Boolean, busy: Boo
         Text("Unlock with your face. You can always use your password.", color = KioskColors.textMuted, fontSize = 13.sp, fontFamily = KioskFont)
         Spacer(Modifier.height(12.dp))
         Column(Modifier.fillMaxWidth().clip(ControlShape).background(KioskColors.sidebar).border(1.dp, KioskColors.border, ControlShape).padding(14.dp)) {
-            Text(if (enrolled) "Face enrolled on this phone" else "Face not enrolled", color = if (enrolled) KioskColors.greenBright else KioskColors.orange, fontFamily = KioskFont, fontWeight = FontWeight.Medium)
+            Text(if (enrolled) "Face enrolled on this phone" else com.satcop.smartvisitor.kiosk.ui.guardhome.GuardGeoLogic.FACE_CARD_NEUTRAL, color = if (enrolled) KioskColors.greenBright else KioskColors.orange, fontFamily = KioskFont, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(8.dp))
             Text("Consent (EN+HI): I agree to enroll my face for gate duty login only. मैं गेट ड्यूटी लॉगिन के लिए सहमत हूँ।", color = KioskColors.textMuted, fontSize = 12.sp, fontFamily = KioskFont)
             Spacer(Modifier.height(8.dp))

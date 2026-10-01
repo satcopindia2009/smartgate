@@ -47,6 +47,9 @@ data class AttendanceRow(
     // 1072 geofence (Backend 2026-10-01, LIVE): flat radius + nested block; all optional.
     val geofenceRadiusM: Double? = null,
     val geofence: GeofenceInfo? = null,
+    /** Clock-out geofence (Backend): outGeofence nested + outGeofenceRadiusM. */
+    val outGeofence: GeofenceInfo? = null,
+    val outGeofenceRadiusM: Double? = null,
     val isMock: Boolean? = null,
     // Guard shift (Backend 2026-10-01, additive, null when no shift is assigned).
     val shiftName: String? = null,

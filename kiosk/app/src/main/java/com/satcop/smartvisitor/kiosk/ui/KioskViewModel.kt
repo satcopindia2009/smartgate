@@ -167,6 +167,8 @@ data class KioskUiState(
     val lfPhoto: Bitmap? = null,
     val lfBusy: Boolean = false,
     val faceEnrolled: Boolean = false,
+    /** 1074: check-in response of the face step; the guard gate shows the "Checked In!" card from it, then clears it. */
+    val clockInRow: com.satcop.smartvisitor.kiosk.data.model.AttendanceRow? = null,
     val faceConsentAgreed: Boolean = false,
     val faceConsentAt: String? = null,
     val faceConsentVersion: String? = null,
@@ -2203,6 +2205,10 @@ class KioskViewModel(
         }
     }
 
+    fun consumeClockInRow() {
+        _state.update { it.copy(clockInRow = null) }
+    }
+
     fun cancelFaceCapture() {
         _state.update {
             it.copy(facePhase = FaceLoginPhase.HUB, faceBusy = false, faceMessage = null, faceError = false)
@@ -2363,6 +2369,21 @@ class KioskViewModel(
                     b64, stamp, java.time.Instant.now(), "att-" + java.util.UUID.randomUUID().toString().take(12),
                 )
                 _state.update { it.copy(faceMessage = "Face matched — clocking you in…") }
+                // 1074: mock location - restrict mode is blocked, soft mode goes out flagged (isMock sent).
+                val mode = runCatching { io { liveApi.guardGeofence() } }.getOrNull()?.mode
+                val mockMsg = com.satcop.smartvisitor.kiosk.ui.guardhome.GuardGeoLogic.mockBlock(
+                    com.satcop.smartvisitor.kiosk.ui.guardhome.AttendanceMode.CHECK_IN,
+                    com.satcop.smartvisitor.kiosk.ui.guardhome.GeoMode.parse(mode), stamp.isMock,
+                )
+                if (mockMsg != null) {
+                    _state.update {
+                        it.copy(
+                            faceBusy = false, facePhase = FaceLoginPhase.CAPTURE_VERIFY, screen = KioskScreen.FACE_LOGIN,
+                            faceMessage = mockMsg, faceError = true, toast = null,
+                        )
+                    }
+                    return@launch
+                }
                 val ci = runCatching { io { liveApi.attendanceCheckIn(req) } }
                 val ciErr = ci.exceptionOrNull()
                 if (ciErr != null && !com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.alreadyIn(ciErr)) {
@@ -2378,6 +2399,7 @@ class KioskViewModel(
                 _state.update {
                     it.copy(
                         faceBusy = false, facePhase = FaceLoginPhase.HUB, faceMessage = null, faceError = false,
+                        clockInRow = ci.getOrNull(),
                         toast = if (ciErr == null) "Face matched. You are checked in." else null, toastKind = ToastKind.SUCCESS,
                     )
                 }
@@ -2423,6 +2445,8 @@ class KioskViewModel(
     /** true = nested pop consumed; false = finish app (AC-BP1/BP2). */
     fun onSystemBack(): Boolean {
         val s = _state.value
+        // 1074: with a half-open password session (guard face clock-in) Back does nothing; only Sign Out / Cancel leave.
+        if (AppAuth.session.isSignedIn && !AppAuth.session.faceVerified && s.gateStage == GateStage.FACE_PENDING) return true
         if (!s.signedIn || !FaceGateMachine.canShowData(s.gateStage)) {
             if (s.screen == KioskScreen.FACE_LOGIN || s.gateStage == GateStage.FACE_PENDING) {
                 when (s.facePhase) {

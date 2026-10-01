@@ -250,7 +250,8 @@ class Teal8Test {
         assertNull(nested.flaggedDetail)
         // inside: no note; clock-out never shows the check-in note
         assertNull(ClockInLogic.resultFrom(AttendanceMode.CHECK_IN, AttendanceRow(geofenceStatus = "inside")).flaggedNote)
-        assertNull(ClockInLogic.resultFrom(AttendanceMode.CLOCK_OUT, AttendanceRow(geofenceStatus = "outside")).flaggedNote)
+        // 1074: a clock-out from outside now shows its own friendly note (never the check-in wording)
+        assertEquals(GuardGeoLogic.CLOCK_OUT_OUTSIDE_NOTE, ClockInLogic.resultFrom(AttendanceMode.CLOCK_OUT, AttendanceRow(geofenceStatus = "outside")).flaggedNote)
     }
 
     @Test fun mockLocationIsFlaggedNotBlocked() {
@@ -503,7 +504,7 @@ class Teal8Test {
         assertTrue(screens.contains("GuardTealHeader("))
         assertTrue(screens.contains("ClockInLogic.LOCK_BUTTON"))
         assertTrue(screens.contains("GuardCopy.CAPTURE"))
-        assertTrue(screens.contains("lockState(state.attendance, state.attendanceLoaded, GuardHomeLogic.todayIst())"))
+        assertTrue(screens.contains("lockState(state.attendance, state.attendanceLoaded, businessDate)"))
         assertTrue(screens.contains("ACTION_LOCATION_SOURCE_SETTINGS"))
         assertTrue(screens.contains("GuardGeoLogic.SHIFT_END_PROMPT"))
         // the old round shutter and dashed guide are gone

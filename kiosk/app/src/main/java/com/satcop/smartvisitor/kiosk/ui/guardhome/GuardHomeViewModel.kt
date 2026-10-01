@@ -16,6 +16,7 @@ class LiveGuardHomeApi(private val live: LiveVisitorApi = LiveVisitorApi()) : Gu
     override fun todaySummary(): GuardTodaySummary = live.guardTodaySummary()
     override fun guardGeofence(): com.satcop.smartvisitor.kiosk.data.model.GeofenceInfo? = live.guardGeofence()
     override fun schoolGeoMode(): String? = live.schoolMe().geoFenceMode
+    override fun guardSessionCutoff(): String? = live.schoolMe().guardSessionCutoff
     override fun checkIn(req: AttendanceRequest): AttendanceRow = live.attendanceCheckIn(req)
     override fun clockOut(req: AttendanceRequest): AttendanceRow = live.attendanceClockOut(req)
     override fun visitsBetween(dateFrom: String, dateTo: String, q: String?): List<VisitOut> =

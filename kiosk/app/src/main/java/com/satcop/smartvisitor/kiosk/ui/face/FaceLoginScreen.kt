@@ -119,7 +119,7 @@ fun FaceLoginScreen(
                 ) {
                     Text(
                         if (enrolled) "Face enrolled"
-                        else "Face not enrolled. Sign in with your password to enroll.",
+                        else com.satcop.smartvisitor.kiosk.ui.guardhome.GuardGeoLogic.FACE_CARD_NEUTRAL,
                         color = if (enrolled) KioskColors.success else KioskColors.warning,
                         fontFamily = KioskFont,
                         fontWeight = FontWeight.Medium,

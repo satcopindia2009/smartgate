@@ -121,9 +121,14 @@ object ClockInLogic {
         mode: AttendanceMode, row: AttendanceRow, fallbackGateName: String? = null,
         sentWithoutLocation: Boolean = false, sentMock: Boolean = false,
     ): ClockResult {
-        val geoStatus = geofenceStatusOf(row)
-        val softOutside = mode == AttendanceMode.CHECK_IN && geoStatus == "outside"
-        val radius = row.geofence?.radiusM ?: row.geofenceRadiusM
+        val geoStatus = if (mode == AttendanceMode.CLOCK_OUT) {
+            (row.outGeofenceStatus ?: row.outGeofence?.status ?: row.geofence?.status ?: row.geofenceStatus)?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+        } else geofenceStatusOf(row)
+        val softOutside = geoStatus == "outside"
+        val outMode = mode == AttendanceMode.CLOCK_OUT
+        val radius = if (outMode) (row.outGeofence?.radiusM ?: row.outGeofenceRadiusM ?: row.geofence?.radiusM ?: row.geofenceRadiusM)
+        else (row.geofence?.radiusM ?: row.geofenceRadiusM)
+        val distance = if (outMode) (row.outGeofence?.distanceM ?: row.geofence?.distanceM ?: row.distanceM) else (row.geofence?.distanceM ?: row.distanceM)
         val mock = sentMock || row.isMock == true || row.geofence?.isMock == true || row.flags.any { it.equals("MOCK_LOCATION", true) }
         val whenIso = if (mode == AttendanceMode.CHECK_IN) {
             row.timestamp ?: row.serverTime ?: row.checkInAt
@@ -134,7 +139,7 @@ object ClockInLogic {
         // Any other server warning is shown only when it reads as plain words (never a code like "no_gps").
         val flagged = when {
             mode == AttendanceMode.CHECK_IN && (sentWithoutLocation || geoStatus == "no_gps") -> LOCATION_OFF_SOFT
-            softOutside -> GuardGeoLogic.SOFT_OUTSIDE_NOTE
+            softOutside -> if (mode == AttendanceMode.CLOCK_OUT) GuardGeoLogic.CLOCK_OUT_OUTSIDE_NOTE else GuardGeoLogic.SOFT_OUTSIDE_NOTE
             else -> row.warn?.takeIf { it.isNotBlank() && ' ' in it.trim() && !ErrorCopy.isTechnical(it) }
         }
         return ClockResult(
@@ -145,7 +150,7 @@ object ClockInLogic {
             selfieUploaded = row.selfieUploaded ?: !(row.photoKey.isNullOrBlank() && row.photoUrl.isNullOrBlank()),
             recordId = (row.recordId ?: row.id)?.takeIf { it.isNotBlank() } ?: "—",
             flaggedNote = flagged,
-            flaggedDetail = if (softOutside) GuardGeoLogic.softOutsideDetail(row.geofence?.distanceM ?: row.distanceM, radius) else null,
+            flaggedDetail = if (softOutside) GuardGeoLogic.softOutsideDetail(distance, radius) else null,
             mockNote = if (mock) GuardGeoLogic.MOCK_LOCATION_NOTE else null,
             guardPhotoUrl = row.guardPhotoUrl?.takeIf { it.isNotBlank() },
         )

@@ -34,6 +34,8 @@ interface GuardHomeApi {
     fun guardGeofence(): GeofenceInfo? = null
     /** 1072: fallback for the geofence mode: GET /schools/me `geoFenceMode` (readable by every signed-in role). */
     fun schoolGeoMode(): String? = null
+    /** 1074: /schools/me guardSessionCutoff ("HH:mm"); null = default 00:00. */
+    fun guardSessionCutoff(): String? = null
 }
 
 enum class HomeView { HOME, LIST, FIND }
@@ -89,6 +91,8 @@ data class GuardHomeState(
     val shiftEndPrompt: Boolean = false,
     /** The IST day for which the prompt was already shown: it appears once per day. */
     val shiftEndPromptedFor: LocalDate? = null,
+    /** 1074: school business-day cutoff from /schools/me (null = 00:00). */
+    val sessionCutoff: String? = null,
 ) {
     val summary: VisitSummary get() = GuardHomeLogic.summary(visits, today)
     private val fenceInfo: GeofenceInfo? get() = geofence ?: attendance?.geofence
@@ -185,7 +189,8 @@ class GuardHomeController(
             val m = if (GuardGeoLogic.modeOf(g, null) == GeoMode.UNKNOWN) {
                 runCatching { withContext(io) { api.schoolGeoMode() } }.getOrNull()
             } else null
-            _state.update { it.copy(geofence = g ?: it.geofence, schoolGeoMode = m ?: it.schoolGeoMode) }
+            val cut = if (_state.value.sessionCutoff == null) runCatching { withContext(io) { api.guardSessionCutoff() } }.getOrNull() else null
+            _state.update { it.copy(geofence = g ?: it.geofence, schoolGeoMode = m ?: it.schoolGeoMode, sessionCutoff = cut ?: it.sessionCutoff) }
         }
     }
 
@@ -215,6 +220,11 @@ class GuardHomeController(
             alreadyPromptedFor = s.shiftEndPromptedFor,
         )
         if (due) _state.update { it.copy(shiftEndPrompt = true, shiftEndPromptedFor = GuardHomeLogic.todayIst(nowInstant())) }
+    }
+
+    /** 1074: show the "Checked In!" card for a check-in done by the face step (row = the check-in response). */
+    fun showCheckInResult(row: AttendanceRow) {
+        _state.update { it.copy(result = ClockInLogic.resultFrom(AttendanceMode.CHECK_IN, row, fallbackGateName = it.attendance?.gateName)) }
     }
 
     fun dismissShiftEndPrompt() {
@@ -337,6 +347,11 @@ class GuardHomeController(
                     settingsHint = if (gate.action == LocationAction.LOCATION_SETTINGS) SettingsHint.LOCATION_SERVICE else SettingsHint.LOCATION,
                 )
             }
+            return
+        }
+        // 1074 D: mock location - restrict mode and every clock-out are blocked; soft mode goes out flagged.
+        GuardGeoLogic.mockBlock(mode, geo, fix?.isMock == true)?.let { msg ->
+            _state.update { it.copy(panelMessage = msg, panelError = true, attemptNo = it.attemptNo + 1) }
             return
         }
         val waitedMs = s.selfieOpenedElapsedMs?.let { nowElapsedMs() - it } ?: 0L
