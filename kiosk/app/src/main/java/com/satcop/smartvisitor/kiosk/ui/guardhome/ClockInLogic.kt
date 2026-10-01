@@ -108,7 +108,10 @@ object ClockInLogic {
     /** Result "Gate": the assignment name, else the geofence name, else "—". */
     fun gateLabel(row: AttendanceRow?, fallbackGateName: String? = null): String =
         listOf(row?.gateName, fallbackGateName, row?.geofenceName)
-            .firstOrNull { !it.isNullOrBlank() }?.trim() ?: "—"
+            .firstOrNull { !it.isNullOrBlank() && it.trim() != "—" }?.trim() ?: "—"
+
+    /** 1073: the result header always matches the action: a check-in says "Self Check In", a clock-out "Self Check Out". */
+    fun resultHeader(result: ClockResult) = headerTitle(result.mode)
 
     /** Server geofence status of this action: nested block first, then the flat field. Lower-cased; null when absent. */
     fun geofenceStatusOf(row: AttendanceRow): String? =

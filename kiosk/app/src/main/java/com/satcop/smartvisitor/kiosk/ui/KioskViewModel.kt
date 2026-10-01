@@ -361,7 +361,7 @@ class KioskViewModel(
                         // straight to the camera: no dead-end hub
                         facePhase = FaceLoginPhase.CAPTURE_VERIFY,
                         faceEnrolled = enrolled || it.faceEnrolled,
-                        faceMessage = "Password accepted — take a selfie to finish signing in",
+                        faceMessage = "Password accepted — take a selfie to clock in",
                         faceError = false,
                         toast = null,
                     )
@@ -2355,6 +2355,35 @@ class KioskViewModel(
             }
             val live = liveResult.getOrNull()
             // The SERVER decides (face_verified token). No client-side template match gates success.
+            if (live != null && live.faceVerified && !live.accessToken.isNullOrBlank() && live.user != null &&
+                com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.isGuardRole(live.user.role)
+            ) {
+                // 1073: the face step IS the clock-in. Same photo + GPS + time; any failure keeps the guard OUT with a reason + Retry.
+                val req = com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.buildCheckIn(
+                    b64, stamp, java.time.Instant.now(), "att-" + java.util.UUID.randomUUID().toString().take(12),
+                )
+                _state.update { it.copy(faceMessage = "Face matched — clocking you in…") }
+                val ci = runCatching { io { liveApi.attendanceCheckIn(req) } }
+                val ciErr = ci.exceptionOrNull()
+                if (ciErr != null && !com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.alreadyIn(ciErr)) {
+                    val text = com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.checkInFailureMessage(ciErr, req.gpsMissing)
+                    _state.update {
+                        it.copy(
+                            faceBusy = false, facePhase = FaceLoginPhase.CAPTURE_VERIFY, screen = KioskScreen.FACE_LOGIN,
+                            faceMessage = text, faceError = true, toast = null,
+                        )
+                    }
+                    return@launch
+                }
+                _state.update {
+                    it.copy(
+                        faceBusy = false, facePhase = FaceLoginPhase.HUB, faceMessage = null, faceError = false,
+                        toast = if (ciErr == null) "Face matched. You are checked in." else null, toastKind = ToastKind.SUCCESS,
+                    )
+                }
+                loadAfterLogin(live.user)
+                return@launch
+            }
             if (live != null && live.faceVerified && !live.accessToken.isNullOrBlank() && live.user != null) {
                 _state.update {
                     it.copy(

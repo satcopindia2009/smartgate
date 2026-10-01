@@ -726,7 +726,7 @@ fun ClockResultScreen(
     val headerSubtitle = listOf(GuardCopy.ROLE, schoolName).filter { it.isNotBlank() }.joinToString(" · ")
     Column(Modifier.fillMaxSize().background(KioskColors.bg).navigationBarsPadding()) {
         // Header says "Self Check In" / "Self Check Out" to match the action (the reference screenshot shows the wrong one).
-        GuardTealHeader(GuardCopy.flowTitle(result.mode), headerSubtitle, onBack = onDone)
+        GuardTealHeader(ClockInLogic.resultHeader(result), headerSubtitle, onBack = onDone)
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
                 .padding(horizontal = SgSpacing.ScreenMargin, vertical = 20.dp),

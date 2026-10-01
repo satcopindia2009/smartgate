@@ -390,7 +390,7 @@ class GuardHomeController(
                     it.copy(
                         panel = null, step = ClockStep.INFO, panelBusy = false, panelMessage = null, panelError = false,
                         notice = null, settingsHint = null,
-                        result = ClockInLogic.resultFrom(mode, row, sentWithoutLocation = sendNoLocation, sentMock = useFix?.isMock == true),
+                        result = ClockInLogic.resultFrom(mode, row, fallbackGateName = s.attendance?.gateName ?: s.attendance?.attendance?.gateName, sentWithoutLocation = sendNoLocation, sentMock = useFix?.isMock == true),
                         toast = if (mode == AttendanceMode.CHECK_IN) "You are checked in." else "You are clocked out.",
                     )
                 }
