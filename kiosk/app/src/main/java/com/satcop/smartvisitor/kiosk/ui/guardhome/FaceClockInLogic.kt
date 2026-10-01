@@ -66,13 +66,34 @@ object FaceClockInLogic {
         return c == "ALREADY_CHECKED_IN" || c == "ALREADY_CLOCKED_OUT"
     }
 
-    /** 1078: the card row after an already-in check-in error. Order: today's row (GET /attendance/me/today), then the error details. */
-    fun rowForAlreadyIn(e: Throwable, today: com.satcop.smartvisitor.kiosk.data.model.TodayAttendance?): com.satcop.smartvisitor.kiosk.data.model.AttendanceRow? {
-        if (!alreadyIn(e)) return null
-        val fromToday = today?.attendance?.takeIf { hasRecord(it) }
-        val row = fromToday ?: rowFromDetails(e as? ApiException)
-        // A finished shift (checked out) has no "Checked In!" card: Shift complete handles it.
-        return row?.takeIf { it.checkOutAt.isNullOrBlank() && !isClockedOut(e) }
+    /**
+     * 1078: the card row after an already-in check-in error.
+     * ALREADY_CHECKED_IN: details.attendance (the first open row, flattened "attendance.*") first, then GET /attendance/me/today.
+     * ALREADY_CLOCKED_OUT: never a card (Shift complete). A row from an EARLIER business day is not "checked in today":
+     * it is dropped (no card, no stale id/time). A row without any date keeps the old behaviour (used).
+     */
+    fun rowForAlreadyIn(
+        e: Throwable,
+        today: com.satcop.smartvisitor.kiosk.data.model.TodayAttendance?,
+        businessDate: java.time.LocalDate? = null,
+    ): com.satcop.smartvisitor.kiosk.data.model.AttendanceRow? {
+        if (!alreadyIn(e) || isClockedOut(e)) return null
+        val candidates = listOfNotNull(
+            rowFromDetails(e as? ApiException),
+            today?.attendance?.takeIf { hasRecord(it) }?.let { r -> if (r.dutyDate.isNullOrBlank() && !today.dutyDate.isNullOrBlank()) r.copy(dutyDate = today.dutyDate) else r },
+        )
+        return candidates.firstOrNull { it.checkOutAt.isNullOrBlank() && !isStaleRow(it, businessDate) }
+    }
+
+    /** True when the row's dutyDate (else the IST date of checkInAt, else nothing) is before today's business date. No date = not stale. */
+    fun isStaleRow(r: com.satcop.smartvisitor.kiosk.data.model.AttendanceRow, businessDate: java.time.LocalDate?): Boolean {
+        if (businessDate == null) return false
+        val duty = r.dutyDate?.trim()?.takeIf { it.isNotEmpty() }?.let { runCatching { java.time.LocalDate.parse(it.take(10)) }.getOrNull() }
+        if (duty != null) return duty.isBefore(businessDate)
+        val inAt = (r.checkInAt ?: r.timestamp ?: r.serverTime)?.trim()?.takeIf { it.isNotEmpty() } ?: return false
+        val d = runCatching { java.time.OffsetDateTime.parse(inAt).atZoneSameInstant(GuardHomeLogic.IST).toLocalDate() }.getOrNull()
+            ?: runCatching { java.time.LocalDate.parse(inAt.take(10)) }.getOrNull() ?: return false
+        return d.isBefore(businessDate)
     }
 
     private fun isClockedOut(e: Throwable): Boolean =
@@ -93,6 +114,7 @@ object FaceClockInLogic {
             gateName = pick("attendance.gateName", "gateName", "dutyGateName"),
             dutyGateName = pick("attendance.dutyGateName", "dutyGateName"),
             dutyDate = pick("attendance.dutyDate", "dutyDate"),
+            attendanceStatus = pick("attendance.attendanceStatus", "attendanceStatus"),
         )
     }
 

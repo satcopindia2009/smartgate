@@ -2626,7 +2626,10 @@ class KioskViewModel(
                 // 1078: already-in error -> the card comes from today's existing row (verified token), else the error details, else no card.
                 val cardRow = ci.getOrNull() ?: if (ciErr != null) {
                     val today = runCatching { io { liveApi.attendanceToday() } }.getOrNull()
-                    com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.rowForAlreadyIn(ciErr, today)
+                    // same business-date helper as the business-date lock (school cutoff from /schools/me, default 00:00 IST)
+                    val cutoff = runCatching { io { liveApi.schoolMe() } }.getOrNull()?.guardSessionCutoff
+                    val bd = com.satcop.smartvisitor.kiosk.ui.guardhome.GuardGeoLogic.businessDate(java.time.Instant.now(), cutoff)
+                    com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.rowForAlreadyIn(ciErr, today, bd)
                 } else null
                 // 1075: stay on the camera (no white Face login card, no lock flash) until the app data is in.
                 _state.update {

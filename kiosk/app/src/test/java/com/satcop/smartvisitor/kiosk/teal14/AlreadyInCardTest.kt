@@ -80,4 +80,71 @@ class AlreadyInCardTest {
         assertFalse(FaceClockInLogic.verifyOnlyFallback("gate", err("VALIDATION", 400)))
         assertNotNull(FaceClockInLogic.rowForAlreadyIn(err("ALREADY_CHECKED_IN"), TodayAttendance(attendance = row)))
     }
+
+    // ---- 1078b: business date + nested details ----
+    private val bd = java.time.LocalDate.parse("2026-10-01")
+
+    @Test fun nestedDetailsFlattenAsAttendanceDot() {
+        val json = """{"error":{"code":"ALREADY_CHECKED_IN","message":"m","details":{"reasonCode":"ALREADY_CLOCKED_IN","attendance":{"id":"GA-0012","dutyDate":"2026-10-01","checkInAt":"2026-10-01T09:05:00+05:30","gateName":"Main Gate","attendanceStatus":"PRESENT","flags":["A"]}}}}"""
+        val env = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.parseToJsonElement(json) as kotlinx.serialization.json.JsonObject
+        val details = com.satcop.smartvisitor.kiosk.data.api.ErrorDetails.flatten((env["error"] as kotlinx.serialization.json.JsonObject)["details"])
+        assertEquals("GA-0012", details["attendance.id"])
+        assertEquals("Main Gate", details["attendance.gateName"])
+        val r = FaceClockInLogic.rowFromDetails(ApiException("ALREADY_CHECKED_IN", "m", 409, details))
+        assertEquals("GA-0012", r?.id); assertEquals("2026-10-01", r?.dutyDate); assertEquals("PRESENT", r?.attendanceStatus)
+    }
+
+    @Test fun alreadyCheckedInPrefersDetailsOverToday() {
+        val e = err("ALREADY_CHECKED_IN", 409, mapOf("attendance.id" to "GA-0020", "attendance.dutyDate" to "2026-10-01", "attendance.checkInAt" to "2026-10-01T08:00:00+05:30"))
+        val r = FaceClockInLogic.rowForAlreadyIn(e, TodayAttendance(attendance = row.copy(dutyDate = "2026-10-01")), bd)
+        assertEquals("GA-0020", r?.id)
+    }
+
+    @Test fun staleDetailsRowFallsBackToTodayRow() {
+        val e = err("ALREADY_CHECKED_IN", 409, mapOf("attendance.id" to "GA-0004", "attendance.dutyDate" to "2026-09-18"))
+        val fresh = row.copy(id = "GA-0030", dutyDate = "2026-10-01")
+        assertEquals("GA-0030", FaceClockInLogic.rowForAlreadyIn(e, TodayAttendance(attendance = fresh), bd)?.id)
+    }
+
+    @Test fun staleOpenRowFromPreviousDayGivesNoCard() {
+        val e = err("ALREADY_CHECKED_IN", 409, mapOf("attendance.id" to "GA-0004", "attendance.dutyDate" to "2026-09-18", "attendance.checkInAt" to "2026-09-18T09:00:00+05:30"))
+        assertNull(FaceClockInLogic.rowForAlreadyIn(e, null, bd))
+        val stale = AttendanceRow(id = "GA-0004", dutyDate = "2026-09-18", checkInAt = "2026-09-18T09:00:00+05:30")
+        assertNull(FaceClockInLogic.rowForAlreadyIn(err("ALREADY_CHECKED_IN"), TodayAttendance(attendance = stale), bd))
+    }
+
+    @Test fun staleByCheckInAtWhenNoDutyDate() {
+        val stale = AttendanceRow(id = "GA-0004", checkInAt = "2026-09-30T23:10:00+05:30")
+        assertNull(FaceClockInLogic.rowForAlreadyIn(err("ALREADY_CHECKED_IN"), TodayAttendance(attendance = stale), bd))
+        val ok = AttendanceRow(id = "GA-0031", checkInAt = "2026-10-01T06:10:00+05:30")
+        assertEquals("GA-0031", FaceClockInLogic.rowForAlreadyIn(err("ALREADY_CHECKED_IN"), TodayAttendance(attendance = ok), bd)?.id)
+    }
+
+    @Test fun todaysTopLevelDutyDateAppliesToRowWithoutOne() {
+        val r = AttendanceRow(id = "GA-0004", checkInAt = null)
+        assertNull(FaceClockInLogic.rowForAlreadyIn(err("ALREADY_CHECKED_IN"), TodayAttendance(attendance = r, dutyDate = "2026-09-18"), bd))
+        assertEquals("GA-0004", FaceClockInLogic.rowForAlreadyIn(err("ALREADY_CHECKED_IN"), TodayAttendance(attendance = r, dutyDate = "2026-10-01"), bd)?.id)
+    }
+
+    @Test fun rowWithoutAnyDateKeepsCurrentBehaviour() {
+        val r = AttendanceRow(id = "GA-0040")
+        assertEquals("GA-0040", FaceClockInLogic.rowForAlreadyIn(err("ALREADY_CHECKED_IN"), TodayAttendance(attendance = r), bd)?.id)
+        assertFalse(FaceClockInLogic.isStaleRow(r, bd))
+        assertFalse(FaceClockInLogic.isStaleRow(row, null))
+    }
+
+    @Test fun businessDateCutoffUsed() {
+        // 00:30 IST on 2 Oct with a 04:00 cutoff is still business date 1 Oct
+        val now = java.time.Instant.parse("2026-10-01T19:00:00Z") // 00:30 IST 2 Oct
+        val d = com.satcop.smartvisitor.kiosk.ui.guardhome.GuardGeoLogic.businessDate(now, "04:00")
+        assertEquals(java.time.LocalDate.parse("2026-10-01"), d)
+        assertEquals("GA-0031", FaceClockInLogic.rowForAlreadyIn(err("ALREADY_CHECKED_IN"), TodayAttendance(attendance = AttendanceRow(id = "GA-0031", dutyDate = "2026-10-01")), d)?.id)
+    }
+
+    @Test fun clockedOutWithFullRowInDetailsStillNoCard() {
+        val e = err("ALREADY_CLOCKED_OUT", 409, mapOf("attendance.id" to "GA-0050", "attendance.dutyDate" to "2026-10-01", "attendance.checkInAt" to "2026-10-01T08:00:00+05:30", "attendance.checkOutAt" to "2026-10-01T16:00:00+05:30"))
+        assertTrue(FaceClockInLogic.alreadyIn(e))
+        assertNull(FaceClockInLogic.rowForAlreadyIn(e, TodayAttendance(attendance = row), bd))
+        assertNull(FaceClockInLogic.rowForAlreadyIn(e, null, bd))
+    }
 }
