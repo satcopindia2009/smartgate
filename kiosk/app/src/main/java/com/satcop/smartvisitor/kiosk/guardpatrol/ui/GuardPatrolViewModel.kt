@@ -11,6 +11,7 @@ import com.satcop.smartvisitor.kiosk.guardpatrol.data.IncidentType
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.Checkpoint
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolAssignment
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolDates
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolEngine
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolFixtures
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolMapper
@@ -82,7 +83,30 @@ class GuardPatrolViewModel(
     private val _state = MutableStateFlow(GuardPatrolUiState())
     val state: StateFlow<GuardPatrolUiState> = _state.asStateFlow()
 
+    private var bootstrapped = false
+
     init {
+        // 1079: NO network call here. The gate home must not call patrol routes; the patrol area calls startIfNeeded().
+        applyIdentity()
+    }
+
+    /** Identity from the session (no network) so Report incident works from any home. */
+    private fun applyIdentity() {
+        val u = runCatching { api.signedInUser }.getOrNull() ?: return
+        _state.update {
+            it.copy(
+                schoolId = u.schoolId.ifBlank { it.schoolId },
+                guardId = u.staffId ?: it.guardId,
+                guardLabel = u.displayName.ifBlank { it.guardLabel },
+            )
+        }
+    }
+
+    /** 1079: patrol routes are read only when the guard has PATROL duty (first time the patrol area is shown). */
+    fun startIfNeeded() {
+        if (bootstrapped) return
+        bootstrapped = true
+        applyIdentity()
         bootstrapLive()
     }
 
@@ -147,6 +171,10 @@ class GuardPatrolViewModel(
         val asg = _state.value.assignments.find { it.id == assignmentId }
             ?: GuardPatrolFixtures.assignment(assignmentId)
             ?: return
+        if (!PatrolDates.canStart(asg, GuardPatrolFixtures.todayDutyDateIst())) {
+            _state.update { it.copy(toast = ToastEvent(System.currentTimeMillis(), PatrolDates.NOT_TODAY, ToastKind.WARNING)) }
+            return
+        }
         if (asg.status != AssignmentStatus.ASSIGNED && asg.status != AssignmentStatus.STARTED) {
             _state.update {
                 it.copy(
@@ -750,8 +778,9 @@ class GuardPatrolViewModel(
         val queryGuardId = guardId.ifBlank { GuardPatrolFixtures.DEFAULT_GUARD_ID }
         val live = runCatching {
             withContext(Dispatchers.IO) {
-                api.listAssignments(dutyDate = dutyDate, guardId = queryGuardId)
-                    .map(GuardPatrolMapper::toDomain)
+                PatrolDates.todayOnly(
+                    api.listAssignments(dutyDate = dutyDate, guardId = queryGuardId).map(GuardPatrolMapper::toDomain), dutyDate,
+                )
             }
         }.getOrNull()
         if (live != null) {
@@ -759,10 +788,13 @@ class GuardPatrolViewModel(
             if (queryGuardId != GuardPatrolFixtures.DEFAULT_GUARD_ID) {
                 val liveG1 = runCatching {
                     withContext(Dispatchers.IO) {
-                        api.listAssignments(
-                            dutyDate = dutyDate,
-                            guardId = GuardPatrolFixtures.DEFAULT_GUARD_ID,
-                        ).map(GuardPatrolMapper::toDomain)
+                        PatrolDates.todayOnly(
+                            api.listAssignments(
+                                dutyDate = dutyDate,
+                                guardId = GuardPatrolFixtures.DEFAULT_GUARD_ID,
+                            ).map(GuardPatrolMapper::toDomain),
+                            dutyDate,
+                        )
                     }
                 }.getOrNull()
                 if (liveG1 != null && liveG1.isNotEmpty()) return liveG1 to true

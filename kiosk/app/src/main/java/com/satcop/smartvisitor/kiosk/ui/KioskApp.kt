@@ -137,6 +137,10 @@ fun KioskApp(
                     com.satcop.smartvisitor.kiosk.ui.guardhome.LockScreen(
                         displayName = state.meDisplayName, schoolName = state.schoolName, loading = false, error = null,
                         onClockIn = viewModel::startFaceVerify, onSignOut = viewModel::logout,
+                        // 1079 D4: with more than one gate duty the guard picks the gate BEFORE the camera (sent as gateId on check-in).
+                        gateChoices = state.dutyGates.filter { !it.id.isNullOrBlank() }.map { (it.id ?: "") to (it.name ?: "") },
+                        chosenGateId = state.chosenGateId,
+                        onChooseGate = viewModel::chooseGate,
                     )
                 } else if (!signedIn) {
                     if (state.screen == KioskScreen.FACE_LOGIN || faceStage) {
@@ -212,6 +216,7 @@ fun KioskApp(
                             gateChoices = state.dutyGates.filter { !it.id.isNullOrBlank() }.map { (it.id ?: "") to (it.name ?: "") },
                             chosenGateId = state.chosenGateId,
                             onChooseGate = viewModel::chooseGate,
+                            patrolCalls = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.patrolCallsAllowed(state.dutyAreas),
                         ) { requestLogout ->
                     if (state.screen == KioskScreen.COURIER) {
                         CourierLogScreen(
@@ -449,6 +454,12 @@ private fun DutyHome(
                         homeVm = guardHome,
                         onDutyRefresh = viewModel::refreshDutyNow,
                         newActionsEnabled = state.newActionsEnabled(),
+                        // 1079: patrol-only duty = Guard Today + shared tools only (no Find visitor, Courier log, Desk tab).
+                        gateActions = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.gateActionsVisible(state.dutyAreas),
+                        headerLine = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.dutyHeader(
+                            listOf(state.meDisplayName, state.schoolName).filter { it.isNotBlank() }.joinToString(" · "),
+                            com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.PATROL, state.dutyAssignments,
+                        ),
                     )
                 findUp -> {
                     androidx.activity.compose.BackHandler { findUp = false }

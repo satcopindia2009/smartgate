@@ -82,7 +82,12 @@ object FaceClockInLogic {
             rowFromDetails(e as? ApiException),
             today?.attendance?.takeIf { hasRecord(it) }?.let { r -> if (r.dutyDate.isNullOrBlank() && !today.dutyDate.isNullOrBlank()) r.copy(dutyDate = today.dutyDate) else r },
         )
-        return candidates.firstOrNull { it.checkOutAt.isNullOrBlank() && !isStaleRow(it, businessDate) }
+        val pick = candidates.firstOrNull { it.checkOutAt.isNullOrBlank() && !isStaleRow(it, businessDate) } ?: return null
+        // 1079: selfie evidence may sit on the other source (today.selfieUploaded / the /today row): borrow it, never invent it.
+        if (ClockInLogic.selfieUploadedOf(pick)) return pick
+        val other = today?.attendance?.takeIf { it.id == pick.id || pick.id == null }
+        val borrowed = other?.let { ClockInLogic.selfieUploadedOf(it) } == true || today?.selfieUploaded == true
+        return if (borrowed) pick.copy(selfieUploaded = true) else pick
     }
 
     /** True when the row's dutyDate (else the IST date of checkInAt, else nothing) is before today's business date. No date = not stale. */
@@ -115,6 +120,11 @@ object FaceClockInLogic {
             dutyGateName = pick("attendance.dutyGateName", "dutyGateName"),
             dutyDate = pick("attendance.dutyDate", "dutyDate"),
             attendanceStatus = pick("attendance.attendanceStatus", "attendanceStatus"),
+            photoKey = pick("attendance.photoKey", "photoKey"),
+            photoUrl = pick("attendance.photoUrl", "photoUrl"),
+            selfieUrl = pick("attendance.selfieUrl", "selfieUrl"),
+            selfiePhotoUrl = pick("attendance.selfiePhotoUrl", "selfiePhotoUrl"),
+            recordId = pick("attendance.recordId", "recordId"),
         )
     }
 

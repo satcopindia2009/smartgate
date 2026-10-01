@@ -124,6 +124,10 @@ class GuardHomeController(
     @Volatile
     private var refreshInFlight = false
 
+    /** 1079: /guards/me/today-summary is a patrol route: called only when the guard has PATROL duty. Default true (tests, legacy). */
+    @Volatile
+    var patrolCalls: Boolean = true
+
     fun refresh() {
         if (refreshInFlight) return
         refreshInFlight = true
@@ -131,7 +135,7 @@ class GuardHomeController(
         _state.update { it.copy(loading = true, today = today) }
         loadGeofence()
         // Summary is its own coroutine + runCatching: it never delays or breaks attendance/visits.
-        scope.launch {
+        if (patrolCalls) scope.launch {
             val sum = runCatching { withContext(io) { api.todaySummary() } }
             _state.update {
                 it.copy(

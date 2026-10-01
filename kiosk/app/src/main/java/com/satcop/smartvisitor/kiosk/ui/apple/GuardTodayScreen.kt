@@ -30,6 +30,13 @@ private val guardTabs = listOf(
     AppleTabItem("Settings", Icons.Filled.Settings),
 )
 
+/** 1079: patrol-only duty has no Desk tab (courier / gate desk actions). Pure so it is unit-testable. */
+internal object GuardTabs {
+    fun ids(showDesk: Boolean): List<Int> = if (showDesk) listOf(0, 1, 2, 3) else listOf(0, 1, 3)
+    fun contentId(tab: Int, showDesk: Boolean): Int = ids(showDesk).getOrElse(tab) { 0 }
+    fun items(showDesk: Boolean): List<AppleTabItem> = ids(showDesk).map { guardTabs[it] }
+}
+
 /**
  * Guard shell from phone-apple-bottomnav (guard-home / patrol / desk).
  * Start patrol CTA above fold · assign→perform via Patrol tab.
@@ -55,6 +62,8 @@ fun GuardTodayShell(
     homeContent: (@Composable () -> Unit)? = null,
     /** Assigned-today perform UI (existing StartRoundScreen content). */
     patrolContent: @Composable () -> Unit,
+    /** 1079: false for a patrol-only duty: no Desk tab. */
+    showDesk: Boolean = true,
 ) {
     var tab by remember { mutableIntStateOf(preferredTab ?: 0) }
     LaunchedEffect(preferredTab) {
@@ -78,7 +87,7 @@ fun GuardTodayShell(
                 .weight(1f)
                 .fillMaxWidth(),
         ) {
-            when (tab) {
+            when (GuardTabs.contentId(tab, showDesk)) {
                 0 -> if (homeContent != null) {
                     homeContent()
                 } else { // Today — guard-home.png 1:1
@@ -155,6 +164,6 @@ fun GuardTodayShell(
                 }
             }
         }
-        AppleTabBar(tabs = guardTabs, selectedIndex = tab, onSelect = { tab = it })
+        AppleTabBar(tabs = GuardTabs.items(showDesk), selectedIndex = tab.coerceAtMost(GuardTabs.ids(showDesk).size - 1), onSelect = { tab = it })
     }
 }

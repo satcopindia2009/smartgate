@@ -49,6 +49,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -161,9 +162,12 @@ fun GuardClockInGate(
     gateChoices: List<Pair<String, String>> = emptyList(),
     chosenGateId: String? = null,
     onChooseGate: (String) -> Unit = {},
+    /** 1079: patrol routes (today-summary) only with PATROL duty. */
+    patrolCalls: Boolean = true,
     content: @Composable (requestLogout: () -> Unit) -> Unit,
 ) {
     val state by controller.state.collectAsState()
+    SideEffect { controller.patrolCalls = patrolCalls }
     LaunchedEffect(initialCheckInRow) {
         if (initialCheckInRow != null) controller.showCheckInResult(initialCheckInRow)
     }

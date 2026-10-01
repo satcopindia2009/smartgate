@@ -39,6 +39,9 @@ data class AttendanceRow(
     val guardName: String? = null,
     val photoKey: String? = null,
     val photoUrl: String? = null,
+    /** 1079: the API names the check-in selfie selfieUrl (also photoUrl on some rows). */
+    val selfieUrl: String? = null,
+    val selfiePhotoUrl: String? = null,
     val gateName: String? = null,
     val schoolName: String? = null,
     val selfieUploaded: Boolean? = null,

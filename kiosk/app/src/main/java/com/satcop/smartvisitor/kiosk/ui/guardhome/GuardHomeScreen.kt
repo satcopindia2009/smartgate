@@ -80,6 +80,10 @@ fun GuardHomeScreen(
     /** 1077: pull-to-refresh also re-reads the duty. */
     onPullRefresh: () -> Unit = {},
     startEnabled: Boolean = true,
+    /** 1079: false for a patrol-only duty: no Find visitor / Courier log. */
+    gateActions: Boolean = true,
+    /** 1079: header line from the duty; null = legacy line from attendance. */
+    headerLine: String? = null,
 ) {
     val state by controller.state.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -103,7 +107,7 @@ fun GuardHomeScreen(
             routeSubtitle = routeSubtitle, progressLabel = progressLabel,
             onStartPatrol = onStartPatrol, onCourier = onCourier, onLostFound = onLostFound,
             onReportIncident = onReportIncident, onLogout = onLogout, onPullRefresh = onPullRefresh,
-            startEnabled = startEnabled,
+            startEnabled = startEnabled, gateActions = gateActions, headerLine = headerLine,
         )
         HomeView.LIST -> VisitListBody(state = state, controller = controller)
         HomeView.FIND -> FindBody(state = state, controller = controller)
@@ -133,6 +137,8 @@ private fun HomeBody(
     onLogout: () -> Unit,
     onPullRefresh: () -> Unit = {},
     startEnabled: Boolean = true,
+    gateActions: Boolean = true,
+    headerLine: String? = null,
 ) {
     PullToRefreshBox(
         isRefreshing = state.loading,
@@ -147,7 +153,7 @@ private fun HomeBody(
             // Greeting row (picture 49)
             Column(Modifier.fillMaxWidth()) {
                 Text(ClockInLogic.greeting(displayName, LocalTime.now()), color = KioskColors.text, style = SgType.Greeting.copy(fontSize = 22.sp, lineHeight = 28.sp))
-                Text(GuardTodayLogic.headerSubtitle(subtitle.ifBlank { displayName.ifBlank { "Guard" } }, state.attendance), color = KioskColors.textMuted, style = SgType.Label.copy(fontWeight = FontWeight.Normal))
+                Text(headerLine ?: GuardTodayLogic.headerSubtitle(subtitle.ifBlank { displayName.ifBlank { "Guard" } }, state.attendance), color = KioskColors.textMuted, style = SgType.Label.copy(fontWeight = FontWeight.Normal))
             }
 
             // Hero: Start patrol
@@ -178,8 +184,10 @@ private fun HomeBody(
 
             // Find visitor, Courier log, Lost & Found, Report incident
             GuardCard(Modifier.padding(top = 4.dp)) {
-                NavRow(Icons.Outlined.Search, "Find visitor", "Search by name, phone or visitor code", onClick = controller::openFind)
-                NavRow(Icons.Outlined.Inventory2, "Courier log", null, onClick = onCourier)
+                if (gateActions) {
+                    NavRow(Icons.Outlined.Search, "Find visitor", "Search by name, phone or visitor code", onClick = controller::openFind)
+                    NavRow(Icons.Outlined.Inventory2, "Courier log", null, onClick = onCourier)
+                }
                 NavRow(Icons.Outlined.Inventory2, "Lost & Found", null, onClick = onLostFound)
                 NavRow(Icons.Outlined.Report, "Report incident", null, onClick = onReportIncident, divider = false)
             }

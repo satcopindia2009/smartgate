@@ -110,6 +110,8 @@ data class KioskUiState(
     val attendanceRecheck: Int = 0,
     /** 1078: areas that exist today but are outside their shift window -> "Your shift is not active now (...)" + new-action buttons off. */
     val shiftNotices: Map<com.satcop.smartvisitor.kiosk.ui.duty.DutyArea, String> = emptyMap(),
+    /** 1079: today's compact assignments (for the Guard Today header). */
+    val dutyAssignments: List<com.satcop.smartvisitor.kiosk.data.model.DutyCompact>? = null,
     val verifiedCard: com.satcop.smartvisitor.kiosk.ui.guardhome.ClockResult? = null,
     val meStaffId: String = "",
     val gates: List<Gate> = emptyList(),
@@ -490,6 +492,7 @@ class KioskViewModel(
             it.copy(
                 dutyAreas = r.areas, activeArea = active, dutyRevision = revision ?: it.dutyRevision, dutyPending = null,
                 shiftNotices = notices,
+                dutyAssignments = assignments ?: it.dutyAssignments,
                 dutyGates = g,
                 chosenGateId = it.chosenGateId?.takeIf { id -> g.any { x -> x.id == id } },
                 dutyGateName = g.firstOrNull { x -> x.id == (it.chosenGateId ?: g.firstOrNull()?.id) }?.name ?: it.dutyGateName,

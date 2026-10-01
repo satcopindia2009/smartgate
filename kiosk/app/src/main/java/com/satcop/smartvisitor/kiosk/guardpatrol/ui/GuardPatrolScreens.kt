@@ -74,9 +74,15 @@ fun GuardPatrolApp(
     onDutyRefresh: () -> Unit = {},
     /** 1078: false while the shift is not active: Start round is off (continue / scan / finish stay on). */
     newActionsEnabled: Boolean = true,
+    /** 1079: false for a patrol-only duty (no Find visitor / Courier log / Desk tab). */
+    gateActions: Boolean = true,
+    /** 1079: Guard Today header line from the duty (null = legacy). */
+    headerLine: String? = null,
     vm: GuardPatrolViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsState()
+    // 1079: patrol routes are read only now (the patrol area is shown), never from the gate home.
+    LaunchedEffect(Unit) { vm.startIfNeeded() }
     val snackbarHostState = remember { SnackbarHostState() }
     val lastToastKind = remember { mutableStateOf(ToastKind.INFO) }
     val activity = LocalContext.current as? Activity
@@ -143,6 +149,7 @@ fun GuardPatrolApp(
                     onReportIncident = vm::openIncidentReport,
                     onLogout = { onLogout?.invoke() },
                     preferredTab = preferredTab,
+                    showDesk = gateActions,
                     homeContent = homeVm?.let { hv ->
                         {
                             com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeScreen(
@@ -156,6 +163,7 @@ fun GuardPatrolApp(
                                     val id = firstAsg?.id
                                     if (id != null && (newActionsEnabled || firstAsg.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.STARTED)) vm.startFromAssignment(id)
                                 },
+                                gateActions = gateActions, headerLine = headerLine,
                                 startEnabled = newActionsEnabled || firstAsg?.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.STARTED,
                                 onCourier = { onCourier?.invoke() },
                                 onLostFound = { onLostFound?.invoke() },
@@ -178,7 +186,7 @@ fun GuardPatrolApp(
                                 onToggleOffCampus = vm::setSimulateOffCampus,
                                 onBackTemplates = vm::backToStart,
                                 onReportIncident = vm::openIncidentReport,
-                                onCourier = onCourier,
+                                onCourier = if (gateActions) onCourier else null,
                                 onLostFound = onLostFound,
                             )
                             GuardPatrolScreen.RESULT -> EndResultScreen(
@@ -190,7 +198,7 @@ fun GuardPatrolApp(
                                 onStartAssignment = vm::startFromAssignment,
                                 newActionsEnabled = newActionsEnabled,
                                 onRefreshAssignments = vm::refreshAssignments,
-                                onCourier = onCourier,
+                                onCourier = if (gateActions) onCourier else null,
                                 onLostFound = onLostFound,
                                 onReportIncident = vm::openIncidentReport,
                             )
@@ -411,8 +419,9 @@ private fun AssignmentCard(
     onStart: () -> Unit,
 ) {
     // 1078: outside the shift a NEW round (ASSIGNED) is off; a STARTED round can always be continued and finished.
-    val canStart = (assignment.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.ASSIGNED && newActionsEnabled) ||
-        assignment.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.STARTED
+    val isToday = com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolDates.isToday(assignment.dutyDate, GuardPatrolFixtures.todayDutyDateIst())
+    val canStart = isToday && ((assignment.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.ASSIGNED && newActionsEnabled) ||
+        assignment.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.STARTED)
     Column(
         modifier = Modifier
             .fillMaxWidth()

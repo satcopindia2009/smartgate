@@ -112,6 +112,11 @@ object ClockInLogic {
         listOf(row?.dutyGateName, row?.gateName, fallbackGateName, row?.geofenceName)
             .firstOrNull { !it.isNullOrBlank() && it.trim() != "—" }?.trim() ?: "—"
 
+    /** 1079: selfie shown as uploaded when the row says so or carries any selfie key/URL (photoKey, photoUrl, selfieUrl, selfiePhotoUrl, checkInSelfieUploaded). */
+    fun selfieUploadedOf(row: AttendanceRow): Boolean =
+        row.selfieUploaded ?: row.checkInSelfieUploaded
+            ?: listOf(row.photoKey, row.photoUrl, row.selfieUrl, row.selfiePhotoUrl).any { !it.isNullOrBlank() }
+
     /** 1073: the result header always matches the action: a check-in says "Self Check In", a clock-out "Self Check Out". */
     fun resultHeader(result: ClockResult) = if (result.verifyOnly) "Face verified" else headerTitle(result.mode)
     fun resultTitleOf(result: ClockResult) = if (result.verifyOnly) "Face verified" else resultTitle(result.mode)
@@ -150,7 +155,7 @@ object ClockInLogic {
             action = row.action?.takeIf { it.isNotBlank() } ?: actionLabel(mode),
             time = row.actionTimeDisplay?.takeIf { it.isNotBlank() } ?: time12h(row.actionAt ?: whenIso),
             gate = gateLabel(row, fallbackGateName),
-            selfieUploaded = row.selfieUploaded ?: !(row.photoKey.isNullOrBlank() && row.photoUrl.isNullOrBlank()),
+            selfieUploaded = selfieUploadedOf(row),
             recordId = (row.recordId ?: row.id)?.takeIf { it.isNotBlank() } ?: "—",
             flaggedNote = flagged,
             flaggedDetail = if (softOutside) GuardGeoLogic.softOutsideDetail(distance, radius) else null,

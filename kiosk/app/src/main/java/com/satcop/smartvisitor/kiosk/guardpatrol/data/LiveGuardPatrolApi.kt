@@ -82,26 +82,27 @@ class LiveGuardPatrolApi(
         val mine = "/my-schedules"
         try {
             val all = get<PatrolAssignmentListResponse>(mine).data
-            val today = all.filter { it.dutyDate == dutyDate }
+            // 1079: today only. Old (past-dated) duties are never returned as "assigned today".
+            val today = PatrolDates.todayOnlyDto(all, dutyDate)
             if (today.isNotEmpty()) return today
-            if (all.isNotEmpty()) return all
+            if (all.isNotEmpty()) return emptyList()
         } catch (_: ApiException) {
             // fall through
         }
         val mePath = "/patrol-schedules?guardId=me&dutyDate=$dutyDate"
         try {
-            return get<PatrolAssignmentListResponse>(mePath).data
+            return PatrolDates.todayOnlyDto(get<PatrolAssignmentListResponse>(mePath).data, dutyDate)
         } catch (_: ApiException) {
             // fall through
         }
         val schedPath = "/patrol-schedules?dutyDate=$dutyDate&guardId=$guardId"
         try {
-            return get<PatrolAssignmentListResponse>(schedPath).data
+            return PatrolDates.todayOnlyDto(get<PatrolAssignmentListResponse>(schedPath).data, dutyDate)
         } catch (_: ApiException) {
             // fall through
         }
         val path = "/patrol-assignments?dutyDate=$dutyDate&guardId=$guardId"
-        return get<PatrolAssignmentListResponse>(path).data
+        return PatrolDates.todayOnlyDto(get<PatrolAssignmentListResponse>(path).data, dutyDate)
     }
 
     /** Admin create — Mobile mainly GETs; stub ready for when living is seedable. */

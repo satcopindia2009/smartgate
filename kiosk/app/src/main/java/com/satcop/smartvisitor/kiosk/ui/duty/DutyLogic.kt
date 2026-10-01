@@ -271,5 +271,33 @@ object DutyLogic {
         return "$ASSIGNED_PREFIX$AREA_PATROL"
     }
 
+    /** 1079: gate actions (Find visitor, Courier log, Desk tab) exist only when the guard has GATE duty. Unknown areas = legacy (true). */
+    fun gateActionsVisible(areas: Set<DutyArea>?): Boolean = areas == null || DutyArea.GATE in areas
+
+    /**
+     * 1079: patrol routes (/my-schedules, /round-templates, /checkpoints, /guards/me/today-summary) are called only with PATROL duty.
+     * Areas not read yet (null) = the Guard Today home is what DutyHome draws until duty is known, so it may load; once known, no PATROL = no calls.
+     */
+    fun patrolCallsAllowed(areas: Set<DutyArea>?): Boolean = areas == null || DutyArea.PATROL in areas
+
+    /**
+     * 1079: Guard Today header line from the DUTY, not from the legacy attendance gate/shift. Only assignments of [area] that are in
+     * force count (inForce null = in force). Gate place only for the GATE area; "<shift> shift" only with a shift name in force.
+     * No duty info at all (old server) = null (the screen keeps its legacy line). Nothing in force = [fallback] (name · school), never a gate or shift.
+     */
+    fun dutyHeader(
+        fallback: String,
+        area: DutyArea?,
+        assignments: List<com.satcop.smartvisitor.kiosk.data.model.DutyCompact>?,
+    ): String? {
+        if (area == null || assignments.isNullOrEmpty()) return null
+        val live = assignments.filter { parseType(it.type) == area && it.inForce != false }
+        val a = live.firstOrNull() ?: return fallback
+        val place = if (area == DutyArea.GATE) a.gateName?.trim()?.takeIf { it.isNotEmpty() } else null
+        val shift = a.shiftName?.trim()?.takeIf { it.isNotEmpty() }?.let { "$it shift" }
+        val parts = listOfNotNull(place, shift)
+        return if (parts.isEmpty()) fallback else parts.joinToString(" · ")
+    }
+
     const val ASSIGNED_PREFIX = "Duty assigned: "
 }
