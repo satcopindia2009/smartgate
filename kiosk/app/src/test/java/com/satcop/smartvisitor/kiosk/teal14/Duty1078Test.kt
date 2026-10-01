@@ -21,7 +21,7 @@ class Duty1078Test {
     private fun a(type: String, inForce: Boolean?, name: String? = "Day", s: String? = "06:00", e: String? = "14:00", gate: String? = "Main Gate") =
         DutyCompact(id = "x", type = type, gateId = if (type == "gate") "G-MAIN" else null, gateName = if (type == "gate") gate else null,
             shiftName = name, shiftStart = s, shiftEnd = e, inForce = inForce)
-    private fun res(vararg ar: DutyArea) = DutyLogic.DutyResult(ar.toSet(), true)
+    private fun res(vararg ar: DutyArea) = com.satcop.smartvisitor.kiosk.ui.duty.DutyResult(ar.toSet(), true)
 
     // ---- (1) shift not active ----
     @Test fun noticeText() {
@@ -144,7 +144,7 @@ class Duty1078Test {
 
     @Test fun noDutyStaysNoDutyIsNoChange() {
         assertEquals(DutyChange.NONE, DutyLogic.change(emptySet(), "r1", res(), "r1"))
-        assertEquals(DutyChange.NONE, DutyLogic.change(emptySet(), "r1", res(), "r2").let { if (it == DutyChange.BANNER) DutyChange.NONE else it })
+        assertEquals(DutyChange.NONE, DutyLogic.change(emptySet(), "r1", res(), "r2"))
     }
 
     @Test fun otherTransitionsAreBanners() {

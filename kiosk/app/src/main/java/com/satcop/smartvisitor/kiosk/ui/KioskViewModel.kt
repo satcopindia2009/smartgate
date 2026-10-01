@@ -108,6 +108,8 @@ data class KioskUiState(
     val dutyGateName: String? = null,
     /** Bumped when the server says NOT_CLOCKED_IN: the guard gate re-reads attendance and returns to the lock. */
     val attendanceRecheck: Int = 0,
+    /** 1078: areas that exist today but are outside their shift window -> "Your shift is not active now (...)" + new-action buttons off. */
+    val shiftNotices: Map<com.satcop.smartvisitor.kiosk.ui.duty.DutyArea, String> = emptyMap(),
     val verifiedCard: com.satcop.smartvisitor.kiosk.ui.guardhome.ClockResult? = null,
     val meStaffId: String = "",
     val gates: List<Gate> = emptyList(),

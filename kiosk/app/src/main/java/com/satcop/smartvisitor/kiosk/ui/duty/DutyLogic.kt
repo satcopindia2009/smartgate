@@ -251,6 +251,7 @@ object DutyLogic {
     fun change(applied: Set<DutyArea>?, appliedRevision: String?, fresh: DutyResult, freshRevision: String?): DutyChange {
         if (applied == null) return DutyChange.NONE
         if (applied.isEmpty() && fresh.areas.isNotEmpty()) return DutyChange.AUTO_SWITCH
+        if (applied.isEmpty() && fresh.areas.isEmpty()) return DutyChange.NONE
         val changed = revisionChanged(appliedRevision, freshRevision) || (appliedRevision == null && fresh.areas != applied)
         return if (changed) DutyChange.BANNER else DutyChange.NONE
     }

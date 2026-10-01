@@ -45,7 +45,7 @@ class Teal11Test {
     @Test fun successHandsRowStraightToCheckedInCardWithoutLockFlash() {
         val vm = src("ui/KioskViewModel.kt")
         val ok = vm.substringAfter("1075: stay on the camera").substringBefore("return@launch")
-        assertTrue(ok.contains("clockInRow = ci.getOrNull()"))
+        assertTrue(ok.contains("clockInRow = cardRow"))
         assertTrue(ok.contains("loadAfterLogin(live.user)"))
         val g = src("ui/guardhome/ClockFlowScreens.kt")
         assertTrue(g.contains("initialCheckInRow != null || initialVerifiedCard != null) && result == null"))

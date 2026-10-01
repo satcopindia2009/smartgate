@@ -78,7 +78,7 @@ class Teal10Test {
     // 1 + 2 + 4 + 6 wiring (source level)
     @Test fun checkInCardWiring() {
         val vm = src("ui/KioskViewModel.kt")
-        assertTrue(vm.contains("clockInRow = ci.getOrNull()"))
+        assertTrue(vm.contains("clockInRow = cardRow") && vm.contains("val cardRow = ci.getOrNull()"))
         assertTrue(src("ui/KioskApp.kt").contains("initialCheckInRow = state.clockInRow"))
         val screens = src("ui/guardhome/ClockFlowScreens.kt")
         assertTrue(screens.contains("delay(4_000L); onDone()"))

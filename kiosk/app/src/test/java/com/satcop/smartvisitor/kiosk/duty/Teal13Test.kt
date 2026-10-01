@@ -44,14 +44,16 @@ class Teal13Test {
         assertTrue(vm.contains("delay(60_000L)"))
         assertTrue(vm.contains("fun applyDutyUpdate()"))
         assertTrue(vm.contains("fun refreshDutyNow()"))
-        assertTrue(vm.contains("DutyLogic.revisionChanged"))
+        assertTrue(vm.contains("DutyLogic.change("))
         assertTrue(src("ui/KioskApp.kt").contains("DutyUpdatedBanner(viewModel::applyDutyUpdate)"))
         assertTrue(src("ui/KioskApp.kt").contains("onDutyRefresh = viewModel::refreshDutyNow"))
     }
 
     @Test fun dutyErrorsAreRouted() {
         val api = src("data/api/LiveVisitorApi.kt")
-        assertTrue(api.contains("NO_GATE_DUTY") && api.contains("NOT_CLOCKED_IN") && api.contains("GATE_NOT_ON_DUTY"))
+        val dl = src("ui/duty/DutyLogic.kt")
+        assertTrue(dl.contains("NO_GATE_DUTY") && dl.contains("NOT_CLOCKED_IN") && dl.contains("GATE_NOT_ON_DUTY"))
+        assertTrue(api.contains("noteDuty(") && api.contains("dutyCodeOf"))
         assertTrue(src("data/api/LiveVisitorApi.kt").contains("header(\"X-Duty-Aware\", \"1\")"))
         assertTrue(src("guardpatrol/data/LiveGuardPatrolApi.kt").contains("header(\"X-Duty-Aware\", \"1\")"))
         assertTrue(src("ui/KioskViewModel.kt").contains("attendanceRecheck"))
