@@ -275,6 +275,12 @@ object DutyLogic {
     fun gateActionsVisible(areas: Set<DutyArea>?): Boolean = areas == null || DutyArea.GATE in areas
 
     /**
+     * 1080: gate routes (GET /visits, /visits/inside, /pickups, /couriers, /students) are called only with GATE duty.
+     * Unknown (null) = allowed, as 1079 does for patrol calls. Same rule as [gateActionsVisible].
+     */
+    fun gateCallsAllowed(areas: Set<DutyArea>?): Boolean = areas == null || DutyArea.GATE in areas
+
+    /**
      * 1079: patrol routes (/my-schedules, /round-templates, /checkpoints, /guards/me/today-summary) are called only with PATROL duty.
      * Areas not read yet (null) = the Guard Today home is what DutyHome draws until duty is known, so it may load; once known, no PATROL = no calls.
      */

@@ -164,10 +164,12 @@ fun GuardClockInGate(
     onChooseGate: (String) -> Unit = {},
     /** 1079: patrol routes (today-summary) only with PATROL duty. */
     patrolCalls: Boolean = true,
+    /** 1080: gate routes (visitor list) only with GATE duty (or duty not read yet). */
+    gateCalls: Boolean = true,
     content: @Composable (requestLogout: () -> Unit) -> Unit,
 ) {
     val state by controller.state.collectAsState()
-    SideEffect { controller.patrolCalls = patrolCalls }
+    SideEffect { controller.patrolCalls = patrolCalls; controller.gateCalls = gateCalls }
     LaunchedEffect(initialCheckInRow) {
         if (initialCheckInRow != null) controller.showCheckInResult(initialCheckInRow)
     }

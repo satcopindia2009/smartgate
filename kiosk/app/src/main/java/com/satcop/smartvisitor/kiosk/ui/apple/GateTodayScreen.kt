@@ -103,6 +103,8 @@ fun GateTodayScreen(
     onReportIncident: (() -> Unit)? = null,
     /** 1078: false while the shift is not active: Add visitor / Pickup / Courier are off (finishing work stays on). */
     newActionsEnabled: Boolean = true,
+    /** 1080: Clock out is on every home (Home + Profile), always enabled (never tied to the shift window). Null = not offered. */
+    onClockOut: (() -> Unit)? = null,
 ) {
     var tab by remember { mutableIntStateOf(0) }
     var search by remember { mutableStateOf("") }
@@ -127,6 +129,7 @@ fun GateTodayScreen(
                     newActionsEnabled = newActionsEnabled,
                     onSeeAll = { logFilter = 0; search = ""; tab = 2 },
                     onProfile = { tab = 3 }, onSelectHistory = onSelectHistory,
+                    onClockOut = onClockOut,
                 )
                 1 -> GateInside(
                     rows = insideRows, hostNames = hostNames, search = search, onSearch = { search = it },
@@ -144,6 +147,7 @@ fun GateTodayScreen(
                 else -> GateProfile(
                     displayName = displayName, gateName = gateName,
                     onLostFound = onLostFound, onLogout = onLogout, onReportIncident = onReportIncident,
+                    onClockOut = onClockOut,
                 )
             }
         }
@@ -197,6 +201,7 @@ private fun GateHome(
     onSeeAll: () -> Unit,
     onProfile: () -> Unit,
     onSelectHistory: (GuardHistoryEvent) -> Unit,
+    onClockOut: (() -> Unit)? = null,
 ) {
     val pending = events.filter { isVisit(it) && statusKey(it.status) == "pending" }
     val q = search.trim()
@@ -245,6 +250,8 @@ private fun GateHome(
         } else {
             waiting.take(3).forEach { ev -> EventCard(ev, hostNames, onClick = { onSelectHistory(ev) }) }
         }
+        // 1080: Clock out on the gate home too (always enabled, not part of the new-action switch).
+        if (onClockOut != null) SgDangerOutlineButton("Clock out", onClick = onClockOut, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -420,7 +427,7 @@ private fun EventCard(
 // ───────────────────────── Profile ─────────────────────────
 
 @Composable
-private fun GateProfile(displayName: String, gateName: String, onLostFound: () -> Unit, onLogout: () -> Unit, onReportIncident: (() -> Unit)? = null) {
+private fun GateProfile(displayName: String, gateName: String, onLostFound: () -> Unit, onLogout: () -> Unit, onReportIncident: (() -> Unit)? = null, onClockOut: (() -> Unit)? = null) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = SgSpacing.ScreenMargin).padding(top = 16.dp, bottom = 24.dp),
@@ -447,6 +454,7 @@ private fun GateProfile(displayName: String, gateName: String, onLostFound: () -
             AppleCell("Lost & Found", onClick = onLostFound, showDivider = onReportIncident != null)
             if (onReportIncident != null) AppleCell("Report incident", onClick = onReportIncident, showDivider = false)
         }
+        if (onClockOut != null) SgDangerOutlineButton("Clock out", onClick = onClockOut, modifier = Modifier.fillMaxWidth())
         SgDangerOutlineButton("Sign out", onClick = onLogout, modifier = Modifier.fillMaxWidth())
     }
 }

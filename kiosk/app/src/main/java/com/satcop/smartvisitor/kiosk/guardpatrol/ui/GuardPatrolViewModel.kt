@@ -14,6 +14,7 @@ import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolAssignment
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolDates
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolEngine
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolFixtures
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolCopy
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolMapper
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.LiveGuardPatrolApi
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.RoundInstance
@@ -137,11 +138,11 @@ class GuardPatrolViewModel(
                     busy = false,
                     assignments = assignments,
                     assignmentsFromLive = fromLive,
-                    statusLine = "LIVE · my-schedules ${assignments.size} · $dutyDate",
+                    statusLine = PatrolCopy.UPDATED,
                     toast = ToastEvent(
                         System.currentTimeMillis(),
-                        if (assignments.isEmpty()) "No assignments for today"
-                        else "Updated · ${assignments.size} assignment(s)",
+                        if (assignments.isEmpty()) PatrolCopy.NONE_TODAY
+                        else PatrolCopy.assignedToday(assignments.size),
                         if (assignments.isEmpty()) ToastKind.WARNING else ToastKind.SUCCESS,
                     ),
                 )
@@ -286,9 +287,9 @@ class GuardPatrolViewModel(
                 toast = ToastEvent(
                     System.currentTimeMillis(),
                     if (assignmentId == null) {
-                        "Assignment required — pick an Admin schedule"
+                        PatrolCopy.PICK_ONE
                     } else {
-                        "Living not ready — tap Refresh"
+                        PatrolCopy.NOT_READY
                     },
                     ToastKind.ERROR,
                 ),
@@ -727,7 +728,7 @@ class GuardPatrolViewModel(
             }.getOrNull()
 
             if (ok == null) {
-                applyFixtures(status = "Living unreachable — Assigned today empty until reconnect")
+                applyFixtures(status = PatrolCopy.UNREACHABLE)
                 return@launch
             }
             val (templates, checkpoints, user) = ok
@@ -750,14 +751,13 @@ class GuardPatrolViewModel(
                     assignments = assignments,
                     assignmentsFromLive = fromLive,
                     requireAssignment = true,
-                    statusLine = "LIVE · ${user?.displayName ?: "guard"} · ${user?.schoolId ?: LiveGuardPatrolApi.DEFAULT_SCHOOL_ID}" +
-                        " · my-schedules ${assignments.size}",
+                    statusLine = PatrolCopy.UPDATED,
                     toast = ToastEvent(
                         System.currentTimeMillis(),
                         if (assignments.isEmpty()) {
-                            "Connected · no Admin schedules today"
+                            PatrolCopy.NONE_TODAY
                         } else {
-                            "Connected · ${assignments.size} schedule(s)"
+                            PatrolCopy.assignedToday(assignments.size)
                         },
                         if (assignments.isEmpty()) ToastKind.WARNING else ToastKind.SUCCESS,
                     ),

@@ -64,6 +64,8 @@ fun GuardTodayShell(
     patrolContent: @Composable () -> Unit,
     /** 1079: false for a patrol-only duty: no Desk tab. */
     showDesk: Boolean = true,
+    /** 1080: Clock out in Settings (always enabled). Null = not offered. */
+    onClockOut: (() -> Unit)? = null,
 ) {
     var tab by remember { mutableIntStateOf(preferredTab ?: 0) }
     LaunchedEffect(preferredTab) {
@@ -153,6 +155,11 @@ fun GuardTodayShell(
                     AppearanceSegmentedRow()
                     AppleSectionHeader("Account")
                     com.satcop.smartvisitor.kiosk.ui.otp.StaffVerifyEntry()
+                    if (onClockOut != null) {
+                        AppleInset {
+                            AppleCell("Clock out", showChevron = false, showDivider = false, onClick = onClockOut)
+                        }
+                    }
                     AppleInset {
                         AppleCell(
                             "Sign out",

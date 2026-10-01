@@ -217,6 +217,7 @@ fun KioskApp(
                             chosenGateId = state.chosenGateId,
                             onChooseGate = viewModel::chooseGate,
                             patrolCalls = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.patrolCallsAllowed(state.dutyAreas),
+                            gateCalls = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.gateCallsAllowed(state.dutyAreas),
                         ) { requestLogout ->
                     if (state.screen == KioskScreen.COURIER) {
                         CourierLogScreen(
@@ -443,7 +444,10 @@ private fun DutyHome(
                     )
                 }
                 active == com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE ->
-                    GateDeskArea(state, viewModel, compact, cardHPad, cardVPad, requestLogout, openIncident)
+                    GateDeskArea(
+                        state, viewModel, compact, cardHPad, cardVPad, requestLogout, openIncident,
+                        onClockOut = { guardHome.controller.openPanel(com.satcop.smartvisitor.kiosk.ui.guardhome.AttendanceMode.CLOCK_OUT) },
+                    )
                 active == com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.PATROL ->
                     com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolApp(
                         vm = patrolVm,
@@ -454,6 +458,8 @@ private fun DutyHome(
                         homeVm = guardHome,
                         onDutyRefresh = viewModel::refreshDutyNow,
                         newActionsEnabled = state.newActionsEnabled(),
+                        // 1080: Clock out also in Settings (Guard Today has it in the attendance card).
+                        onClockOut = { guardHome.controller.openPanel(com.satcop.smartvisitor.kiosk.ui.guardhome.AttendanceMode.CLOCK_OUT) },
                         // 1079: patrol-only duty = Guard Today + shared tools only (no Find visitor, Courier log, Desk tab).
                         gateActions = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.gateActionsVisible(state.dutyAreas),
                         headerLine = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.dutyHeader(
@@ -489,6 +495,7 @@ private fun GateDeskArea(
     cardVPad: androidx.compose.ui.unit.Dp,
     requestLogout: () -> Unit,
     onReportIncident: () -> Unit,
+    onClockOut: () -> Unit,
 ) {
     if (state.screen == KioskScreen.HOME) {
                         // AC-APP1: Gate shell ALWAYS on HOME (not only step==1).
@@ -514,6 +521,8 @@ private fun GateDeskArea(
                             onSelectHistory = viewModel::selectHistory,
                             onReportIncident = onReportIncident,
                             newActionsEnabled = state.newActionsEnabled(),
+                            // 1080: Clock out on the gate desk (Home + Profile), always enabled.
+                            onClockOut = onClockOut,
                             onCheckoutVisit = { id ->
                                 viewModel.selectCheckout(id)
                                 viewModel.confirmCheckout()

@@ -128,6 +128,9 @@ class GuardHomeController(
     @Volatile
     var patrolCalls: Boolean = true
 
+    /** 1080: gate routes (GET /visits) only with GATE duty (or duty not read yet). Set by GuardClockInGate. */
+    var gateCalls: Boolean = true
+
     fun refresh() {
         if (refreshInFlight) return
         refreshInFlight = true
@@ -148,7 +151,8 @@ class GuardHomeController(
         scope.launch {
             val att = runCatching { withContext(io) { api.attendanceToday() } }
             val day = today.toString()
-            val vis = runCatching { withContext(io) { api.visitsBetween(day, day, null) } }
+            // 1080: a patrol-only duty never reads the visitor list (it would answer NO_GATE_DUTY).
+            val vis = if (gateCalls) runCatching { withContext(io) { api.visitsBetween(day, day, null) } } else null
             refreshInFlight = false
             _state.update {
                 it.copy(
@@ -157,9 +161,9 @@ class GuardHomeController(
                     // Keep the last good card on a failed refresh; the error line explains why.
                     attendance = att.getOrNull() ?: it.attendance,
                     attendanceError = att.exceptionOrNull()?.let(ErrorCopy::forThrowable),
-                    visits = vis.getOrNull() ?: it.visits,
-                    visitsLoaded = vis.isSuccess || it.visitsLoaded,
-                    visitsError = vis.exceptionOrNull()?.let(ErrorCopy::forThrowable),
+                    visits = vis?.getOrNull() ?: it.visits,
+                    visitsLoaded = (vis?.isSuccess == true) || it.visitsLoaded,
+                    visitsError = vis?.exceptionOrNull()?.let(ErrorCopy::forThrowable),
                 )
             }
         }

@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolEngine
+import com.satcop.smartvisitor.kiosk.guardpatrol.data.PatrolCopy
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.GuardPatrolFixtures
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.RoundStatus
 import com.satcop.smartvisitor.kiosk.guardpatrol.data.RoundTemplate
@@ -78,6 +79,8 @@ fun GuardPatrolApp(
     gateActions: Boolean = true,
     /** 1079: Guard Today header line from the duty (null = legacy). */
     headerLine: String? = null,
+    /** 1080: Clock out in Settings, always enabled. */
+    onClockOut: (() -> Unit)? = null,
     vm: GuardPatrolViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsState()
@@ -150,6 +153,7 @@ fun GuardPatrolApp(
                     onLogout = { onLogout?.invoke() },
                     preferredTab = preferredTab,
                     showDesk = gateActions,
+                    onClockOut = onClockOut,
                     homeContent = homeVm?.let { hv ->
                         {
                             com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeScreen(
@@ -362,17 +366,14 @@ private fun AssignedTodaySection(
                 .padding(horizontal = 8.dp, vertical = 4.dp),
         )
     }
-    Text(
-        text = if (assignments.isEmpty()) {
-            if (fromLive) "No Admin schedules for today."
-            else "Waiting for Living schedules…"
-        } else {
-            "${assignments.size} duty(ies) · Living · dutyDate ${assignments.first().dutyDate}"
-        },
-        color = KioskColors.textDim,
-        fontSize = 11.sp,
-        fontFamily = KioskFont,
-    )
+    if (assignments.isNotEmpty()) {
+        Text(
+            text = PatrolCopy.assignedToday(assignments.size),
+            color = KioskColors.textDim,
+            fontSize = 11.sp,
+            fontFamily = KioskFont,
+        )
+    }
     if (assignments.isEmpty()) {
         Box(
             modifier = Modifier
@@ -383,7 +384,7 @@ private fun AssignedTodaySection(
                 .padding(14.dp),
         ) {
             Text(
-                text = "No assigned patrol yet. Ask Admin to assign Living (POST /patrol-schedules), then tap Refresh.",
+                text = PatrolCopy.NONE_TODAY,
                 color = KioskColors.textMuted,
                 fontSize = 12.sp,
                 fontFamily = KioskFont,
@@ -838,7 +839,6 @@ private fun RoleChip(guardLabel: String = "Guard G1", extra: String? = null, ord
         Text(
             text = buildString {
                 append(guardLabel)
-                append(" · guard_id set")
                 if (extra != null) append(" · ")
             },
             color = KioskColors.cyanBright,
