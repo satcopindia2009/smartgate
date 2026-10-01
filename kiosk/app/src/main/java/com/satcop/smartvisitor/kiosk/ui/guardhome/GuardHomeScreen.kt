@@ -76,6 +76,8 @@ fun GuardHomeScreen(
     onReportIncident: () -> Unit,
     onLogout: () -> Unit,
     onToast: (String) -> Unit,
+    /** 1077: pull-to-refresh also re-reads the duty. */
+    onPullRefresh: () -> Unit = {},
 ) {
     val state by controller.state.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -98,11 +100,18 @@ fun GuardHomeScreen(
             state = state, controller = controller, displayName = displayName, subtitle = subtitle,
             routeSubtitle = routeSubtitle, progressLabel = progressLabel,
             onStartPatrol = onStartPatrol, onCourier = onCourier, onLostFound = onLostFound,
-            onReportIncident = onReportIncident, onLogout = onLogout,
+            onReportIncident = onReportIncident, onLogout = onLogout, onPullRefresh = onPullRefresh,
         )
         HomeView.LIST -> VisitListBody(state = state, controller = controller)
         HomeView.FIND -> FindBody(state = state, controller = controller)
     }
+}
+
+/** 1077: Find visitor on its own (no-duty guard). */
+@Composable
+fun GuardFindScreen(controller: GuardHomeController) {
+    val state by controller.state.collectAsState()
+    FindBody(state = state, controller = controller)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,10 +128,11 @@ private fun HomeBody(
     onLostFound: () -> Unit,
     onReportIncident: () -> Unit,
     onLogout: () -> Unit,
+    onPullRefresh: () -> Unit = {},
 ) {
     PullToRefreshBox(
         isRefreshing = state.loading,
-        onRefresh = controller::refresh,
+        onRefresh = { controller.refresh(); onPullRefresh() },
         modifier = Modifier.fillMaxSize().background(KioskColors.bg),
     ) {
         Column(

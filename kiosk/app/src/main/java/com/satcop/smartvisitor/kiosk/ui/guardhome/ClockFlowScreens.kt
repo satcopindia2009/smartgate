@@ -152,15 +152,22 @@ fun GuardClockInGate(
     /** 1074: the check-in response of the face step; shown once as the "Checked In!" card. */
     initialCheckInRow: com.satcop.smartvisitor.kiosk.data.model.AttendanceRow? = null,
     onInitialRowConsumed: () -> Unit = {},
-    /** 1076: a role whose clock-in the server refused: face-verify only. The card says "Verified!" and the lock is skipped. */
+    /** 1076: a role whose clock-in the server refused: face-verify only. The card says Face verified and the lock is skipped. */
     initialVerifiedCard: ClockResult? = null,
     verifyOnlySession: Boolean = false,
+    /** 1077: bumped when the server answers NOT_CLOCKED_IN: re-read attendance, the lock screen follows. */
+    attendanceRecheck: Int = 0,
+    /** 1077: gate chooser on the lock screen (id to name), shown for two or more gate duties. */
+    gateChoices: List<Pair<String, String>> = emptyList(),
+    chosenGateId: String? = null,
+    onChooseGate: (String) -> Unit = {},
     content: @Composable (requestLogout: () -> Unit) -> Unit,
 ) {
     val state by controller.state.collectAsState()
     LaunchedEffect(initialCheckInRow) {
         if (initialCheckInRow != null) controller.showCheckInResult(initialCheckInRow)
     }
+    LaunchedEffect(attendanceRecheck) { if (attendanceRecheck > 0) controller.refreshAttendance() }
     LaunchedEffect(initialVerifiedCard) {
         if (initialVerifiedCard != null) controller.showVerifiedResult(initialVerifiedCard)
     }
@@ -250,6 +257,7 @@ fun GuardClockInGate(
             displayName = displayName, schoolName = schoolName, loading = false, error = state.attendanceError,
             onClockIn = { controller.openPanel(AttendanceMode.CHECK_IN) }, onSignOut = onLogout, gateLabel = lockGateLabel,
             shiftText = GuardTodayLogic.shiftRow(state.attendance),
+            gateChoices = gateChoices, chosenGateId = chosenGateId, onChooseGate = onChooseGate,
         )
     }
 }
@@ -270,6 +278,10 @@ fun LockScreen(
     gateLabel: String = "",
     /** Server shift text (shiftStartDisplay); null or blank hides the row, never hardcoded. */
     shiftText: String? = null,
+    /** 1077: two or more gate duties => the guard picks the gate (id to name); empty = no chooser. */
+    gateChoices: List<Pair<String, String>> = emptyList(),
+    chosenGateId: String? = null,
+    onChooseGate: (String) -> Unit = {},
 ) {
     val subtitle = listOf(GuardCopy.ROLE, schoolName).filter { it.isNotBlank() }.joinToString(" · ")
     Column(
@@ -305,6 +317,7 @@ fun LockScreen(
                 ClockInLogic.LOCK_TEXT, color = Color.White.copy(alpha = 0.9f), style = SgType.Body, textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 16.dp, start = 12.dp, end = 12.dp),
             )
+            if (gateChoices.size > 1) com.satcop.smartvisitor.kiosk.ui.duty.GateChooser(gateChoices, chosenGateId, onChooseGate)
             if (!error.isNullOrBlank()) {
                 GuardGap()
                 GuardBanner(error, GuardBannerKind.WARNING)

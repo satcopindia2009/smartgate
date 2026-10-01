@@ -71,6 +71,7 @@ fun GuardPatrolApp(
     onLostFound: (() -> Unit)? = null,
     onLogout: (() -> Unit)? = null,
     homeVm: com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeViewModel? = null,
+    onDutyRefresh: () -> Unit = {},
     vm: GuardPatrolViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsState()
@@ -160,6 +161,7 @@ fun GuardPatrolApp(
                                 onToast = { msg ->
                                     vm.showInfoToast(msg)
                                 },
+                                onPullRefresh = onDutyRefresh,
                             )
                         }
                     },

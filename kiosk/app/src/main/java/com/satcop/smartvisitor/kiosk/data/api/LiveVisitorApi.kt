@@ -103,7 +103,18 @@ class LiveVisitorApi(
             .post(body.toRequestBody(JSON))
             .build()
         val text = execute(req)
-        val parsed = json.decodeFromString<LoginResponse>(text)
+        val parsed0 = json.decodeFromString<LoginResponse>(text)
+        // 1077: Backend sends the duty snapshot at the top level of the login response; the app keeps it on the user.
+        val parsed = parsed0.copy(
+            user = parsed0.user?.copy(
+                dutyTypes = parsed0.user.dutyTypes ?: parsed0.dutyTypes,
+                primaryHome = parsed0.user.primaryHome ?: parsed0.primaryHome,
+                homeOrder = parsed0.user.homeOrder ?: parsed0.homeOrder,
+                hasDuty = parsed0.user.hasDuty ?: parsed0.hasDuty,
+                dutyRevision = parsed0.user.dutyRevision ?: parsed0.dutyRevision,
+                dutyAssignments = parsed0.user.dutyAssignments ?: parsed0.dutyAssignments,
+            ),
+        )
         // 1059b: follow the server. Only a role with faceRequired && !faceVerified (guard) must do the face step.
         // 1073: a GUARD is face-checked on every sign-in even if the server omits faceRequired (the face step IS the clock-in).
         // 1076: the same lock -> face -> clock-in flow for guard, gate, gate_staff, security, security_head (host/admin untouched).
@@ -338,6 +349,7 @@ class LiveVisitorApi(
             if (!resp.isSuccessful) {
                 throw apiError(resp.code, text).also {
                     noteFaceRequired(it)
+                    if (it.code.uppercase() in DUTY_CODES) session.noteDutyError(it.code.uppercase())
                     noteSessionEnd(it, request.header("Authorization") != null)
                 }
             }
@@ -354,6 +366,8 @@ class LiveVisitorApi(
             return resp.body?.bytes() ?: ByteArray(0)
         }
     }
+
+    private val DUTY_CODES = setOf("NO_GATE_DUTY", "NO_PATROL_DUTY", "NOT_CLOCKED_IN", "GATE_NOT_ON_DUTY")
 
     private fun noteSessionEnd(e: ApiException, hadToken: Boolean) {
         if (SessionExpiry.isSessionEnd(e.httpStatus, e.code, hadToken)) session.markExpired()

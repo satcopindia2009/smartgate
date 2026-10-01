@@ -42,7 +42,7 @@ data class ClockResult(
     val mockNote: String? = null,
     /** Signed URL exactly as the server returned it (?t= intact); loaded via MediaUrl, never built from a key. */
     val guardPhotoUrl: String? = null,
-    /** 1076: a role whose clock-in the server refused: face-verify only. The card says "Verified!". */
+    /** 1076: a role whose clock-in the server refused: face-verify only. The card says Face verified. */
     val verifyOnly: Boolean = false,
 )
 
@@ -109,12 +109,12 @@ object ClockInLogic {
 
     /** Result "Gate": the assignment name, else the geofence name, else "—". */
     fun gateLabel(row: AttendanceRow?, fallbackGateName: String? = null): String =
-        listOf(row?.gateName, fallbackGateName, row?.geofenceName)
+        listOf(row?.dutyGateName, row?.gateName, fallbackGateName, row?.geofenceName)
             .firstOrNull { !it.isNullOrBlank() && it.trim() != "—" }?.trim() ?: "—"
 
     /** 1073: the result header always matches the action: a check-in says "Self Check In", a clock-out "Self Check Out". */
-    fun resultHeader(result: ClockResult) = if (result.verifyOnly) "Face Verified" else headerTitle(result.mode)
-    fun resultTitleOf(result: ClockResult) = if (result.verifyOnly) "Verified!" else resultTitle(result.mode)
+    fun resultHeader(result: ClockResult) = if (result.verifyOnly) "Face verified" else headerTitle(result.mode)
+    fun resultTitleOf(result: ClockResult) = if (result.verifyOnly) "Face verified" else resultTitle(result.mode)
 
     /** Server geofence status of this action: nested block first, then the flat field. Lower-cased; null when absent. */
     fun geofenceStatusOf(row: AttendanceRow): String? =

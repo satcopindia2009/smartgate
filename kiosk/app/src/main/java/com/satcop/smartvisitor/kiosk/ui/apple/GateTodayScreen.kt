@@ -98,6 +98,8 @@ fun GateTodayScreen(
     onSelectHistory: (GuardHistoryEvent) -> Unit = {},
     /** Check out one visit by its id (select + confirm). Shown only for visits that are inside. */
     onCheckoutVisit: ((String) -> Unit)? = null,
+    /** 1077: incident is a shared tool; shown in Profile when provided. */
+    onReportIncident: (() -> Unit)? = null,
 ) {
     var tab by remember { mutableIntStateOf(0) }
     var search by remember { mutableStateOf("") }
@@ -137,7 +139,7 @@ fun GateTodayScreen(
                 )
                 else -> GateProfile(
                     displayName = displayName, gateName = gateName,
-                    onLostFound = onLostFound, onLogout = onLogout,
+                    onLostFound = onLostFound, onLogout = onLogout, onReportIncident = onReportIncident,
                 )
             }
         }
@@ -412,7 +414,7 @@ private fun EventCard(
 // ───────────────────────── Profile ─────────────────────────
 
 @Composable
-private fun GateProfile(displayName: String, gateName: String, onLostFound: () -> Unit, onLogout: () -> Unit) {
+private fun GateProfile(displayName: String, gateName: String, onLostFound: () -> Unit, onLogout: () -> Unit, onReportIncident: (() -> Unit)? = null) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = SgSpacing.ScreenMargin).padding(top = 16.dp, bottom = 24.dp),
@@ -436,7 +438,8 @@ private fun GateProfile(displayName: String, gateName: String, onLostFound: () -
         AppearanceSegmentedRow()
         com.satcop.smartvisitor.kiosk.ui.otp.StaffVerifyEntry()
         Column(Modifier.fillMaxWidth().sgCardSurface()) {
-            AppleCell("Lost & Found", onClick = onLostFound, showDivider = false)
+            AppleCell("Lost & Found", onClick = onLostFound, showDivider = onReportIncident != null)
+            if (onReportIncident != null) AppleCell("Report incident", onClick = onReportIncident, showDivider = false)
         }
         SgDangerOutlineButton("Sign out", onClick = onLogout, modifier = Modifier.fillMaxWidth())
     }

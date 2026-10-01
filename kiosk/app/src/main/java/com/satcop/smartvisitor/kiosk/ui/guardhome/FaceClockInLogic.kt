@@ -44,7 +44,7 @@ object FaceClockInLogic {
     )
 
     /** The check-in request that reuses the face photo. GPS only as a real pair; gpsMissing otherwise. */
-    fun buildCheckIn(photoBase64: String, stamp: CaptureStamp, now: Instant, attemptId: String): AttendanceRequest {
+    fun buildCheckIn(photoBase64: String, stamp: CaptureStamp, now: Instant, attemptId: String, gateId: String? = null): AttendanceRequest {
         val mock = if (stamp.isMock) true else null
         val pair = stamp.lat != null && stamp.lng != null && stamp.lat in -90.0..90.0 && stamp.lng in -180.0..180.0
         return AttendanceRequest(
@@ -56,6 +56,7 @@ object FaceClockInLogic {
             gpsMissing = !pair,
             attemptId = attemptId,
             isMock = mock,
+            gateId = gateId?.takeIf { it.isNotBlank() },
         )
     }
 

@@ -20,11 +20,14 @@ enum class KioskScreen {
 }
 
 fun KioskUiState.homeRole(): KioskRole = KioskRole.fromJwt(meRole)
+/** 1077: the Gate desk area is up: by duty (activeArea) when known, else by the old role mapping. */
+fun KioskUiState.isGateDesk(): Boolean =
+    if (activeArea != null) activeArea == com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE else homeRole() == KioskRole.GATE
 fun KioskUiState.showsGateRegistration(): Boolean =
-    signedIn && homeRole() == KioskRole.GATE && screen == KioskScreen.HOME
+    signedIn && isGateDesk() && screen == KioskScreen.HOME
 fun KioskUiState.showsHostApprove(): Boolean = signedIn && homeRole() == KioskRole.HOST
 fun KioskUiState.showsGuardPatrol(): Boolean = signedIn && homeRole() == KioskRole.GUARD
 fun KioskUiState.showsPickup(): Boolean =
-    signedIn && homeRole() == KioskRole.GATE && screen == KioskScreen.PICKUP
+    signedIn && isGateDesk() && screen == KioskScreen.PICKUP
 fun KioskUiState.showsUnsupportedRole(): Boolean =
     signedIn && homeRole() == KioskRole.UNSUPPORTED

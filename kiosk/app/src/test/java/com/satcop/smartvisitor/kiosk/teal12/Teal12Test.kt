@@ -64,8 +64,8 @@ class Teal12Test {
     @Test fun verifiedCardLabels() {
         val r = FaceClockInLogic.verifiedResult("2026-10-01T17:09:41+05:30", null)
         assertTrue(r.verifyOnly)
-        assertEquals("Verified!", ClockInLogic.resultTitleOf(r))
-        assertEquals("Face Verified", ClockInLogic.resultHeader(r))
+        assertEquals("Face verified", ClockInLogic.resultTitleOf(r))
+        assertEquals("Face verified", ClockInLogic.resultHeader(r))
         assertEquals("05:09 pm", r.time)
         assertEquals("Checked In!", ClockInLogic.resultTitleOf(ClockInLogic.resultFrom(com.satcop.smartvisitor.kiosk.ui.guardhome.AttendanceMode.CHECK_IN, com.satcop.smartvisitor.kiosk.data.model.AttendanceRow())))
     }

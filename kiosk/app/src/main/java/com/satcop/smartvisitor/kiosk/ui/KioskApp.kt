@@ -193,19 +193,12 @@ fun KioskApp(
                     }
                 } else {
                     val role = state.homeRole()
-                    // 1076: gate / gate staff have no guard gate: the Checked In (or Verified) card shows here, then their home.
-                    val roleCard = if (role == KioskRole.GUARD) null else
-                        state.clockInRow?.let { com.satcop.smartvisitor.kiosk.ui.guardhome.ClockInLogic.resultFrom(com.satcop.smartvisitor.kiosk.ui.guardhome.AttendanceMode.CHECK_IN, it) }
-                            ?: state.verifiedCard
-                    if (roleCard != null) {
-                        com.satcop.smartvisitor.kiosk.ui.guardhome.ClockResultScreen(
-                            result = roleCard, displayName = state.meDisplayName, schoolName = state.schoolName, selfie = null,
-                            onDone = viewModel::consumeClockInRow,
-                        )
-                    } else if (role == KioskRole.GUARD) {
-                        // 1064: the guard app stays locked until the SERVER says the guard is clocked in today.
+                    if (role == KioskRole.GUARD || role == KioskRole.GATE) {
+                        // 1077: ONE role. EVERY duty goes through the clock-in gate (lock, business-date lock, shift-end prompt, card).
                         val guardHome: com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeViewModel =
                             viewModel(key = "guard-home-${state.sessionEpoch}")
+                        val patrolVm: com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolViewModel =
+                            viewModel(key = "guard-patrol-${state.sessionEpoch}")
                         com.satcop.smartvisitor.kiosk.ui.guardhome.GuardClockInGate(
                             controller = guardHome.controller,
                             displayName = state.meDisplayName,
@@ -215,6 +208,10 @@ fun KioskApp(
                             onInitialRowConsumed = viewModel::consumeClockInRow,
                             initialVerifiedCard = state.verifiedCard,
                             verifyOnlySession = state.verifyOnlySession,
+                            attendanceRecheck = state.attendanceRecheck,
+                            gateChoices = state.dutyGates.filter { !it.id.isNullOrBlank() }.map { (it.id ?: "") to (it.name ?: "") },
+                            chosenGateId = state.chosenGateId,
+                            onChooseGate = viewModel::chooseGate,
                         ) { requestLogout ->
                     if (state.screen == KioskScreen.COURIER) {
                         CourierLogScreen(
@@ -260,16 +257,7 @@ fun KioskApp(
                             onBack = viewModel::closeGuardTool,
                         )
                     } else {
-                        // AC-APP1: GuardPatrolApp always wraps GuardTodayShell + M3 NavigationBar
-                        // (Today|Patrol|Desk|More). Patrol tab = assign→perform.
-                        GuardPatrolApp(
-                            vm = viewModel(key = "guard-patrol-${state.sessionEpoch}"),
-                            onExit = null,
-                            onCourier = viewModel::openCourier,
-                            onLostFound = viewModel::openLostFound,
-                            onLogout = requestLogout,
-                            homeVm = guardHome,
-                        )
+                        DutyHome(state, viewModel, guardHome, patrolVm, compact, cardHPad, cardVPad, requestLogout)
                     }
                         }
                     } else if (role == KioskRole.HOST) {
@@ -301,203 +289,8 @@ fun KioskApp(
                             onDismissNotice = viewModel::dismissHostNotice,
                             gateNames = state.gates.associate { it.id to it.name },
                         )
-                    } else if (role == KioskRole.GATE && state.screen == KioskScreen.HOME) {
-                        // AC-APP1: Gate shell ALWAYS on HOME (not only step==1).
-                        // Registration step>1 stays under pinned NavigationBar.
-                        GateTodayScreen(
-                            gateName = state.selectedGate?.name ?: "Main Gate",
-                            recent = state.recent,
-                            onAddVisitor = viewModel::startAddVisitor,
-                            onCourier = viewModel::openCourier,
-                            onHistory = viewModel::openHistory,
-                            onCheckout = viewModel::openCheckout,
-                            onLostFound = viewModel::openLostFound,
-                            onPickup = viewModel::openPickup,
-                            onLogout = viewModel::logout,
-                            displayName = state.meDisplayName,
-                            insideList = state.checkoutInside,
-                            historyEvents = state.historyEvents,
-                            hostNames = state.hosts.associate { it.id to it.name },
-                            onRefreshLists = {
-                                viewModel.refreshCheckoutInside()
-                                viewModel.refreshHistory()
-                            },
-                            onSelectHistory = viewModel::selectHistory,
-                            onCheckoutVisit = { id ->
-                                viewModel.selectCheckout(id)
-                                viewModel.confirmCheckout()
-                            },
-                            registrationStep = state.step,
-                            registrationContent = if (state.step > 1) {
-                                {
-                                    // 1061b: ONE horizontal margin for the whole step (dots, header, labels, inputs, host).
-                                    Column(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = FormTokens.ScreenHPad)
-                                            .padding(bottom = FormTokens.SectionGap),
-                                    ) {
-                                        KioskStep(
-                                            step = state.step,
-                                            state = state,
-                                            viewModel = viewModel,
-                                        )
-                                    }
-                                }
-                            } else null,
-                        )
                     } else {
-                    KioskHeader(
-                        schoolName = state.schoolName,
-                        schoolId = state.schoolId,
-                        gateName = state.selectedGate?.name ?: "Main Gate",
-                        gates = state.gates,
-                        clock = viewModel.clock,
-                        dataSource = state.dataSource,
-                        displayName = state.meDisplayName,
-                        compact = compact,
-                        showGateMenu = role == KioskRole.GATE,
-                        showPickup = role == KioskRole.GATE && state.screen == KioskScreen.HOME,
-                        pickupOpen = state.screen == KioskScreen.PICKUP,
-                        onSelectGate = viewModel::selectGate,
-                        onLogout = viewModel::logout,
-                        onPickup = viewModel::openPickup,
-                        onClosePickup = viewModel::closePickup,
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(if (compact) Modifier else Modifier.weight(1f))
-                            .shadow(24.dp, CardShape, ambientColor = androidx.compose.ui.graphics.Color(0x59000000))
-                            .clip(CardShape)
-                            .background(KioskColors.card)
-                            .border(1.dp, KioskColors.border, CardShape)
-                            .padding(horizontal = cardHPad, vertical = cardVPad),
-                    ) {
-                        when {
-                            role == KioskRole.GATE && state.screen == KioskScreen.PICKUP -> {
-                                PickupScreen(
-                                    query = state.pickupQuery,
-                                    students = state.students,
-                                    selectedStudent = state.selectedStudent,
-                                    authorized = state.authorizedPickup,
-                                    selectedCollector = state.selectedCollector,
-                                    pickupReason = state.pickupReason,
-                                    reasonOther = state.pickupReasonOther,
-                                    pickup = state.activePickup,
-                                    busy = state.pickupBusy,
-                                    compact = compact,
-                                    gateName = state.selectedGate?.name ?: "Main Gate",
-                                    onQuery = viewModel::updatePickupQuery,
-                                    onSelectStudent = viewModel::selectPickupStudent,
-                                    onSelectCollector = viewModel::selectPickupCollector,
-                                    onReason = viewModel::selectPickupReason,
-                                    onReasonOther = viewModel::updatePickupReasonOther,
-                                    onStart = viewModel::startPickup,
-                                    onConsent = viewModel::consentPickup,
-                                    onRelease = viewModel::releasePickup,
-                                    onBack = viewModel::closePickup,
-                                )
-                            }
-                            role == KioskRole.GATE && state.screen in setOf(KioskScreen.HISTORY, KioskScreen.HISTORY_DETAIL) -> {
-                                HistoryScreen(
-                                    events = state.historyEvents,
-                                    filterToday = state.historyTodayOnly,
-                                    filterKind = state.historyKindFilter,
-                                    filterStatus = state.historyStatusFilter,
-                                    busy = state.historyBusy,
-                                    selected = state.historySelected,
-                                    rejectReason = state.historyRejectReason,
-                                    onToggleToday = viewModel::toggleHistoryToday,
-                                    onKind = viewModel::setHistoryKind,
-                                    onStatus = viewModel::setHistoryStatus,
-                                    onSelect = viewModel::selectHistory,
-                                    onClearDetail = viewModel::clearHistoryDetail,
-                                    onRefresh = viewModel::refreshHistory,
-                                    onBack = viewModel::closeGuardTool,
-                                )
-                            }
-                            role == KioskRole.GATE && state.screen == KioskScreen.COURIER -> {
-                                CourierLogScreen(
-                            company = state.courierCompany,
-                            tracking = state.courierTracking,
-                            packageType = state.courierPackageType,
-                            gateLabel = state.courierGateLabel,
-                            collectedBy = state.courierCollectedBy,
-                            note = state.courierNote,
-                            busy = state.courierBusy,
-                            recent = state.courierRecent,
-                            packagePhotoJpeg = state.courierPackagePhotoJpeg,
-                            onCompany = viewModel::updateCourierCompany,
-                            onTracking = viewModel::updateCourierTracking,
-                            onPackageType = viewModel::updateCourierPackageType,
-                            onGateLabel = viewModel::updateCourierGateLabel,
-                            onCollectedBy = viewModel::updateCourierCollectedBy,
-                            onNote = viewModel::updateCourierNote,
-                            onPackagePhoto = viewModel::setCourierPackagePhoto,
-                            onClearPackagePhoto = viewModel::clearCourierPackagePhoto,
-                            onReceive = viewModel::receiveCourier,
-                            onHandOver = viewModel::handOverCourier,
-                            onBack = viewModel::closeGuardTool,
-                        )
-                            }
-                            role == KioskRole.GATE && state.screen == KioskScreen.CHECKOUT -> {
-                                CheckoutVerifyScreen(
-                                    inside = state.checkoutInside,
-                                    selectedId = state.checkoutSelectedId,
-                                    busy = state.checkoutBusy,
-                                    onSelect = viewModel::selectCheckout,
-                                    onConfirm = viewModel::confirmCheckout,
-                                    onBack = viewModel::closeGuardTool,
-                                    onRefresh = viewModel::refreshCheckoutInside,
-                                )
-                            }
-                            role == KioskRole.GATE && state.screen == KioskScreen.LOST_FOUND -> {
-                                LostFoundCreateScreen(
-                                    description = state.lfDescription,
-                                    location = state.lfLocation,
-                                    finder = state.lfFinder,
-                                    finderMobile = state.lfFinderMobile,
-                                    foundAt = state.lfFoundAt,
-                                    itemType = state.lfItemType,
-                                    photo = state.lfPhoto,
-                                    busy = state.lfBusy,
-                                    onDescription = viewModel::updateLfDescription,
-                                    onLocation = viewModel::updateLfLocation,
-                                    onFinder = viewModel::updateLfFinder,
-                                    onFinderMobile = viewModel::updateLfFinderMobile,
-                                    onFoundAt = viewModel::updateLfFoundAt,
-                                    onItemType = viewModel::updateLfItemType,
-                                    onPhoto = viewModel::setLfPhoto,
-                                    onSubmit = viewModel::submitLostFound,
-                                    onBack = viewModel::closeGuardTool,
-                                )
-                            }
-                            role == KioskRole.GATE && !state.loaded -> {
-                                Text(
-                                    "Loading gate…",
-                                    color = KioskColors.textMuted,
-                                    fontFamily = KioskFont,
-                                )
-                            }
-                            role == KioskRole.GATE -> {
-                                // Should not reach for HOME (shell above). Subflows only.
-                                Text(
-                                    "Returning to Gate home…",
-                                    color = KioskColors.textMuted,
-                                    fontFamily = KioskFont,
-                                )
-                                androidx.compose.runtime.LaunchedEffect(Unit) {
-                                    viewModel.closeGuardTool()
-                                }
-                            }
-                            else -> UnsupportedRoleScreen(
-                                role = state.meRole,
-                                compact = compact,
-                                onLogout = viewModel::logout,
-                            )
-                        }
-                    }
+                        UnsupportedRoleScreen(role = state.meRole, compact = compact, onLogout = viewModel::logout)
                     } // end non-guard
                 }
             }
@@ -597,6 +390,296 @@ private fun KioskStep(
 }
 
 /** The only reader of the per-second clock flow: a tick recomposes this Text, nothing else. */
+
+/** 1077: what a clocked-in guard sees, by duty. Switcher only for both; no-duty guard gets the plain text + shared tools. */
+@Composable
+private fun DutyHome(
+    state: KioskUiState,
+    viewModel: KioskViewModel,
+    guardHome: com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeViewModel,
+    patrolVm: com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolViewModel,
+    compact: Boolean,
+    cardHPad: androidx.compose.ui.unit.Dp,
+    cardVPad: androidx.compose.ui.unit.Dp,
+    requestLogout: () -> Unit,
+) {
+    val areas = state.dutyAreas ?: setOf(com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.PATROL)
+    val active = state.activeArea
+    val patrolState by patrolVm.state.collectAsStateWithLifecycle()
+    val incidentUp = patrolState.screen == com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolScreen.INCIDENT
+    var findUp by remember { mutableStateOf(false) }
+    // resume = home open: re-read duty
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) viewModel.refreshDutyNow()
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+    val openIncident = { patrolVm.openIncidentReport() }
+    Column(Modifier.fillMaxSize()) {
+        if (state.dutyPending != null) com.satcop.smartvisitor.kiosk.ui.duty.DutyUpdatedBanner(viewModel::applyDutyUpdate)
+        if (areas.size > 1) com.satcop.smartvisitor.kiosk.ui.duty.DutyAreaSwitcher(active, viewModel::switchArea)
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            when {
+                incidentUp && active != com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.PATROL -> {
+                    androidx.activity.compose.BackHandler { patrolVm.cancelIncidentReport() }
+                    com.satcop.smartvisitor.kiosk.guardpatrol.ui.IncidentReportScreen(
+                        state = patrolState,
+                        onType = patrolVm::setIncidentType,
+                        onNotes = patrolVm::setIncidentNotes,
+                        onCheckpoint = patrolVm::setIncidentCheckpoint,
+                        onPhoto = patrolVm::setIncidentPhoto,
+                        onClearPhoto = patrolVm::clearIncidentPhoto,
+                        onSubmit = patrolVm::submitIncident,
+                        onCancel = patrolVm::cancelIncidentReport,
+                    )
+                }
+                active == com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE ->
+                    GateDeskArea(state, viewModel, compact, cardHPad, cardVPad, requestLogout, openIncident)
+                active == com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.PATROL ->
+                    com.satcop.smartvisitor.kiosk.guardpatrol.ui.GuardPatrolApp(
+                        vm = patrolVm,
+                        onExit = null,
+                        onCourier = viewModel::openCourier,
+                        onLostFound = viewModel::openLostFound,
+                        onLogout = requestLogout,
+                        homeVm = guardHome,
+                        onDutyRefresh = viewModel::refreshDutyNow,
+                    )
+                findUp -> {
+                    androidx.activity.compose.BackHandler { findUp = false }
+                    com.satcop.smartvisitor.kiosk.ui.guardhome.GuardFindScreen(guardHome.controller)
+                }
+                else -> com.satcop.smartvisitor.kiosk.ui.duty.NoDutyHome(
+                    displayName = state.meDisplayName,
+                    onIncident = openIncident,
+                    onLostFound = viewModel::openLostFound,
+                    onCourier = viewModel::openCourier,
+                    onFindVisitor = { findUp = true; guardHome.controller.openFind() },
+                    onClockOut = { guardHome.controller.openPanel(com.satcop.smartvisitor.kiosk.ui.guardhome.AttendanceMode.CLOCK_OUT) },
+                    onSignOut = requestLogout,
+                )
+            }
+        }
+    }
+}
+
+/** 1077: the Gate desk area (moved unchanged from the old Gate-role branch). Lives inside GuardClockInGate. */
+@Composable
+private fun GateDeskArea(
+    state: KioskUiState,
+    viewModel: KioskViewModel,
+    compact: Boolean,
+    cardHPad: androidx.compose.ui.unit.Dp,
+    cardVPad: androidx.compose.ui.unit.Dp,
+    requestLogout: () -> Unit,
+    onReportIncident: () -> Unit,
+) {
+    if (state.screen == KioskScreen.HOME) {
+                        // AC-APP1: Gate shell ALWAYS on HOME (not only step==1).
+                        // Registration step>1 stays under pinned NavigationBar.
+                        GateTodayScreen(
+                            gateName = state.dutyGateName?.takeIf { it.isNotBlank() } ?: state.selectedGate?.name ?: "Main Gate",
+                            recent = state.recent,
+                            onAddVisitor = viewModel::startAddVisitor,
+                            onCourier = viewModel::openCourier,
+                            onHistory = viewModel::openHistory,
+                            onCheckout = viewModel::openCheckout,
+                            onLostFound = viewModel::openLostFound,
+                            onPickup = viewModel::openPickup,
+                            onLogout = requestLogout,
+                            displayName = state.meDisplayName,
+                            insideList = state.checkoutInside,
+                            historyEvents = state.historyEvents,
+                            hostNames = state.hosts.associate { it.id to it.name },
+                            onRefreshLists = {
+                                viewModel.refreshCheckoutInside()
+                                viewModel.refreshHistory()
+                            },
+                            onSelectHistory = viewModel::selectHistory,
+                            onReportIncident = onReportIncident,
+                            onCheckoutVisit = { id ->
+                                viewModel.selectCheckout(id)
+                                viewModel.confirmCheckout()
+                            },
+                            registrationStep = state.step,
+                            registrationContent = if (state.step > 1) {
+                                {
+                                    // 1061b: ONE horizontal margin for the whole step (dots, header, labels, inputs, host).
+                                    Column(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = FormTokens.ScreenHPad)
+                                            .padding(bottom = FormTokens.SectionGap),
+                                    ) {
+                                        KioskStep(
+                                            step = state.step,
+                                            state = state,
+                                            viewModel = viewModel,
+                                        )
+                                    }
+                                }
+                            } else null,
+                        )
+    } else {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    KioskHeader(
+                        schoolName = state.schoolName,
+                        schoolId = state.schoolId,
+                        gateName = state.selectedGate?.name ?: "Main Gate",
+                        gates = state.gates,
+                        clock = viewModel.clock,
+                        dataSource = state.dataSource,
+                        displayName = state.meDisplayName,
+                        compact = compact,
+                        showGateMenu = true,
+                        showPickup = state.screen == KioskScreen.HOME,
+                        pickupOpen = state.screen == KioskScreen.PICKUP,
+                        onSelectGate = viewModel::selectGate,
+                        onLogout = requestLogout,
+                        onPickup = viewModel::openPickup,
+                        onClosePickup = viewModel::closePickup,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (compact) Modifier else Modifier.weight(1f))
+                            .shadow(24.dp, CardShape, ambientColor = androidx.compose.ui.graphics.Color(0x59000000))
+                            .clip(CardShape)
+                            .background(KioskColors.card)
+                            .border(1.dp, KioskColors.border, CardShape)
+                            .padding(horizontal = cardHPad, vertical = cardVPad),
+                    ) {
+                        when {
+                            state.screen == KioskScreen.PICKUP -> {
+                                PickupScreen(
+                                    query = state.pickupQuery,
+                                    students = state.students,
+                                    selectedStudent = state.selectedStudent,
+                                    authorized = state.authorizedPickup,
+                                    selectedCollector = state.selectedCollector,
+                                    pickupReason = state.pickupReason,
+                                    reasonOther = state.pickupReasonOther,
+                                    pickup = state.activePickup,
+                                    busy = state.pickupBusy,
+                                    compact = compact,
+                                    gateName = state.selectedGate?.name ?: "Main Gate",
+                                    onQuery = viewModel::updatePickupQuery,
+                                    onSelectStudent = viewModel::selectPickupStudent,
+                                    onSelectCollector = viewModel::selectPickupCollector,
+                                    onReason = viewModel::selectPickupReason,
+                                    onReasonOther = viewModel::updatePickupReasonOther,
+                                    onStart = viewModel::startPickup,
+                                    onConsent = viewModel::consentPickup,
+                                    onRelease = viewModel::releasePickup,
+                                    onBack = viewModel::closePickup,
+                                )
+                            }
+                            state.screen in setOf(KioskScreen.HISTORY, KioskScreen.HISTORY_DETAIL) -> {
+                                HistoryScreen(
+                                    events = state.historyEvents,
+                                    filterToday = state.historyTodayOnly,
+                                    filterKind = state.historyKindFilter,
+                                    filterStatus = state.historyStatusFilter,
+                                    busy = state.historyBusy,
+                                    selected = state.historySelected,
+                                    rejectReason = state.historyRejectReason,
+                                    onToggleToday = viewModel::toggleHistoryToday,
+                                    onKind = viewModel::setHistoryKind,
+                                    onStatus = viewModel::setHistoryStatus,
+                                    onSelect = viewModel::selectHistory,
+                                    onClearDetail = viewModel::clearHistoryDetail,
+                                    onRefresh = viewModel::refreshHistory,
+                                    onBack = viewModel::closeGuardTool,
+                                )
+                            }
+                            state.screen == KioskScreen.COURIER -> {
+                                CourierLogScreen(
+                            company = state.courierCompany,
+                            tracking = state.courierTracking,
+                            packageType = state.courierPackageType,
+                            gateLabel = state.courierGateLabel,
+                            collectedBy = state.courierCollectedBy,
+                            note = state.courierNote,
+                            busy = state.courierBusy,
+                            recent = state.courierRecent,
+                            packagePhotoJpeg = state.courierPackagePhotoJpeg,
+                            onCompany = viewModel::updateCourierCompany,
+                            onTracking = viewModel::updateCourierTracking,
+                            onPackageType = viewModel::updateCourierPackageType,
+                            onGateLabel = viewModel::updateCourierGateLabel,
+                            onCollectedBy = viewModel::updateCourierCollectedBy,
+                            onNote = viewModel::updateCourierNote,
+                            onPackagePhoto = viewModel::setCourierPackagePhoto,
+                            onClearPackagePhoto = viewModel::clearCourierPackagePhoto,
+                            onReceive = viewModel::receiveCourier,
+                            onHandOver = viewModel::handOverCourier,
+                            onBack = viewModel::closeGuardTool,
+                        )
+                            }
+                            state.screen == KioskScreen.CHECKOUT -> {
+                                CheckoutVerifyScreen(
+                                    inside = state.checkoutInside,
+                                    selectedId = state.checkoutSelectedId,
+                                    busy = state.checkoutBusy,
+                                    onSelect = viewModel::selectCheckout,
+                                    onConfirm = viewModel::confirmCheckout,
+                                    onBack = viewModel::closeGuardTool,
+                                    onRefresh = viewModel::refreshCheckoutInside,
+                                )
+                            }
+                            state.screen == KioskScreen.LOST_FOUND -> {
+                                LostFoundCreateScreen(
+                                    description = state.lfDescription,
+                                    location = state.lfLocation,
+                                    finder = state.lfFinder,
+                                    finderMobile = state.lfFinderMobile,
+                                    foundAt = state.lfFoundAt,
+                                    itemType = state.lfItemType,
+                                    photo = state.lfPhoto,
+                                    busy = state.lfBusy,
+                                    onDescription = viewModel::updateLfDescription,
+                                    onLocation = viewModel::updateLfLocation,
+                                    onFinder = viewModel::updateLfFinder,
+                                    onFinderMobile = viewModel::updateLfFinderMobile,
+                                    onFoundAt = viewModel::updateLfFoundAt,
+                                    onItemType = viewModel::updateLfItemType,
+                                    onPhoto = viewModel::setLfPhoto,
+                                    onSubmit = viewModel::submitLostFound,
+                                    onBack = viewModel::closeGuardTool,
+                                )
+                            }
+                            !state.loaded -> {
+                                Text(
+                                    "Loading gate…",
+                                    color = KioskColors.textMuted,
+                                    fontFamily = KioskFont,
+                                )
+                            }
+                            true -> {
+                                // Should not reach for HOME (shell above). Subflows only.
+                                Text(
+                                    "Returning to Gate home…",
+                                    color = KioskColors.textMuted,
+                                    fontFamily = KioskFont,
+                                )
+                                androidx.compose.runtime.LaunchedEffect(Unit) {
+                                    viewModel.closeGuardTool()
+                                }
+                            }
+                            else -> UnsupportedRoleScreen(
+                                role = state.meRole,
+                                compact = compact,
+                                onLogout = viewModel::logout,
+                            )
+                        }
+                    }
+        }
+    }
+}
+
 @Composable
 fun ClockText(
     clock: StateFlow<String>,

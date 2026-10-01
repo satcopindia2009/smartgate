@@ -224,6 +224,7 @@ class LiveGuardPatrolApi(
             if (!resp.isSuccessful) {
                 throw apiError(resp.code, text).also {
                     if (it.code == "FACE_REQUIRED") session.markFaceRequired()
+                    if (it.code.uppercase() in setOf("NO_GATE_DUTY", "NO_PATROL_DUTY", "NOT_CLOCKED_IN")) session.noteDutyError(it.code.uppercase())
                     if (com.satcop.smartvisitor.kiosk.data.api.SessionExpiry.isSessionEnd(it.httpStatus, it.code, request.header("Authorization") != null)) {
                         session.markExpired()
                     }

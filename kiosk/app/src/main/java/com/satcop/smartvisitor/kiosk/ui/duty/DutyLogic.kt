@@ -18,6 +18,10 @@ data class DutyInfo(
     val present: Boolean get() = dutyTypes != null || !primaryHome.isNullOrBlank() || hasDuty != null
 
     companion object {
+        fun fromUser(u: com.satcop.smartvisitor.kiosk.data.model.MeResponse?): DutyInfo? = u?.let {
+            DutyInfo(it.dutyTypes, it.primaryHome, it.hasDuty, it.dutyRevision, DutyLogic.gatesFromAssignments(it.dutyAssignments), null)
+        }
+
         fun from(m: DutyMe?): DutyInfo? = m?.let {
             DutyInfo(it.dutyTypes, it.primaryHome, it.hasDuty, it.dutyRevision, it.gates, it.patrol?.count)
         }
@@ -115,6 +119,11 @@ object DutyLogic {
 
     /** Keep the area the guard is on if it still exists, else the default of the new set. */
     fun selectArea(current: DutyArea?, r: DutyResult): DutyArea? = if (current != null && current in r.areas) current else r.defaultArea
+
+    /** Distinct gates of the gate-type assignments (login snapshot), in server order. */
+    fun gatesFromAssignments(list: List<com.satcop.smartvisitor.kiosk.data.model.DutyCompact>?): List<DutyGate> =
+        list.orEmpty().filter { parseType(it.type) == DutyArea.GATE && !it.gateId.isNullOrBlank() }
+            .map { DutyGate(it.gateId, it.gateName) }.distinctBy { it.id }
 
     /** Two or more distinct gates in today's gate duty => the guard chooses (first by default). */
     fun needsGateChooser(gates: List<DutyGate>): Boolean = gates.filter { !it.id.isNullOrBlank() }.distinctBy { it.id }.size > 1

@@ -98,6 +98,16 @@ data class KioskUiState(
     val meRole: String = "",
     /** 1076: card of a role whose clock-in was refused by the server (face-verify only). */
     val verifyOnlySession: Boolean = false,
+    /** 1077 duty: null = not read yet; empty = no duty. */
+    val dutyAreas: Set<com.satcop.smartvisitor.kiosk.ui.duty.DutyArea>? = null,
+    val activeArea: com.satcop.smartvisitor.kiosk.ui.duty.DutyArea? = null,
+    val dutyRevision: String? = null,
+    val dutyPending: com.satcop.smartvisitor.kiosk.data.model.DutyMe? = null,
+    val dutyGates: List<com.satcop.smartvisitor.kiosk.data.model.DutyGate> = emptyList(),
+    val chosenGateId: String? = null,
+    val dutyGateName: String? = null,
+    /** Bumped when the server says NOT_CLOCKED_IN: the guard gate re-reads attendance and returns to the lock. */
+    val attendanceRecheck: Int = 0,
     val verifiedCard: com.satcop.smartvisitor.kiosk.ui.guardhome.ClockResult? = null,
     val meStaffId: String = "",
     val gates: List<Gate> = emptyList(),
@@ -243,6 +253,12 @@ class KioskViewModel(
             AppAuth.session.faceRequiredEvents.collect { onServerFaceRequired() }
         }
         viewModelScope.launch {
+            AppAuth.session.dutyEvents.collect { code ->
+                if (code == "NOT_CLOCKED_IN") _state.update { it.copy(attendanceRecheck = it.attendanceRecheck + 1) }
+                else refreshDutyNow()
+            }
+        }
+        viewModelScope.launch {
             AppAuth.session.sessionExpiredEvents.collect { endSession(ErrorCopy.SESSION_EXPIRED) }
         }
         // 1072 E: while the app stays open past the token cut-off (guard: 00:00 IST) sign out at that moment, not on the next tap.
@@ -367,6 +383,11 @@ class KioskViewModel(
                         // the camera opens only from its CLOCK IN TO CONTINUE button. No data call before face-verify.
                         facePhase = FaceLoginPhase.HUB,
                         faceEnrolled = enrolled || it.faceEnrolled,
+                        dutyGates = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.gatesFromAssignments(me.dutyAssignments),
+                        chosenGateId = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.gatesFromAssignments(me.dutyAssignments)
+                            .takeIf { g -> com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.needsGateChooser(g) }
+                            ?.let { g -> com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.defaultGate(g)?.id },
+                        dutyAreas = null, activeArea = null, dutyPending = null,
                         meDisplayName = me.displayName,
                         schoolName = me.schoolName?.takeIf { n -> n.isNotBlank() } ?: it.schoolName,
                         faceMessage = null,
@@ -422,20 +443,122 @@ class KioskViewModel(
             _state.update { it.copy(geoFenceMode = schoolMe.geoFenceMode) }
         }
         when (KioskRole.fromJwt(me.role)) {
-            KioskRole.GATE -> loadGateHome(me)
+            KioskRole.GATE, KioskRole.GUARD -> loadDutyHome(me)
             KioskRole.HOST -> {
                 applyIdentityHome(me)
                 loadHostHome()
                 startHostPendingPoll()
             }
-            KioskRole.GUARD -> {
-                applyIdentityHome(me)
-                // AC-GP2: Assigned today visible immediately after Guard login (not buried under hub).
-                _state.update { it.copy(screen = KioskScreen.GUARD_PATROL) }
-            }
             KioskRole.UNSUPPORTED -> applyIdentityHome(me)
         }
     }
+
+    // ---------------- 1077: one role (guard), home by DUTY ----------------
+    private var dutyJob: Job? = null
+
+    private suspend fun readDuty(me: MeResponse): Triple<com.satcop.smartvisitor.kiosk.data.model.DutyMe?, com.satcop.smartvisitor.kiosk.ui.duty.DutyInfo?, com.satcop.smartvisitor.kiosk.ui.duty.DutyResult> {
+        val dm = runCatching { io { liveApi.dutyMe() } }.getOrNull()
+        val info = com.satcop.smartvisitor.kiosk.ui.duty.DutyInfo.from(dm)?.takeIf { it.present }
+            ?: com.satcop.smartvisitor.kiosk.ui.duty.DutyInfo.fromUser(me)?.takeIf { it.present }
+        val patrolCount = if (com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.needsPatrolSummary(me.role, info)) {
+            runCatching { io { liveApi.guardTodaySummary() } }.getOrNull()?.patrol?.assignedToday
+        } else null
+        val att = if (info == null) runCatching { io { liveApi.attendanceToday() } }.getOrNull() else null
+        // the attendance row of today may already carry the duty (dutyTypes) when /duty/me is not there yet
+        val info2 = info ?: com.satcop.smartvisitor.kiosk.ui.duty.DutyInfo(att?.dutyTypes, att?.primaryHome, att?.hasDuty, att?.dutyRevision)
+            .takeIf { it.present }
+        val r = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.areas(
+            me.role, info2, me.gateIds,
+            att?.gateId ?: att?.attendance?.gateId, att?.attendance?.gateSource, patrolCount,
+        )
+        return Triple(dm, info2, r)
+    }
+
+    private fun applyDutyState(
+        r: com.satcop.smartvisitor.kiosk.ui.duty.DutyResult,
+        revision: String?,
+        gates: List<com.satcop.smartvisitor.kiosk.data.model.DutyGate>,
+    ) {
+        _state.update {
+            val active = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.selectArea(it.activeArea, r)
+            val g = gates.ifEmpty { it.dutyGates }
+            it.copy(
+                dutyAreas = r.areas, activeArea = active, dutyRevision = revision ?: it.dutyRevision, dutyPending = null,
+                dutyGates = g,
+                chosenGateId = it.chosenGateId?.takeIf { id -> g.any { x -> x.id == id } },
+                dutyGateName = g.firstOrNull { x -> x.id == (it.chosenGateId ?: g.firstOrNull()?.id) }?.name ?: it.dutyGateName,
+            )
+        }
+    }
+
+    private suspend fun loadDutyHome(me: MeResponse) {
+        val (dm, info, r) = readDuty(me)
+        applyIdentityHome(me)
+        applyDutyState(r, info?.revision, dm?.gates.orEmpty())
+        if (com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in r.areas) {
+            loadGateHome(me)
+            // the gate chosen at clock-in (or the first duty gate) is the default gate of the desk
+            val gid = _state.value.chosenGateId ?: _state.value.dutyGates.firstOrNull()?.id
+            if (gid != null) _state.update { s -> if (s.gates.any { it.id == gid }) s.copy(draft = s.draft.copy(gateId = gid)) else s }
+        }
+        _state.update {
+            it.copy(screen = if (it.activeArea == com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.PATROL) KioskScreen.GUARD_PATROL else KioskScreen.HOME)
+        }
+        startDutyPoll()
+    }
+
+    private fun startDutyPoll() {
+        dutyJob?.cancel()
+        dutyJob = viewModelScope.launch {
+            while (true) {
+                delay(60_000L)
+                val s = _state.value
+                if (!s.signedIn || !FaceGateMachine.canShowData(s.gateStage)) return@launch
+                if (hostForeground) checkDuty()
+            }
+        }
+    }
+
+    /** Home open / pull-to-refresh / resume / duty error: re-read duty; a change shows the banner (never switches silently). */
+    fun refreshDutyNow() {
+        val s = _state.value
+        if (!s.signedIn || !FaceGateMachine.canShowData(s.gateStage) || s.dutyAreas == null) return
+        viewModelScope.launch { checkDuty() }
+    }
+
+    private suspend fun checkDuty() {
+        val me = AppAuth.session.user ?: return
+        val dm = runCatching { io { liveApi.dutyMe() } }.getOrNull() ?: return
+        val s = _state.value
+        val info = com.satcop.smartvisitor.kiosk.ui.duty.DutyInfo.from(dm)?.takeIf { it.present } ?: return
+        val fresh = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.areas(me.role, info, me.gateIds)
+        val changed = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.revisionChanged(s.dutyRevision, info.revision) ||
+            (s.dutyRevision == null && fresh.areas != s.dutyAreas)
+        if (changed && s.dutyPending?.dutyRevision != dm.dutyRevision) _state.update { it.copy(dutyPending = dm) }
+        else if (s.dutyRevision == null && !changed) _state.update { it.copy(dutyRevision = info.revision) }
+    }
+
+    /** The guard tapped "Your duty was updated. Tap to refresh.": re-read and re-render. */
+    fun applyDutyUpdate() {
+        viewModelScope.launch {
+            val me = AppAuth.session.user ?: return@launch
+            val dm = runCatching { io { liveApi.dutyMe() } }.getOrNull() ?: _state.value.dutyPending
+            val info = com.satcop.smartvisitor.kiosk.ui.duty.DutyInfo.from(dm)?.takeIf { it.present }
+            if (info == null) { _state.update { it.copy(dutyPending = null) }; return@launch }
+            val r = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.areas(me.role, info, me.gateIds)
+            val hadGate = com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in (_state.value.dutyAreas ?: emptySet())
+            applyDutyState(r, info.revision, dm?.gates.orEmpty())
+            if (!hadGate && com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in r.areas) loadGateHome(me)
+        }
+    }
+
+    fun switchArea(area: com.satcop.smartvisitor.kiosk.ui.duty.DutyArea) {
+        _state.update { s ->
+            if (s.dutyAreas?.contains(area) == true) s.copy(activeArea = area, screen = KioskScreen.HOME, toast = null) else s
+        }
+    }
+
+    fun chooseGate(id: String) { _state.update { it.copy(chosenGateId = id, dutyGateName = it.dutyGates.firstOrNull { g -> g.id == id }?.name ?: it.dutyGateName) } }
 
     private suspend fun loadGateHome(me: MeResponse) {
         try {
@@ -537,7 +660,7 @@ class KioskViewModel(
     }
 
     fun openPickup() {
-        if (_state.value.homeRole() != KioskRole.GATE) return
+        if (!_state.value.isGateDesk()) return
         viewModelScope.launch {
             _state.update { it.copy(screen = KioskScreen.PICKUP, toast = null) }
             refreshStudents()
@@ -2373,6 +2496,7 @@ class KioskViewModel(
                 // 1073: the face step IS the clock-in. Same photo + GPS + time; any failure keeps the guard OUT with a reason + Retry.
                 val req = com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.buildCheckIn(
                     b64, stamp, java.time.Instant.now(), "att-" + java.util.UUID.randomUUID().toString().take(12),
+                    gateId = _state.value.chosenGateId,
                 )
                 _state.update { it.copy(faceMessage = "Face matched — clocking you in…") }
                 // 1074: mock location - restrict mode is blocked, soft mode goes out flagged (isMock sent).
@@ -2421,6 +2545,7 @@ class KioskViewModel(
                     it.copy(
                         faceBusy = true, faceMessage = "Checked in", faceError = false,
                         clockInRow = ci.getOrNull(),
+                        dutyGateName = ci.getOrNull()?.let { r -> r.dutyGateName?.takeIf { n -> n.isNotBlank() } ?: r.gateName?.takeIf { n -> n.isNotBlank() && n != "—" } } ?: it.dutyGateName,
                         toast = if (ciErr == null) "Face matched. You are checked in." else null, toastKind = ToastKind.SUCCESS,
                     )
                 }
@@ -2484,6 +2609,12 @@ class KioskViewModel(
                 }
             }
             return false
+        }
+        if (s.isGateDesk() && s.homeRole() != KioskRole.HOST) return when {
+            s.screen == KioskScreen.HISTORY_DETAIL -> { clearHistoryDetail(); true }
+            s.screen != KioskScreen.HOME -> { closeGuardTool(); true }
+            s.step > 1 -> { back(); true }
+            else -> false
         }
         return when (s.homeRole()) {
             KioskRole.GATE -> when {
