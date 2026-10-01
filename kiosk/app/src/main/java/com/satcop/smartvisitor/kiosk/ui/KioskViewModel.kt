@@ -2540,12 +2540,17 @@ class KioskViewModel(
                     }
                     return@launch
                 }
+                // 1078: already-in error -> the card comes from today's existing row (verified token), else the error details, else no card.
+                val cardRow = ci.getOrNull() ?: if (ciErr != null) {
+                    val today = runCatching { io { liveApi.attendanceToday() } }.getOrNull()
+                    com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.rowForAlreadyIn(ciErr, today)
+                } else null
                 // 1075: stay on the camera (no white Face login card, no lock flash) until the app data is in.
                 _state.update {
                     it.copy(
                         faceBusy = true, faceMessage = "Checked in", faceError = false,
-                        clockInRow = ci.getOrNull(),
-                        dutyGateName = ci.getOrNull()?.let { r -> r.dutyGateName?.takeIf { n -> n.isNotBlank() } ?: r.gateName?.takeIf { n -> n.isNotBlank() && n != "—" } } ?: it.dutyGateName,
+                        clockInRow = cardRow,
+                        dutyGateName = cardRow?.let { r -> r.dutyGateName?.takeIf { n -> n.isNotBlank() } ?: r.gateName?.takeIf { n -> n.isNotBlank() && n != "—" } } ?: it.dutyGateName,
                         toast = if (ciErr == null) "Face matched. You are checked in." else null, toastKind = ToastKind.SUCCESS,
                     )
                 }

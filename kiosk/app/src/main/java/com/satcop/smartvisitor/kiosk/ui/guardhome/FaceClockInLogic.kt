@@ -66,6 +66,36 @@ object FaceClockInLogic {
         return c == "ALREADY_CHECKED_IN" || c == "ALREADY_CLOCKED_OUT"
     }
 
+    /** 1078: the card row after an already-in check-in error. Order: today's row (GET /attendance/me/today), then the error details. */
+    fun rowForAlreadyIn(e: Throwable, today: com.satcop.smartvisitor.kiosk.data.model.TodayAttendance?): com.satcop.smartvisitor.kiosk.data.model.AttendanceRow? {
+        if (!alreadyIn(e)) return null
+        val fromToday = today?.attendance?.takeIf { hasRecord(it) }
+        val row = fromToday ?: rowFromDetails(e as? ApiException)
+        // A finished shift (checked out) has no "Checked In!" card: Shift complete handles it.
+        return row?.takeIf { it.checkOutAt.isNullOrBlank() && !isClockedOut(e) }
+    }
+
+    private fun isClockedOut(e: Throwable): Boolean =
+        (e as? ApiException)?.let { GuardGeoLogic.canonicalCode(it) } == "ALREADY_CLOCKED_OUT"
+
+    private fun hasRecord(r: com.satcop.smartvisitor.kiosk.data.model.AttendanceRow): Boolean =
+        !r.id.isNullOrBlank() || !r.checkInAt.isNullOrBlank() || !r.serverTime.isNullOrBlank() || !r.timestamp.isNullOrBlank()
+
+    /** Error details are flattened ("attendance.id", "id", ...). Only a row that has an id or a time is usable. */
+    fun rowFromDetails(e: ApiException?): com.satcop.smartvisitor.kiosk.data.model.AttendanceRow? {
+        val d = e?.details ?: return null
+        fun pick(vararg keys: String): String? = keys.firstNotNullOfOrNull { k -> d[k]?.takeIf { it.isNotBlank() } }
+        val id = pick("attendance.id", "attendanceId", "id", "recordId")
+        val inAt = pick("attendance.checkInAt", "checkInAt", "attendance.timestamp", "timestamp", "attendance.serverTime", "serverTime")
+        if (id == null && inAt == null) return null
+        return com.satcop.smartvisitor.kiosk.data.model.AttendanceRow(
+            id = id, checkInAt = inAt, checkOutAt = pick("attendance.checkOutAt", "checkOutAt"),
+            gateName = pick("attendance.gateName", "gateName", "dutyGateName"),
+            dutyGateName = pick("attendance.dutyGateName", "dutyGateName"),
+            dutyDate = pick("attendance.dutyDate", "dutyDate"),
+        )
+    }
+
     /** Reason shown on the face screen when the clock-in after a good face check failed. The guard stays out. */
     fun checkInFailureMessage(e: Throwable, sentWithoutLocation: Boolean, fallbackRadiusM: Double? = null): String {
         val api = (e as? ApiException)?.let(GuardGeoLogic::normalize) ?: return ErrorCopy.forThrowable(e)
