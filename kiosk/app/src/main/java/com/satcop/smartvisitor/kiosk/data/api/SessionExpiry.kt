@@ -18,6 +18,18 @@ object SessionExpiry {
 
     fun isExpired(expiresAtMs: Long?, nowMs: Long): Boolean = expiresAtMs != null && nowMs >= expiresAtMs
 
+    /** Longest sleep of the foreground watcher: also catches a phone clock that was changed. */
+    const val WATCH_MAX_DELAY_MS = 30_000L
+
+    /**
+     * 1072 E: how long the foreground watcher sleeps before looking again. Wakes at the cut-off itself (guard: 00:00 IST),
+     * never later than [WATCH_MAX_DELAY_MS] and never sooner than 250 ms. Null expiry = nothing to wait for = the max delay.
+     */
+    fun nextCheckDelayMs(expiresAtMs: Long?, nowMs: Long): Long {
+        if (expiresAtMs == null) return WATCH_MAX_DELAY_MS
+        return (expiresAtMs - nowMs).coerceIn(250L, WATCH_MAX_DELAY_MS)
+    }
+
     /** 401 that means "this token is over": expired/invalid, or unauthorized while a token was sent. */
     fun isSessionEnd(httpStatus: Int, code: String, hadToken: Boolean): Boolean {
         if (httpStatus != 401) return false

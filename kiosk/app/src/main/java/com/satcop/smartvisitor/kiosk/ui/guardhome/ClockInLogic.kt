@@ -36,6 +36,10 @@ data class ClockResult(
     val selfieUploaded: Boolean,
     val recordId: String,
     val flaggedNote: String?,
+    /** 1072 F: second line under the soft-outside note ("You were about 340 m from the campus; the limit is 192 m."), only with server numbers. */
+    val flaggedDetail: String? = null,
+    /** 1072 D: the OS flagged the reading as a mock location (the check-in went through and is flagged on the server). */
+    val mockNote: String? = null,
     /** Signed URL exactly as the server returned it (?t= intact); loaded via MediaUrl, never built from a key. */
     val guardPhotoUrl: String? = null,
 )
@@ -65,11 +69,25 @@ object ClockInLogic {
 
     fun greeting(displayName: String, now: LocalTime): String = com.satcop.smartvisitor.kiosk.ui.Greeting.line(firstName(displayName), now)
 
-    fun lockState(today: TodayAttendance?, loaded: Boolean): LockState = when {
-        today == null -> if (loaded) LockState.LOCKED else LockState.UNKNOWN
-        today.state == AttendanceState.PRESENT -> LockState.UNLOCKED
-        today.state == AttendanceState.CLOCKED_OUT -> LockState.SHIFT_COMPLETE
-        else -> LockState.LOCKED
+    /**
+     * 1072 E: [todayIst] (the IST date now) makes a row from a previous day never unlock the app: if the server's `dutyDate`
+     * is not today, the guard must clock in again. A missing dutyDate or a null [todayIst] keeps the old behaviour.
+     */
+    fun lockState(today: TodayAttendance?, loaded: Boolean, todayIst: java.time.LocalDate? = null): LockState {
+        if (today == null) return if (loaded) LockState.LOCKED else LockState.UNKNOWN
+        if (todayIst != null && isStaleDay(today, todayIst)) return LockState.LOCKED
+        return when (today.state) {
+            AttendanceState.PRESENT -> LockState.UNLOCKED
+            AttendanceState.CLOCKED_OUT -> LockState.SHIFT_COMPLETE
+            else -> LockState.LOCKED
+        }
+    }
+
+    /** True when the server row is for an earlier IST day than [todayIst]. */
+    fun isStaleDay(today: TodayAttendance, todayIst: java.time.LocalDate): Boolean {
+        val d = (today.dutyDate ?: today.attendance?.dutyDate)?.trim()?.takeIf { it.isNotEmpty() }
+            ?.let { runCatching { java.time.LocalDate.parse(it.take(10)) }.getOrNull() } ?: return false
+        return d.isBefore(todayIst)
     }
 
     /** Header text for the flow screens. */
@@ -92,7 +110,18 @@ object ClockInLogic {
         listOf(row?.gateName, fallbackGateName, row?.geofenceName)
             .firstOrNull { !it.isNullOrBlank() }?.trim() ?: "—"
 
-    fun resultFrom(mode: AttendanceMode, row: AttendanceRow, fallbackGateName: String? = null, sentWithoutLocation: Boolean = false): ClockResult {
+    /** Server geofence status of this action: nested block first, then the flat field. Lower-cased; null when absent. */
+    fun geofenceStatusOf(row: AttendanceRow): String? =
+        (row.geofence?.status ?: row.geofenceStatus)?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
+
+    fun resultFrom(
+        mode: AttendanceMode, row: AttendanceRow, fallbackGateName: String? = null,
+        sentWithoutLocation: Boolean = false, sentMock: Boolean = false,
+    ): ClockResult {
+        val geoStatus = geofenceStatusOf(row)
+        val softOutside = mode == AttendanceMode.CHECK_IN && geoStatus == "outside"
+        val radius = row.geofence?.radiusM ?: row.geofenceRadiusM
+        val mock = sentMock || row.isMock == true || row.geofence?.isMock == true || row.flags.any { it.equals("MOCK_LOCATION", true) }
         val whenIso = if (mode == AttendanceMode.CHECK_IN) {
             row.timestamp ?: row.serverTime ?: row.checkInAt
         } else {
@@ -101,7 +130,8 @@ object ClockInLogic {
         // Flagged note: a check-in that went without location is flagged by the server (soft mode) -> the ruling text.
         // Any other server warning is shown only when it reads as plain words (never a code like "no_gps").
         val flagged = when {
-            mode == AttendanceMode.CHECK_IN && (sentWithoutLocation || row.geofenceStatus.equals("no_gps", true)) -> LOCATION_OFF_SOFT
+            mode == AttendanceMode.CHECK_IN && (sentWithoutLocation || geoStatus == "no_gps") -> LOCATION_OFF_SOFT
+            softOutside -> GuardGeoLogic.SOFT_OUTSIDE_NOTE
             else -> row.warn?.takeIf { it.isNotBlank() && ' ' in it.trim() && !ErrorCopy.isTechnical(it) }
         }
         return ClockResult(
@@ -112,6 +142,8 @@ object ClockInLogic {
             selfieUploaded = row.selfieUploaded ?: !(row.photoKey.isNullOrBlank() && row.photoUrl.isNullOrBlank()),
             recordId = (row.recordId ?: row.id)?.takeIf { it.isNotBlank() } ?: "—",
             flaggedNote = flagged,
+            flaggedDetail = if (softOutside) GuardGeoLogic.softOutsideDetail(row.geofence?.distanceM ?: row.distanceM, radius) else null,
+            mockNote = if (mock) GuardGeoLogic.MOCK_LOCATION_NOTE else null,
             guardPhotoUrl = row.guardPhotoUrl?.takeIf { it.isNotBlank() },
         )
     }
@@ -151,9 +183,10 @@ object ClockInLogic {
         AttendanceRules.needsFreshReading(code) || code.equals("GPS_REQUIRED", true) || code.equals("LOCATION_REQUIRED", true)
 
     /**
-     * Location permission decision (Product ruling 6). The app cannot read the school fence mode (settings are
-     * admin-only), so a guard without location is not stopped by the app for CHECK-IN: the request goes with
-     * gpsMissing=true and the SERVER decides (soft: allowed + flagged, restrict: refused -> [LOCATION_NEEDED]).
+     * Location permission decision (Product ruling 6). The fence mode IS readable (GET /guards/me/geofence, else
+     * /schools/me geoFenceMode) and restrict mode is stopped earlier by [GuardGeoLogic.locationGate]. When the mode could not be
+     * read, a guard without location is not stopped here for CHECK-IN: the request goes with gpsMissing=true and the
+     * SERVER decides (soft: allowed + flagged, restrict: refused -> [LOCATION_NEEDED]).
      * Clock-out without location is ALWAYS blocked here.
      */
     sealed interface LocationDecision {

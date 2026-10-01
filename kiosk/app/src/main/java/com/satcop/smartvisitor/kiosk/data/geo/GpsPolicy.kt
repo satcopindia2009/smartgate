@@ -7,6 +7,8 @@ data class GpsFix(
     val accuracyM: Double,
     /** SystemClock.elapsedRealtime() at which the fix was produced. */
     val elapsedMs: Long,
+    /** 1072: the OS says this reading comes from a mock-location provider (Location.isMock / isFromMockProvider). */
+    val isMock: Boolean = false,
 ) {
     fun ageMs(nowElapsedMs: Long): Long = (nowElapsedMs - elapsedMs).coerceAtLeast(0)
 }
@@ -27,10 +29,11 @@ object GpsPolicy {
     /** A reading older than this is never used for an attempt (server stale window is 120 s). */
     const val MAX_FIX_AGE_MS = 20_000L
 
-    fun evaluate(fix: GpsFix?, nowElapsedMs: Long): GpsState = when {
+    /** [accuracyLimitM] comes from the server (GET /guards/me/geofence rules.accuracyLimitM); [ACCURACY_LIMIT_M] is the fallback. */
+    fun evaluate(fix: GpsFix?, nowElapsedMs: Long, accuracyLimitM: Double = ACCURACY_LIMIT_M): GpsState = when {
         fix == null -> GpsState.Searching
         fix.ageMs(nowElapsedMs) > MAX_FIX_AGE_MS -> GpsState.Stale(fix)
-        fix.accuracyM > ACCURACY_LIMIT_M || fix.accuracyM < 0 -> GpsState.Weak(fix)
+        fix.accuracyM > accuracyLimitM || fix.accuracyM < 0 -> GpsState.Weak(fix)
         else -> GpsState.Ready(fix)
     }
 

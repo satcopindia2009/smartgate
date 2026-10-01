@@ -68,6 +68,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import com.satcop.smartvisitor.kiosk.data.api.SessionExpiry
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -238,6 +239,16 @@ class KioskViewModel(
         }
         viewModelScope.launch {
             AppAuth.session.sessionExpiredEvents.collect { endSession(ErrorCopy.SESSION_EXPIRED) }
+        }
+        // 1072 E: while the app stays open past the token cut-off (guard: 00:00 IST) sign out at that moment, not on the next tap.
+        viewModelScope.launch { watchSessionExpiry() }
+    }
+
+    private suspend fun watchSessionExpiry() {
+        while (true) {
+            val s = AppAuth.session
+            if (s.isExpired()) s.markExpired()
+            delay(SessionExpiry.nextCheckDelayMs(s.expiresAtMs, System.currentTimeMillis()))
         }
     }
 

@@ -14,6 +14,8 @@ import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 class LiveGuardHomeApi(private val live: LiveVisitorApi = LiveVisitorApi()) : GuardHomeApi {
     override fun attendanceToday(): TodayAttendance = live.attendanceToday()
     override fun todaySummary(): GuardTodaySummary = live.guardTodaySummary()
+    override fun guardGeofence(): com.satcop.smartvisitor.kiosk.data.model.GeofenceInfo? = live.guardGeofence()
+    override fun schoolGeoMode(): String? = live.schoolMe().geoFenceMode
     override fun checkIn(req: AttendanceRequest): AttendanceRow = live.attendanceCheckIn(req)
     override fun clockOut(req: AttendanceRequest): AttendanceRow = live.attendanceClockOut(req)
     override fun visitsBetween(dateFrom: String, dateTo: String, q: String?): List<VisitOut> =

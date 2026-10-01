@@ -97,7 +97,7 @@ class FormTokensTest {
 
     @Test fun versionBumped() {
         val g = File("build.gradle.kts").readText()
-        assertTrue(g.contains("versionCode = 1071"))
-        assertTrue(g.contains("1.0.19-1role-PREVIEW-TEAL-7"))
+        assertTrue(g.contains("versionCode = 1072"))
+        assertTrue(g.contains("1.0.20-1role-PREVIEW-TEAL-8"))
     }
 }

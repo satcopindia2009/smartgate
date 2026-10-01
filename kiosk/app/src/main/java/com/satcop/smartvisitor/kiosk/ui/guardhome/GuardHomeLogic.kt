@@ -198,13 +198,14 @@ object AttendanceRules {
         failedFixElapsedMs: Long?,
         nowElapsedMs: Long,
         locationPermission: Boolean,
+        accuracyLimitM: Double = GpsPolicy.ACCURACY_LIMIT_M,
     ): Readiness {
         if (mode == AttendanceMode.CHECK_IN && !hasPhoto) return Readiness.Blocked(NEED_PHOTO)
         if (hasPhoto && photoAtElapsedMs != null && nowElapsedMs - photoAtElapsedMs > PHOTO_MAX_AGE_MS) {
             return Readiness.Blocked(PHOTO_TOO_OLD, needsRetakePhoto = true)
         }
         if (!locationPermission) return Readiness.Blocked(NO_PERMISSION)
-        return when (val g = GpsPolicy.evaluate(fix, nowElapsedMs)) {
+        return when (val g = GpsPolicy.evaluate(fix, nowElapsedMs, accuracyLimitM)) {
             GpsState.Searching -> Readiness.Blocked("Still looking for your location. Please wait a moment.")
             is GpsState.Stale -> Readiness.Blocked(WAIT_FOR_FRESH)
             is GpsState.Weak -> Readiness.Blocked(ErrorCopy.GPS_LOW)
@@ -239,6 +240,8 @@ object AttendanceRules {
             capturedAt = DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(nowUtc.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC)),
             gpsMissing = fix == null,
             attemptId = attemptId,
+            // Only ever sent as true; the server records and flags it, it never blocks on it.
+            isMock = if (fix?.isMock == true) true else null,
         )
 
     /** Server codes tied to the location reading: the failed reading must not be reused. */

@@ -44,6 +44,10 @@ data class AttendanceRow(
     val selfieUploaded: Boolean? = null,
     val guardPhotoUrl: String? = null,
     val geofenceMode: String? = null,
+    // 1072 geofence (Backend 2026-10-01, LIVE): flat radius + nested block; all optional.
+    val geofenceRadiusM: Double? = null,
+    val geofence: GeofenceInfo? = null,
+    val isMock: Boolean? = null,
     // Guard shift (Backend 2026-10-01, additive, null when no shift is assigned).
     val shiftName: String? = null,
     val shiftStartTime: String? = null,
@@ -99,6 +103,8 @@ data class TodayAttendance(
     val guardPhotoUrl: String? = null,
     val selfieUploaded: Boolean? = null,
     val currentStatus: CurrentStatus? = null,
+    /** 1072: fence + rules block (mode, radius, centre, accuracy limit). Null when the server does not send it. */
+    val geofence: GeofenceInfo? = null,
     // Guard shift (Backend 2026-10-01, additive, null when no shift is assigned).
     val shiftName: String? = null,
     val shiftStartTime: String? = null,
@@ -130,4 +136,7 @@ data class AttendanceRequest(
     val capturedAt: String,
     val gpsMissing: Boolean = false,
     val attemptId: String,
+    /** 1072: true when the OS flags the reading as coming from a mock provider. Server only records/flags it. Omitted otherwise. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val isMock: Boolean? = null,
 )

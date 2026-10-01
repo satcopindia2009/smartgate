@@ -5,6 +5,7 @@ import com.satcop.smartvisitor.kiosk.data.geo.GpsFix
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
 import com.satcop.smartvisitor.kiosk.data.model.AttendanceRequest
 import com.satcop.smartvisitor.kiosk.data.model.AttendanceRow
+import com.satcop.smartvisitor.kiosk.data.model.GeofenceInfo
 import com.satcop.smartvisitor.kiosk.data.model.GuardTodaySummary
 import com.satcop.smartvisitor.kiosk.data.model.TodayAttendance
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
@@ -29,11 +30,16 @@ interface GuardHomeApi {
     fun visitsBetween(dateFrom: String, dateTo: String, q: String?): List<VisitOut>
     /** Guard Today patrol + incidents summary. Fails with FACE_REQUIRED for an unverified guard. */
     fun todaySummary(): GuardTodaySummary
+    /** 1072: GET /guards/me/geofence (mode, radius, centre, rules). Null when the server does not provide it. */
+    fun guardGeofence(): GeofenceInfo? = null
+    /** 1072: fallback for the geofence mode: GET /schools/me `geoFenceMode` (readable by every signed-in role). */
+    fun schoolGeoMode(): String? = null
 }
 
 enum class HomeView { HOME, LIST, FIND }
 
-enum class SettingsHint { CAMERA, LOCATION }
+/** CAMERA/LOCATION -> app permission settings. LOCATION_SERVICE -> the phone's Location switch (permission is granted, GPS is off). */
+enum class SettingsHint { CAMERA, LOCATION, LOCATION_SERVICE }
 
 data class GuardHomeState(
     val today: LocalDate = GuardHomeLogic.todayIst(),
@@ -72,8 +78,23 @@ data class GuardHomeState(
     /** Plain sentence when the last summary call failed (e.g. FACE_REQUIRED -> verify face); null otherwise. */
     val summaryError: String? = null,
     val summaryLoaded: Boolean = false,
+    // --- 1072 geofence / location / shift end ---
+    /** GET /guards/me/geofence (or the geofence block of /attendance/me/today). Null until read. */
+    val geofence: GeofenceInfo? = null,
+    /** /schools/me geoFenceMode, read only when the geofence call gave no mode. */
+    val schoolGeoMode: String? = null,
+    /** Elapsed-realtime ms at which the selfie step opened; drives the soft-mode "no GPS yet" timeout. */
+    val selfieOpenedElapsedMs: Long? = null,
+    /** True while the "Your shift time is over. Clock out now?" prompt is showing. */
+    val shiftEndPrompt: Boolean = false,
+    /** The IST day for which the prompt was already shown: it appears once per day. */
+    val shiftEndPromptedFor: LocalDate? = null,
 ) {
     val summary: VisitSummary get() = GuardHomeLogic.summary(visits, today)
+    private val fenceInfo: GeofenceInfo? get() = geofence ?: attendance?.geofence
+    val geoMode: GeoMode get() = GuardGeoLogic.modeOf(fenceInfo, schoolGeoMode)
+    val accuracyLimitM: Double get() = GuardGeoLogic.accuracyLimitM(fenceInfo)
+    val fence: GeofenceInfo? get() = fenceInfo
 }
 
 /**
@@ -104,6 +125,7 @@ class GuardHomeController(
         refreshInFlight = true
         val today = GuardHomeLogic.todayIst(nowInstant())
         _state.update { it.copy(loading = true, today = today) }
+        loadGeofence()
         // Summary is its own coroutine + runCatching: it never delays or breaks attendance/visits.
         scope.launch {
             val sum = runCatching { withContext(io) { api.todaySummary() } }
@@ -139,6 +161,7 @@ class GuardHomeController(
     fun refreshAttendance() {
         if (refreshInFlight) return
         refreshInFlight = true
+        loadGeofence()
         scope.launch {
             val att = runCatching { withContext(io) { api.attendanceToday() } }
             refreshInFlight = false
@@ -152,10 +175,61 @@ class GuardHomeController(
         }
     }
 
+    /**
+     * Geofence mode / radius / rules, non-blocking: a failure leaves the defaults (the server still decides).
+     * Mode comes from /guards/me/geofence, else from /schools/me.
+     */
+    private fun loadGeofence() {
+        scope.launch {
+            val g = runCatching { withContext(io) { api.guardGeofence() } }.getOrNull()
+            val m = if (GuardGeoLogic.modeOf(g, null) == GeoMode.UNKNOWN) {
+                runCatching { withContext(io) { api.schoolGeoMode() } }.getOrNull()
+            } else null
+            _state.update { it.copy(geofence = g ?: it.geofence, schoolGeoMode = m ?: it.schoolGeoMode) }
+        }
+    }
+
     /** Info screen -> selfie screen. */
     fun proceedToSelfie() {
-        _state.update { it.copy(step = ClockStep.SELFIE, panelMessage = null, panelError = false, notice = null, settingsHint = null) }
+        _state.update {
+            it.copy(
+                step = ClockStep.SELFIE, panelMessage = null, panelError = false, notice = null, settingsHint = null,
+                selfieOpenedElapsedMs = nowElapsedMs(),
+            )
+        }
+        loadGeofence()
     }
+
+    // --- shift end reminder (G): once per day, non-blocking, never an automatic clock-out ---
+
+    /** Called on a timer while the guard is on duty. Shows the prompt once the shift end has passed. */
+    fun evaluateShiftEnd() {
+        val s = _state.value
+        if (s.shiftEndPrompt || s.panel != null || s.result != null) return
+        val a = s.attendance ?: return
+        val due = GuardGeoLogic.shiftEndDue(
+            state = a.state,
+            dutyDate = a.dutyDate,
+            shiftEndTime = a.shiftEndTime ?: a.attendance?.shiftEndTime,
+            now = nowInstant(),
+            alreadyPromptedFor = s.shiftEndPromptedFor,
+        )
+        if (due) _state.update { it.copy(shiftEndPrompt = true, shiftEndPromptedFor = GuardHomeLogic.todayIst(nowInstant())) }
+    }
+
+    fun dismissShiftEndPrompt() {
+        _state.update { it.copy(shiftEndPrompt = false) }
+    }
+
+    /** "Clock out" on the prompt: opens the normal Self Check Out flow (fresh selfie + location). */
+    fun acceptShiftEndPrompt() {
+        _state.update { it.copy(shiftEndPrompt = false) }
+        openPanel(AttendanceMode.CLOCK_OUT)
+    }
+
+    /** The UI reports the phone's Location switch (permission can be granted while GPS is off). */
+    @Volatile
+    var locationServiceOn: () -> Boolean = { true }
 
     /** "Done" on the result screen. */
     fun clearResult() {
@@ -253,8 +327,22 @@ class GuardHomeController(
         if (s.panelBusy) return
         if (s.step != ClockStep.SELFIE) return
         val perm = hasLocationPermission()
-        val sendNoLocation = mode == AttendanceMode.CHECK_IN && !perm
-        val decision = ClockInLogic.locationDecision(mode, perm, fix != null)
+        val serviceOn = locationServiceOn()
+        val geo = s.geoMode
+        // 1072 C/B: a location problem that must stop the attempt (restrict mode, or any clock-out): no request, no record.
+        GuardGeoLogic.locationGate(mode, geo, perm, serviceOn)?.let { gate ->
+            _state.update {
+                it.copy(
+                    panelMessage = gate.message, panelError = true, attemptNo = it.attemptNo + 1,
+                    settingsHint = if (gate.action == LocationAction.LOCATION_SETTINGS) SettingsHint.LOCATION_SERVICE else SettingsHint.LOCATION,
+                )
+            }
+            return
+        }
+        val waitedMs = s.selfieOpenedElapsedMs?.let { nowElapsedMs() - it } ?: 0L
+        val sendNoLocation = (mode == AttendanceMode.CHECK_IN && !perm) ||
+            GuardGeoLogic.checkInWithoutLocation(mode, geo, perm, serviceOn, fix != null, waitedMs)
+        val decision = ClockInLogic.locationDecision(mode, perm, fix != null || sendNoLocation)
         if (decision is ClockInLogic.LocationDecision.Blocked) {
             _state.update {
                 it.copy(panelMessage = decision.message, panelError = true, attemptNo = it.attemptNo + 1, settingsHint = SettingsHint.LOCATION)
@@ -263,7 +351,7 @@ class GuardHomeController(
         }
         val useFix: GpsFix?
         if (sendNoLocation) {
-            // Soft mode: allowed with a flag. Restrict mode: the server refuses and we show LOCATION_NEEDED below.
+            // Soft/off/unknown mode: allowed with a flag. Restrict mode never gets here; the server also refuses it (LOCATION_REQUIRED).
             val blocked = AttendanceRules.photoReadiness(mode, photoBase64 != null, photoAtElapsedMs, nowElapsedMs())
             if (blocked != null) {
                 _state.update { it.copy(panelMessage = blocked.message, panelError = true, attemptNo = it.attemptNo + 1) }
@@ -279,6 +367,7 @@ class GuardHomeController(
                 failedFixElapsedMs = s.failedFixElapsedMs,
                 nowElapsedMs = nowElapsedMs(),
                 locationPermission = perm,
+                accuracyLimitM = s.accuracyLimitM,
             )
             if (ready is Readiness.Blocked) {
                 _state.update { it.copy(panelMessage = ready.message, panelError = true, attemptNo = it.attemptNo + 1) }
@@ -301,16 +390,24 @@ class GuardHomeController(
                     it.copy(
                         panel = null, step = ClockStep.INFO, panelBusy = false, panelMessage = null, panelError = false,
                         notice = null, settingsHint = null,
-                        result = ClockInLogic.resultFrom(mode, row, sentWithoutLocation = sendNoLocation),
+                        result = ClockInLogic.resultFrom(mode, row, sentWithoutLocation = sendNoLocation, sentMock = useFix?.isMock == true),
                         toast = if (mode == AttendanceMode.CHECK_IN) "You are checked in." else "You are clocked out.",
                     )
                 }
                 refresh()
                 return@launch
             }
-            val code = (err as? ApiException)?.code.orEmpty()
+            val apiErr = (err as? ApiException)?.let(GuardGeoLogic::normalize)
+            val code = apiErr?.code.orEmpty()
             val refusedNoLoc = ClockInLogic.checkInRefusedWithoutLocation(code, sendNoLocation)
-            val msg = if (refusedNoLoc) ClockInLogic.LOCATION_NEEDED else ErrorCopy.forThrowable(err)
+            val serviceOffRefusal = refusedNoLoc && perm && !serviceOn
+            val msg = when {
+                serviceOffRefusal -> GuardGeoLogic.LOCATION_OFF_RESTRICT
+                refusedNoLoc -> ClockInLogic.LOCATION_NEEDED
+                // A: restrict-mode refusal with a distance -> "You are about X m from the campus; the limit is Y m."
+                apiErr != null -> GuardGeoLogic.outsideMessageFrom(apiErr, s.geofence?.radiusM) ?: ErrorCopy.forThrowable(apiErr)
+                else -> ErrorCopy.forThrowable(err)
+            }
             when {
                 AttendanceRules.stateAlreadyMoved(code) -> {
                     _state.update { it.copy(panel = null, panelBusy = false, toast = msg) }
@@ -322,7 +419,11 @@ class GuardHomeController(
                         panelMessage = msg,
                         panelError = true,
                         attemptNo = it.attemptNo + 1,
-                        settingsHint = if (refusedNoLoc) SettingsHint.LOCATION else null,
+                        settingsHint = when {
+                            serviceOffRefusal -> SettingsHint.LOCATION_SERVICE
+                            refusedNoLoc -> SettingsHint.LOCATION
+                            else -> null
+                        },
                         failedFixElapsedMs = if (AttendanceRules.needsFreshReading(code) && useFix != null) useFix.elapsedMs else it.failedFixElapsedMs,
                     )
                 }

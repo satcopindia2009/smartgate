@@ -461,6 +461,9 @@ class LiveVisitorApi(
 
     fun attendanceToday(): TodayAttendance = get("/attendance/me/today")
 
+    /** 1072: fence mode + radius + centre + rules (guard face-verified or gate). Every field optional. */
+    fun guardGeofence(): com.satcop.smartvisitor.kiosk.data.model.GeofenceInfo = get("/guards/me/geofence")
+
     /** Guard Today: patrol progress + incidents (guard face-verified or gate; FACE_REQUIRED otherwise). */
     fun guardTodaySummary(): com.satcop.smartvisitor.kiosk.data.model.GuardTodaySummary = get("/guards/me/today-summary")
 

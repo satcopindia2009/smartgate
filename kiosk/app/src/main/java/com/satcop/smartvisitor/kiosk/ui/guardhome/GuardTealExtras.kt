@@ -52,9 +52,9 @@ import com.satcop.smartvisitor.kiosk.ui.theme.SgType
 
 /** Sentence-case flow titles from the approved pictures (40-49). */
 object GuardCopy {
-    fun flowTitle(mode: AttendanceMode) = if (mode == AttendanceMode.CHECK_IN) "Self check in" else "Self check out"
+    fun flowTitle(mode: AttendanceMode) = if (mode == AttendanceMode.CHECK_IN) "Self Check In" else "Self Check Out"
     fun selfieTitle(mode: AttendanceMode) = if (mode == AttendanceMode.CHECK_IN) "Check-in selfie" else "Check-out selfie"
-    fun resultBody(mode: AttendanceMode) = if (mode == AttendanceMode.CHECK_IN) "Your shift has started." else "Your shift has ended."
+    fun resultBody(mode: AttendanceMode) = ClockInLogic.resultBody(mode)
     fun resultChip(mode: AttendanceMode) = if (mode == AttendanceMode.CHECK_IN) "Checked in" else "Checked out"
     const val LOOK_AT_CAMERA = "Look at the camera"
     const val CONTINUE = "Continue"
@@ -64,6 +64,23 @@ object GuardCopy {
     const val DONE = "Done"
     const val RETRY = "Retry"
     const val OPEN_SETTINGS = "Open Settings"
+    const val OPEN_LOCATION_SETTINGS = GuardGeoLogic.OPEN_LOCATION_SETTINGS
+    const val CAPTURE = "Capture Selfie"
+    const val CURRENT_STATUS = "Current Status"
+    const val GUARD_DETAILS = "Guard Details"
+    const val HOW_IT_WORKS = "How it works"
+    const val ROLE = "Security Guard"
+    const val SELFIE_UPLOADED = "Uploaded ✓"
+    fun photoPill(mode: AttendanceMode) = if (mode == AttendanceMode.CHECK_IN) "Selfie Check-In Photo" else "Selfie Check-Out Photo"
+    fun infoBanner(mode: AttendanceMode): String {
+        val word = if (mode == AttendanceMode.CHECK_IN) "check-in" else "check-out"
+        return "Your front camera will open to capture a selfie for $word verification. Make sure your face is clearly visible and well-lit."
+    }
+    val HOW_STEPS = listOf(
+        "Camera opens — position your face in the oval",
+        "Selfie is securely uploaded to the server",
+        "Attendance is recorded with time & location",
+    )
 }
 
 /** Top bar (56): back arrow left, centred title. */
@@ -180,3 +197,46 @@ fun GuardHeroIcon(icon: ImageVector, bg: Color, tint: Color) {
 
 @Composable
 fun GuardGap(h: Dp = SgSpacing.GapBetweenCards) = Spacer(Modifier.height(h))
+
+
+/** Teal header of the Self Check In / Out flow (Viren's reference screenshots): back, bold title, subtitle. */
+@Composable
+fun GuardTealHeader(title: String, subtitle: String?, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth().background(KioskColors.primary).statusBarsPadding()
+            .heightIn(min = SgSize.TopBarHeight).padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(44.dp).clip(CircleShape).background(KioskColors.onPrimary.copy(alpha = 0.18f))
+                .clickable(role = Role.Button, onClick = onBack)
+                .semantics { contentDescription = "Back" },
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null, tint = KioskColors.onPrimary) }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, color = KioskColors.onPrimary, style = SgType.ScreenTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (!subtitle.isNullOrBlank()) {
+                Text(subtitle, color = KioskColors.onPrimary.copy(alpha = 0.85f), style = SgType.Label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+/** Primary pill with a leading icon ("Capture Selfie"). */
+@Composable
+fun GuardIconPrimaryButton(text: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Row(
+        modifier = modifier.heightIn(min = SgSize.ButtonHeight).clip(PillShape)
+            .background(if (enabled) KioskColors.primary else KioskColors.primary.copy(alpha = 0.45f))
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 24.dp)
+            .semantics { contentDescription = text },
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = KioskColors.onPrimary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = KioskColors.onPrimary, style = SgType.Button, maxLines = 1)
+    }
+}
