@@ -336,6 +336,7 @@ fun AppleTabBar(
     centerLabel: String? = null,
     onCenter: () -> Unit = {},
     visible: Boolean = true,
+    centerEnabled: Boolean = true,
 ) {
     val known = SgNavSets.Gate + SgNavSets.Host + SgNavSets.Guard
     val items = tabs.map { t ->
@@ -349,6 +350,7 @@ fun AppleTabBar(
         centerLabel = centerLabel,
         onCenter = onCenter,
         visible = visible,
+        centerEnabled = centerEnabled,
     )
 }
 

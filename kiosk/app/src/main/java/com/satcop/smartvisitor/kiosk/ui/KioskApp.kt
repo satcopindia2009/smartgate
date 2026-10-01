@@ -412,7 +412,7 @@ private fun DutyHome(
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
-            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) viewModel.refreshDutyNow()
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) viewModel.refreshDutyOnResume()
         }
         lifecycleOwner.lifecycle.addObserver(obs)
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
@@ -421,6 +421,7 @@ private fun DutyHome(
     Column(Modifier.fillMaxSize()) {
         if (state.dutyPending != null) com.satcop.smartvisitor.kiosk.ui.duty.DutyUpdatedBanner(viewModel::applyDutyUpdate)
         if (areas.size > 1) com.satcop.smartvisitor.kiosk.ui.duty.DutyAreaSwitcher(active, viewModel::switchArea)
+        active?.let { a -> state.shiftNotices[a]?.let { com.satcop.smartvisitor.kiosk.ui.duty.ShiftInactiveBanner(it) } }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 incidentUp && active != com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.PATROL -> {
@@ -447,6 +448,7 @@ private fun DutyHome(
                         onLogout = requestLogout,
                         homeVm = guardHome,
                         onDutyRefresh = viewModel::refreshDutyNow,
+                        newActionsEnabled = state.newActionsEnabled(),
                     )
                 findUp -> {
                     androidx.activity.compose.BackHandler { findUp = false }
@@ -500,6 +502,7 @@ private fun GateDeskArea(
                             },
                             onSelectHistory = viewModel::selectHistory,
                             onReportIncident = onReportIncident,
+                            newActionsEnabled = state.newActionsEnabled(),
                             onCheckoutVisit = { id ->
                                 viewModel.selectCheckout(id)
                                 viewModel.confirmCheckout()

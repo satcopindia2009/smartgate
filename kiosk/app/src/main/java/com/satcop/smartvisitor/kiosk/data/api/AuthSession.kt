@@ -47,12 +47,12 @@ class AuthSession {
     /** Emitted when the server answers 403 FACE_REQUIRED for the current token. */
     val faceRequiredEvents: SharedFlow<Unit> get() = _faceRequired
 
-    private val _duty = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    private val _duty = MutableSharedFlow<DutyEvent>(extraBufferCapacity = 8)
 
-    /** 1077: duty error codes from the server (NO_GATE_DUTY, NO_PATROL_DUTY, NOT_CLOCKED_IN, GATE_NOT_ON_DUTY). */
-    val dutyEvents: SharedFlow<String> get() = _duty
+    /** 1077/1078: duty error answers from the server (NO_GATE_DUTY, NO_PATROL_DUTY, NOT_CLOCKED_IN, GATE_NOT_ON_DUTY) with details. */
+    val dutyEvents: SharedFlow<DutyEvent> get() = _duty
 
-    fun noteDutyError(code: String) { _duty.tryEmit(code) }
+    fun noteDutyError(code: String, details: Map<String, String> = emptyMap()) { _duty.tryEmit(DutyEvent(code, details)) }
 
     val isSignedIn: Boolean
         get() = !accessToken.isNullOrBlank()
@@ -103,3 +103,6 @@ class AuthSession {
         faceVerified = false
     }
 }
+
+/** A duty error from the server: canonical duty code + the flattened error details (reason, shift.*). */
+data class DutyEvent(val code: String, val details: Map<String, String> = emptyMap())

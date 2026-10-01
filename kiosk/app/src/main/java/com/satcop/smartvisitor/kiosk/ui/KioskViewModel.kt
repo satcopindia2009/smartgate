@@ -253,10 +253,7 @@ class KioskViewModel(
             AppAuth.session.faceRequiredEvents.collect { onServerFaceRequired() }
         }
         viewModelScope.launch {
-            AppAuth.session.dutyEvents.collect { code ->
-                if (code == "NOT_CLOCKED_IN") _state.update { it.copy(attendanceRecheck = it.attendanceRecheck + 1) }
-                else refreshDutyNow()
-            }
+            AppAuth.session.dutyEvents.collect { ev -> onDutyError(ev.code, ev.details) }
         }
         viewModelScope.launch {
             AppAuth.session.sessionExpiredEvents.collect { endSession(ErrorCopy.SESSION_EXPIRED) }
@@ -387,7 +384,7 @@ class KioskViewModel(
                         chosenGateId = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.gatesFromAssignments(me.dutyAssignments)
                             .takeIf { g -> com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.needsGateChooser(g) }
                             ?.let { g -> com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.defaultGate(g)?.id },
-                        dutyAreas = null, activeArea = null, dutyPending = null,
+                        dutyAreas = null, activeArea = null, dutyPending = null, shiftNotices = emptyMap(),
                         meDisplayName = me.displayName,
                         schoolName = me.schoolName?.takeIf { n -> n.isNotBlank() } ?: it.schoolName,
                         faceMessage = null,
@@ -455,6 +452,8 @@ class KioskViewModel(
 
     // ---------------- 1077: one role (guard), home by DUTY ----------------
     private var dutyJob: Job? = null
+    /** 1078: OUTSIDE_SHIFT answers from the server (403), per area; merged with what inForce says. */
+    private var errorNotices: Map<com.satcop.smartvisitor.kiosk.ui.duty.DutyArea, String> = emptyMap()
 
     private suspend fun readDuty(me: MeResponse): Triple<com.satcop.smartvisitor.kiosk.data.model.DutyMe?, com.satcop.smartvisitor.kiosk.ui.duty.DutyInfo?, com.satcop.smartvisitor.kiosk.ui.duty.DutyResult> {
         val dm = runCatching { io { liveApi.dutyMe() } }.getOrNull()
@@ -478,12 +477,17 @@ class KioskViewModel(
         r: com.satcop.smartvisitor.kiosk.ui.duty.DutyResult,
         revision: String?,
         gates: List<com.satcop.smartvisitor.kiosk.data.model.DutyGate>,
+        assignments: List<com.satcop.smartvisitor.kiosk.data.model.DutyCompact>? = null,
     ) {
+        val notices = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.mergeNotices(
+            com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.shiftNotices(assignments), errorNotices, assignments,
+        )
         _state.update {
             val active = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.selectArea(it.activeArea, r)
             val g = gates.ifEmpty { it.dutyGates }
             it.copy(
                 dutyAreas = r.areas, activeArea = active, dutyRevision = revision ?: it.dutyRevision, dutyPending = null,
+                shiftNotices = notices,
                 dutyGates = g,
                 chosenGateId = it.chosenGateId?.takeIf { id -> g.any { x -> x.id == id } },
                 dutyGateName = g.firstOrNull { x -> x.id == (it.chosenGateId ?: g.firstOrNull()?.id) }?.name ?: it.dutyGateName,
@@ -492,19 +496,41 @@ class KioskViewModel(
     }
 
     private suspend fun loadDutyHome(me: MeResponse) {
+        errorNotices = emptyMap()
         val (dm, info, r) = readDuty(me)
         applyIdentityHome(me)
-        applyDutyState(r, info?.revision, dm?.gates.orEmpty())
-        if (com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in r.areas) {
-            loadGateHome(me)
-            // the gate chosen at clock-in (or the first duty gate) is the default gate of the desk
-            val gid = _state.value.chosenGateId ?: _state.value.dutyGates.firstOrNull()?.id
-            if (gid != null) _state.update { s -> if (s.gates.any { it.id == gid }) s.copy(draft = s.draft.copy(gateId = gid)) else s }
-        }
+        applyDutyState(r, info?.revision, dm?.gates.orEmpty(), dm?.assignments ?: me.dutyAssignments)
+        if (com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in r.areas) loadGateHomeForDuty(me)
         _state.update {
             it.copy(screen = if (it.activeArea == com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.PATROL) KioskScreen.GUARD_PATROL else KioskScreen.HOME)
         }
         startDutyPoll()
+    }
+
+    private suspend fun loadGateHomeForDuty(me: MeResponse) {
+        loadGateHome(me)
+        // the gate chosen at clock-in (or the first duty gate) is the default gate of the desk
+        val gid = _state.value.chosenGateId ?: _state.value.dutyGates.firstOrNull()?.id
+        if (gid != null) _state.update { s -> if (s.gates.any { it.id == gid }) s.copy(draft = s.draft.copy(gateId = gid)) else s }
+    }
+
+    /**
+     * 1078 error order: NOT_CLOCKED_IN first (re-read attendance -> lock), then NO_GATE_DUTY / NO_PATROL_DUTY (re-read duty),
+     * then the OUTSIDE_SHIFT reason (banner for that area). GATE_NOT_ON_DUTY re-reads duty. Never an error screen.
+     */
+    private fun onDutyError(code: String, details: Map<String, String>) {
+        val plan = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.plan(code, details)
+        when {
+            plan.recheckAttendance -> _state.update { it.copy(attendanceRecheck = it.attendanceRecheck + 1) }
+            plan.rereadDuty -> {
+                plan.outsideShift?.let { (area, shift) ->
+                    val text = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.shiftNoticeText(shift)
+                    errorNotices = errorNotices + (area to text)
+                    _state.update { it.copy(shiftNotices = it.shiftNotices + (area to text)) }
+                }
+                refreshDutyNow()
+            }
+        }
     }
 
     private fun startDutyPoll() {
@@ -526,16 +552,67 @@ class KioskViewModel(
         viewModelScope.launch { checkDuty() }
     }
 
-    private suspend fun checkDuty() {
+    /** The app opened / came back to the front: load the current duty with no banner. */
+    fun refreshDutyOnResume() {
+        val s = _state.value
+        if (!s.signedIn || !FaceGateMachine.canShowData(s.gateStage) || s.dutyAreas == null) return
+        viewModelScope.launch { checkDuty(applySilently = true) }
+    }
+
+    /**
+     * @param applySilently app opening / resume: load the current state, no banner (a change is applied at once).
+     * Otherwise (60 s poll, pull-to-refresh, duty error): no-duty screen + duty now exists = auto-switch with a toast;
+     * every other change = the banner.
+     */
+    private suspend fun checkDuty(applySilently: Boolean = false) {
         val me = AppAuth.session.user ?: return
         val dm = runCatching { io { liveApi.dutyMe() } }.getOrNull() ?: return
         val s = _state.value
         val info = com.satcop.smartvisitor.kiosk.ui.duty.DutyInfo.from(dm)?.takeIf { it.present } ?: return
         val fresh = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.areas(me.role, info, me.gateIds)
-        val changed = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.revisionChanged(s.dutyRevision, info.revision) ||
-            (s.dutyRevision == null && fresh.areas != s.dutyAreas)
-        if (changed && s.dutyPending?.dutyRevision != dm.dutyRevision) _state.update { it.copy(dutyPending = dm) }
-        else if (s.dutyRevision == null && !changed) _state.update { it.copy(dutyRevision = info.revision) }
+        val change = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.change(s.dutyAreas, s.dutyRevision, fresh, info.revision)
+        when {
+            change == com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.DutyChange.AUTO_SWITCH ->
+                applyFreshDuty(me, dm, info, fresh, toast = true)
+            change == com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.DutyChange.BANNER && applySilently ->
+                applyFreshDuty(me, dm, info, fresh, toast = false)
+            change == com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.DutyChange.BANNER -> {
+                if (s.dutyPending?.dutyRevision != dm.dutyRevision) _state.update { it.copy(dutyPending = dm) }
+                refreshNotices(dm.assignments)
+            }
+            else -> {
+                if (s.dutyRevision == null) _state.update { it.copy(dutyRevision = info.revision) }
+                refreshNotices(dm.assignments)
+            }
+        }
+    }
+
+    /** The shift window moved (inForce flips without a revision change): update only the notices. */
+    private fun refreshNotices(assignments: List<com.satcop.smartvisitor.kiosk.data.model.DutyCompact>) {
+        val n = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.mergeNotices(
+            com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.shiftNotices(assignments), errorNotices, assignments,
+        )
+        if (n != _state.value.shiftNotices) _state.update { it.copy(shiftNotices = n) }
+    }
+
+    private suspend fun applyFreshDuty(
+        me: MeResponse,
+        dm: com.satcop.smartvisitor.kiosk.data.model.DutyMe,
+        info: com.satcop.smartvisitor.kiosk.ui.duty.DutyInfo,
+        r: com.satcop.smartvisitor.kiosk.ui.duty.DutyResult,
+        toast: Boolean,
+    ) {
+        val hadGate = com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in (_state.value.dutyAreas ?: emptySet())
+        errorNotices = errorNotices.filterKeys { it in r.areas }
+        applyDutyState(r, info.revision, dm.gates, dm.assignments)
+        if (!hadGate && com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in r.areas) loadGateHomeForDuty(me)
+        val msg = if (toast) com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.assignedToast(r, dm.gates, dm.assignments) else null
+        _state.update {
+            it.copy(
+                screen = if (it.activeArea == com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.PATROL) KioskScreen.GUARD_PATROL else KioskScreen.HOME,
+                toast = msg ?: it.toast, toastKind = if (msg != null) ToastKind.SUCCESS else it.toastKind,
+            )
+        }
     }
 
     /** The guard tapped "Your duty was updated. Tap to refresh.": re-read and re-render. */
@@ -547,8 +624,9 @@ class KioskViewModel(
             if (info == null) { _state.update { it.copy(dutyPending = null) }; return@launch }
             val r = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.areas(me.role, info, me.gateIds)
             val hadGate = com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in (_state.value.dutyAreas ?: emptySet())
-            applyDutyState(r, info.revision, dm?.gates.orEmpty())
-            if (!hadGate && com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in r.areas) loadGateHome(me)
+            errorNotices = errorNotices.filterKeys { it in r.areas }
+            applyDutyState(r, info.revision, dm?.gates.orEmpty(), dm?.assignments)
+            if (!hadGate && com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE in r.areas) loadGateHomeForDuty(me)
         }
     }
 
@@ -660,7 +738,7 @@ class KioskViewModel(
     }
 
     fun openPickup() {
-        if (!_state.value.isGateDesk()) return
+        if (!_state.value.isGateDesk() || !_state.value.newActionsEnabled()) return
         viewModelScope.launch {
             _state.update { it.copy(screen = KioskScreen.PICKUP, toast = null) }
             refreshStudents()
@@ -1355,6 +1433,7 @@ class KioskViewModel(
     private var avAttemptId: String = java.util.UUID.randomUUID().toString()
 
     fun startAddVisitor() {
+        if (!_state.value.newActionsEnabled()) return
         avLookupJob?.cancel()
         avAttemptId = java.util.UUID.randomUUID().toString()
         val snap = _state.value
@@ -2028,6 +2107,8 @@ class KioskViewModel(
         }
     }
     fun openCourier() {
+        // 1078: a NEW courier log on the gate desk is a new action; the shared tools of other areas are not blocked.
+        if (_state.value.activeArea == com.satcop.smartvisitor.kiosk.ui.duty.DutyArea.GATE && !_state.value.newActionsEnabled()) return
         viewModelScope.launch {
             val list = runCatching { repository.listCouriers() }.getOrDefault(emptyList())
             _state.update {

@@ -55,6 +55,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -78,6 +79,7 @@ fun GuardHomeScreen(
     onToast: (String) -> Unit,
     /** 1077: pull-to-refresh also re-reads the duty. */
     onPullRefresh: () -> Unit = {},
+    startEnabled: Boolean = true,
 ) {
     val state by controller.state.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -101,6 +103,7 @@ fun GuardHomeScreen(
             routeSubtitle = routeSubtitle, progressLabel = progressLabel,
             onStartPatrol = onStartPatrol, onCourier = onCourier, onLostFound = onLostFound,
             onReportIncident = onReportIncident, onLogout = onLogout, onPullRefresh = onPullRefresh,
+            startEnabled = startEnabled,
         )
         HomeView.LIST -> VisitListBody(state = state, controller = controller)
         HomeView.FIND -> FindBody(state = state, controller = controller)
@@ -129,6 +132,7 @@ private fun HomeBody(
     onReportIncident: () -> Unit,
     onLogout: () -> Unit,
     onPullRefresh: () -> Unit = {},
+    startEnabled: Boolean = true,
 ) {
     PullToRefreshBox(
         isRefreshing = state.loading,
@@ -148,8 +152,8 @@ private fun HomeBody(
 
             // Hero: Start patrol
             Row(
-                Modifier.fillMaxWidth().clip(HeroShape).background(KioskColors.primary)
-                    .clickable(role = Role.Button, onClick = onStartPatrol).padding(SgSpacing.CardPadding + 4.dp),
+                Modifier.fillMaxWidth().alpha(if (startEnabled) 1f else 0.45f).clip(HeroShape).background(KioskColors.primary)
+                    .clickable(enabled = startEnabled, role = Role.Button, onClick = onStartPatrol).padding(SgSpacing.CardPadding + 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(KioskColors.onPrimary.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {

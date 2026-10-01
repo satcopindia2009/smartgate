@@ -349,7 +349,7 @@ class LiveVisitorApi(
             if (!resp.isSuccessful) {
                 throw apiError(resp.code, text).also {
                     noteFaceRequired(it)
-                    if (it.code.uppercase() in DUTY_CODES) session.noteDutyError(it.code.uppercase())
+                    noteDuty(it, request.url.encodedPath)
                     noteSessionEnd(it, request.header("Authorization") != null)
                 }
             }
@@ -367,7 +367,11 @@ class LiveVisitorApi(
         }
     }
 
-    private val DUTY_CODES = setOf("NO_GATE_DUTY", "NO_PATROL_DUTY", "NOT_CLOCKED_IN", "GATE_NOT_ON_DUTY")
+    /** 1078: one duty event per answer, resolved in the ruled order; /gates (common read-only data) never drives the UI. */
+    private fun noteDuty(e: ApiException, path: String) {
+        val code = com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.dutyCodeOf(e.code, e.details)
+        if (com.satcop.smartvisitor.kiosk.ui.duty.DutyLogic.shouldEmitDutyEvent(path, code)) session.noteDutyError(code!!, e.details)
+    }
 
     private fun noteSessionEnd(e: ApiException, hadToken: Boolean) {
         if (SessionExpiry.isSessionEnd(e.httpStatus, e.code, hadToken)) session.markExpired()

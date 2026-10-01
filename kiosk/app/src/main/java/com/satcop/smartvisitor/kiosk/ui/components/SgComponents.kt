@@ -51,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -436,6 +437,7 @@ fun SgBottomNav(
     centerIcon: ImageVector = Icons.Filled.Add,
     onCenter: () -> Unit = {},
     visible: Boolean = true,
+    centerEnabled: Boolean = true,
 ) {
     if (!visible) return
     val hasCenter = centerLabel != null
@@ -463,11 +465,12 @@ fun SgBottomNav(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .size(SgSize.BottomNavCenterButton)
+                    .alpha(if (centerEnabled) 1f else 0.45f)
                     .shadow(10.dp, CircleShape, ambientColor = KioskColors.brand.copy(alpha = 0.35f), spotColor = KioskColors.brand.copy(alpha = 0.35f))
                     .clip(CircleShape)
                     .background(KioskColors.primary)
                     .semantics { contentDescription = centerLabel!!; role = Role.Button }
-                    .clickable(onClick = onCenter),
+                    .clickable(enabled = centerEnabled, onClick = onCenter),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(centerIcon, contentDescription = null, tint = KioskColors.onPrimary, modifier = Modifier.size(28.dp))

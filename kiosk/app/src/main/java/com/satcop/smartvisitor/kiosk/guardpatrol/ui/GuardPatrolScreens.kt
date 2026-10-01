@@ -72,6 +72,8 @@ fun GuardPatrolApp(
     onLogout: (() -> Unit)? = null,
     homeVm: com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeViewModel? = null,
     onDutyRefresh: () -> Unit = {},
+    /** 1078: false while the shift is not active: Start round is off (continue / scan / finish stay on). */
+    newActionsEnabled: Boolean = true,
     vm: GuardPatrolViewModel = viewModel(),
 ) {
     val state by vm.state.collectAsState()
@@ -134,7 +136,7 @@ fun GuardPatrolApp(
                     nextCheckpoint = tpl?.checkpointIds?.firstOrNull(),
                     onContinuePatrol = {
                         val id = firstAsg?.id
-                        if (id != null) vm.startFromAssignment(id)
+                        if (id != null && (newActionsEnabled || firstAsg.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.STARTED)) vm.startFromAssignment(id)
                     },
                     onCourier = { onCourier?.invoke() },
                     onLostFound = { onLostFound?.invoke() },
@@ -152,8 +154,9 @@ fun GuardPatrolApp(
                                 progressLabel = "$progressDone/${progressTotal.coerceAtLeast(state.assignments.size)}",
                                 onStartPatrol = {
                                     val id = firstAsg?.id
-                                    if (id != null) vm.startFromAssignment(id)
+                                    if (id != null && (newActionsEnabled || firstAsg.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.STARTED)) vm.startFromAssignment(id)
                                 },
+                                startEnabled = newActionsEnabled || firstAsg?.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.STARTED,
                                 onCourier = { onCourier?.invoke() },
                                 onLostFound = { onLostFound?.invoke() },
                                 onReportIncident = vm::openIncidentReport,
@@ -185,6 +188,7 @@ fun GuardPatrolApp(
                             else -> StartRoundScreen(
                                 state = state,
                                 onStartAssignment = vm::startFromAssignment,
+                                newActionsEnabled = newActionsEnabled,
                                 onRefreshAssignments = vm::refreshAssignments,
                                 onCourier = onCourier,
                                 onLostFound = onLostFound,
@@ -260,6 +264,7 @@ private fun Phase2Banner() {
 private fun StartRoundScreen(
     state: GuardPatrolUiState,
     onStartAssignment: (String) -> Unit,
+    newActionsEnabled: Boolean = true,
     onRefreshAssignments: () -> Unit,
     onCourier: (() -> Unit)? = null,
     onLostFound: (() -> Unit)? = null,
@@ -301,6 +306,7 @@ private fun StartRoundScreen(
                     templates = state.templates,
                     fromLive = state.assignmentsFromLive,
                     busy = state.busy,
+                    newActionsEnabled = newActionsEnabled,
                     onStart = onStartAssignment,
                     onRefresh = onRefreshAssignments,
                 )
@@ -321,6 +327,7 @@ private fun AssignedTodaySection(
     templates: List<RoundTemplate>,
     fromLive: Boolean,
     busy: Boolean,
+    newActionsEnabled: Boolean = true,
     onStart: (String) -> Unit,
     onRefresh: () -> Unit,
 ) {
@@ -386,6 +393,7 @@ private fun AssignedTodaySection(
             durationMin = tpl?.expectedDurationMin ?: 0,
             ordered = tpl?.ordered == true,
             busy = busy,
+            newActionsEnabled = newActionsEnabled,
             onStart = { onStart(asg.id) },
         )
     }
@@ -399,9 +407,11 @@ private fun AssignmentCard(
     durationMin: Int,
     ordered: Boolean,
     busy: Boolean,
+    newActionsEnabled: Boolean = true,
     onStart: () -> Unit,
 ) {
-    val canStart = assignment.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.ASSIGNED ||
+    // 1078: outside the shift a NEW round (ASSIGNED) is off; a STARTED round can always be continued and finished.
+    val canStart = (assignment.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.ASSIGNED && newActionsEnabled) ||
         assignment.status == com.satcop.smartvisitor.kiosk.guardpatrol.data.AssignmentStatus.STARTED
     Column(
         modifier = Modifier

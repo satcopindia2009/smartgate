@@ -36,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -100,6 +101,8 @@ fun GateTodayScreen(
     onCheckoutVisit: ((String) -> Unit)? = null,
     /** 1077: incident is a shared tool; shown in Profile when provided. */
     onReportIncident: (() -> Unit)? = null,
+    /** 1078: false while the shift is not active: Add visitor / Pickup / Courier are off (finishing work stays on). */
+    newActionsEnabled: Boolean = true,
 ) {
     var tab by remember { mutableIntStateOf(0) }
     var search by remember { mutableStateOf("") }
@@ -121,6 +124,7 @@ fun GateTodayScreen(
                     gateName = gateName, displayName = displayName, search = search, onSearch = { search = it },
                     inside = insideRows, events = historyEvents, hostNames = hostNames,
                     onAddVisitor = onAddVisitor, onPickup = onPickup, onCourier = onCourier,
+                    newActionsEnabled = newActionsEnabled,
                     onSeeAll = { logFilter = 0; search = ""; tab = 2 },
                     onProfile = { tab = 3 }, onSelectHistory = onSelectHistory,
                 )
@@ -148,7 +152,8 @@ fun GateTodayScreen(
             selectedIndex = tab,
             onSelect = { tab = it; search = "" },
             centerLabel = "Add visitor",
-            onCenter = onAddVisitor,
+            onCenter = { if (newActionsEnabled) onAddVisitor() },
+            centerEnabled = newActionsEnabled,
             visible = !fullScreenStep,
         )
     }
@@ -188,6 +193,7 @@ private fun GateHome(
     onAddVisitor: () -> Unit,
     onPickup: () -> Unit,
     onCourier: () -> Unit,
+    newActionsEnabled: Boolean,
     onSeeAll: () -> Unit,
     onProfile: () -> Unit,
     onSelectHistory: (GuardHistoryEvent) -> Unit,
@@ -216,14 +222,14 @@ private fun GateHome(
             ) { Text(initialsOf(displayName), style = SgType.BodyStrong, color = KioskColors.primary) }
         }
         SgSearchPill(value = search, onValueChange = onSearch, placeholder = "Search visitor or host")
-        HeroAddVisitor(onAddVisitor)
+        HeroAddVisitor(onAddVisitor, newActionsEnabled)
         Row(horizontalArrangement = Arrangement.spacedBy(SgSpacing.GapBetweenCards)) {
             CountTile("Inside now", inside.size.toString(), KioskColors.warning, Modifier.weight(1f))
             CountTile("Pending approval", pending.size.toString(), KioskColors.info, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(SgSpacing.GapBetweenCards)) {
-            QuickTile(Icons.Outlined.Groups, "Pickup", "Student release", onPickup, Modifier.weight(1f))
-            QuickTile(Icons.Outlined.LocalShipping, "Courier", "Log parcel", onCourier, Modifier.weight(1f))
+            QuickTile(Icons.Outlined.Groups, "Pickup", "Student release", onPickup, Modifier.weight(1f), newActionsEnabled)
+            QuickTile(Icons.Outlined.LocalShipping, "Courier", "Log parcel", onCourier, Modifier.weight(1f), newActionsEnabled)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Waiting for host", style = SgType.SectionTitle, color = KioskColors.text, modifier = Modifier.weight(1f))
@@ -243,12 +249,12 @@ private fun GateHome(
 }
 
 @Composable
-private fun HeroAddVisitor(onClick: () -> Unit) {
+private fun HeroAddVisitor(onClick: () -> Unit, enabled: Boolean = true) {
     val shape = RoundedCornerShape(24.dp)
     Row(
-        Modifier.fillMaxWidth().clip(shape)
+        Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.45f).clip(shape)
             .background(Brush.horizontalGradient(listOf(KioskColors.primaryPressed, KioskColors.primary)))
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(SgSpacing.CardPadding + 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -277,9 +283,9 @@ private fun CountTile(label: String, value: String, valueColor: Color, modifier:
 }
 
 @Composable
-private fun QuickTile(icon: ImageVector, title: String, sub: String, onClick: () -> Unit, modifier: Modifier) {
+private fun QuickTile(icon: ImageVector, title: String, sub: String, onClick: () -> Unit, modifier: Modifier, enabled: Boolean = true) {
     Row(
-        modifier.sgCardSurface().clickable(role = Role.Button, onClick = onClick).padding(SgSpacing.CardPadding),
+        modifier.alpha(if (enabled) 1f else 0.45f).sgCardSurface().clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(SgSpacing.CardPadding),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(

@@ -61,10 +61,17 @@ class DutyLogicTest {
         assertEquals(setOf(G), DutyLogic.areas("guard", info(listOf("gate", "reception"))).areas)
     }
 
-    @Test fun legacyGateAccountNeverNoDutyWhileServerHasNoRows() {
-        val r = DutyLogic.areas("gate", info(emptyList(), "none", false))
-        assertEquals(setOf(G), r.areas)
-        assertEquals(setOf(G, P), DutyLogic.areas("gate_staff", info(emptyList(), "none", false), patrolAssignedToday = 2).areas)
+    @Test fun legacyGateWithPresentFieldAndNoDutyIsNoDuty() {
+        // 1078 (Product item 5): the field is present => trusted, even for role gate
+        assertTrue(DutyLogic.areas("gate", info(emptyList(), "none", false)).areas.isEmpty())
+        assertTrue(DutyLogic.areas("gate_staff", info(emptyList(), "none", false), patrolAssignedToday = 2).areas.isEmpty())
+        assertTrue(DutyLogic.areas("gate", DutyInfo(hasDuty = false)).areas.isEmpty())
+        assertEquals(DutyHome.NONE, DutyLogic.areas("gate", info(emptyList(), "none", false)).home)
+        assertTrue(DutyLogic.areas("gate", info(emptyList(), "none", false)).fromServer)
+    }
+
+    @Test fun legacyGateWithPresentFieldPatrolOnlyIsPatrol() {
+        assertEquals(setOf(P), DutyLogic.areas("gate", info(listOf("patrol"))).areas)
     }
 
     @Test fun absentFieldLegacyGate() {

@@ -68,6 +68,14 @@ fun DutyUpdatedBanner(onTap: () -> Unit) {
     }
 }
 
+/** 1078: "Your shift is not active now (Day 06:00–14:00)." The area stays visible; new-action buttons are off. */
+@Composable
+fun ShiftInactiveBanner(text: String) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = SgSpacing.ScreenMargin, vertical = 6.dp)) {
+        GuardBanner(text, GuardBannerKind.WARNING, Icons.Outlined.Info)
+    }
+}
+
 /** Gate chooser (two or more gate duties). White chips on the teal lock screen; first gate is the default. */
 @Composable
 fun GateChooser(gates: List<Pair<String, String>>, chosenId: String?, onChoose: (String) -> Unit, onTeal: Boolean = true) {
