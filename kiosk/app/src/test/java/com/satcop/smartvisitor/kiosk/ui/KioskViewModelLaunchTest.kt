@@ -3,6 +3,8 @@ package com.satcop.smartvisitor.kiosk.ui
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -48,6 +50,8 @@ class KioskViewModelLaunchTest {
         assertTrue("uncaught: $uncaught", uncaught.isEmpty())
         assertFalse(uncaught.any { it is NullPointerException })
         assertEquals(first.takeLast(4), vm.clock.value.takeLast(4))
+        // The ticker never ends on its own: stop it, or runTest would wait on it forever.
+        vm.viewModelScope.cancel()
     }
 
     /** Declaration-order guard: every property that init-launched coroutines touch must be declared above `init {`. */
