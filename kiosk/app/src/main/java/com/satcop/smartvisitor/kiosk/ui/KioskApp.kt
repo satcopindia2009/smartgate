@@ -84,7 +84,10 @@ fun KioskApp(
         }
     }
     // Login draws its own full-bleed teal header under the status bar.
-    val onPasswordLogin = !(state.signedIn && FaceGateMachine.canShowData(state.gateStage)) &&
+    val lockUp = !(state.signedIn && FaceGateMachine.canShowData(state.gateStage)) &&
+        state.gateStage == GateStage.FACE_PENDING &&
+        FaceLockOrder.showLock(com.satcop.smartvisitor.kiosk.data.api.AppAuth.session.isSignedIn, com.satcop.smartvisitor.kiosk.data.api.AppAuth.session.faceVerified, state.facePhase == FaceLoginPhase.HUB)
+    val onPasswordLogin = lockUp || !(state.signedIn && FaceGateMachine.canShowData(state.gateStage)) &&
         state.screen != KioskScreen.FACE_LOGIN && state.gateStage != GateStage.FACE_PENDING
     // Board 04: while the face capture step is up the whole screen (incl. status bar area) is dark teal.
     val faceCaptureUp = !(state.signedIn && FaceGateMachine.canShowData(state.gateStage)) &&
@@ -93,7 +96,7 @@ fun KioskApp(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (faceCaptureUp) com.satcop.smartvisitor.kiosk.ui.theme.AppleDark.bg else KioskColors.bg)
+            .background(if (faceCaptureUp) com.satcop.smartvisitor.kiosk.ui.theme.AppleDark.bg else if (lockUp) KioskColors.primary else KioskColors.bg)
             .then(if (onPasswordLogin) Modifier else Modifier.statusBarsPadding())
             .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
             .imePadding(),
@@ -112,7 +115,7 @@ fun KioskApp(
             val signedIn = state.signedIn && FaceGateMachine.canShowData(state.gateStage)
             val faceStage = state.gateStage == GateStage.FACE_PENDING
             val faceLogin = !signedIn && (state.screen == KioskScreen.FACE_LOGIN || faceStage)
-            val outerPhoneScroll = compact && !signedIn && !faceLogin
+            val outerPhoneScroll = compact && !signedIn && !faceLogin && !lockUp
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -124,12 +127,18 @@ fun KioskApp(
                         else Modifier,
                     )
                     .then(
-                        if (signedIn || !faceLogin) Modifier // login owns its full-bleed teal header
+                        if (signedIn || !faceLogin || lockUp) Modifier // login owns its full-bleed teal header
                         else Modifier.padding(horizontal = hPad, vertical = vPad),
                     )
             ) {
                 val faceCtx = LocalContext.current
-                if (!signedIn) {
+                if (lockUp) {
+                    // 1075: lock screen FIRST (drawn from the login response); the camera opens only from its button.
+                    com.satcop.smartvisitor.kiosk.ui.guardhome.LockScreen(
+                        displayName = state.meDisplayName, schoolName = state.schoolName, loading = false, error = null,
+                        onClockIn = viewModel::startFaceVerify, onSignOut = viewModel::logout,
+                    )
+                } else if (!signedIn) {
                     if (state.screen == KioskScreen.FACE_LOGIN || faceStage) {
                         // Board 04: the capture step is a full-bleed dark teal screen, not a card. HUB/CONSENT keep the card.
                         val faceCapture = state.facePhase == FaceLoginPhase.CAPTURE_VERIFY ||

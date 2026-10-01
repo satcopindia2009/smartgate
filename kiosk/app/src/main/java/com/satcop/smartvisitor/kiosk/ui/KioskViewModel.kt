@@ -360,10 +360,13 @@ class KioskViewModel(
                         loginPassword = "",
                         loginUsername = username,
                         screen = KioskScreen.FACE_LOGIN,
-                        // straight to the camera: no dead-end hub
-                        facePhase = FaceLoginPhase.CAPTURE_VERIFY,
+                        // 1075: the LOCK SCREEN comes first (HUB phase of a half-open guard session = lock screen);
+                        // the camera opens only from its CLOCK IN TO CONTINUE button. No data call before face-verify.
+                        facePhase = FaceLoginPhase.HUB,
                         faceEnrolled = enrolled || it.faceEnrolled,
-                        faceMessage = "Password accepted — take a selfie to clock in",
+                        meDisplayName = me.displayName,
+                        schoolName = me.schoolName?.takeIf { n -> n.isNotBlank() } ?: it.schoolName,
+                        faceMessage = null,
                         faceError = false,
                         toast = null,
                     )
@@ -2396,14 +2399,16 @@ class KioskViewModel(
                     }
                     return@launch
                 }
+                // 1075: stay on the camera (no white Face login card, no lock flash) until the app data is in.
                 _state.update {
                     it.copy(
-                        faceBusy = false, facePhase = FaceLoginPhase.HUB, faceMessage = null, faceError = false,
+                        faceBusy = true, faceMessage = "Checked in", faceError = false,
                         clockInRow = ci.getOrNull(),
                         toast = if (ciErr == null) "Face matched. You are checked in." else null, toastKind = ToastKind.SUCCESS,
                     )
                 }
                 loadAfterLogin(live.user)
+                _state.update { it.copy(faceBusy = false, facePhase = FaceLoginPhase.HUB, faceMessage = null) }
                 return@launch
             }
             if (live != null && live.faceVerified && !live.accessToken.isNullOrBlank() && live.user != null) {
@@ -2446,7 +2451,11 @@ class KioskViewModel(
     fun onSystemBack(): Boolean {
         val s = _state.value
         // 1074: with a half-open password session (guard face clock-in) Back does nothing; only Sign Out / Cancel leave.
-        if (AppAuth.session.isSignedIn && !AppAuth.session.faceVerified && s.gateStage == GateStage.FACE_PENDING) return true
+        if (AppAuth.session.isSignedIn && !AppAuth.session.faceVerified && s.gateStage == GateStage.FACE_PENDING) {
+            // 1075: Back on the camera returns to the lock screen (not while verifying); Back on the lock screen does nothing.
+            if (!s.faceBusy && s.facePhase == FaceLoginPhase.CAPTURE_VERIFY) cancelFaceCapture()
+            return true
+        }
         if (!s.signedIn || !FaceGateMachine.canShowData(s.gateStage)) {
             if (s.screen == KioskScreen.FACE_LOGIN || s.gateStage == GateStage.FACE_PENDING) {
                 when (s.facePhase) {

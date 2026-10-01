@@ -156,7 +156,7 @@ fun GuardClockInGate(
 ) {
     val state by controller.state.collectAsState()
     LaunchedEffect(initialCheckInRow) {
-        if (initialCheckInRow != null) { controller.showCheckInResult(initialCheckInRow); onInitialRowConsumed() }
+        if (initialCheckInRow != null) controller.showCheckInResult(initialCheckInRow)
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     var confirmSignOut by remember { mutableStateOf(false) }
@@ -174,6 +174,8 @@ fun GuardClockInGate(
     val lock = ClockInLogic.lockState(state.attendance, state.attendanceLoaded, businessDate)
     val lockGateLabel = state.attendance?.gateName?.takeIf { it.isNotBlank() } ?: ""
     val result = state.result
+    // 1075: release the hand-over only once the card is up (no lock-screen frame in between).
+    LaunchedEffect(result) { if (result != null && initialCheckInRow != null) onInitialRowConsumed() }
     val panel = state.panel
     BackHandler(enabled = panel != null || result != null) {
         if (result != null) controller.clearResult() else controller.back()
@@ -182,6 +184,8 @@ fun GuardClockInGate(
     BackHandler(enabled = panel == null && result == null && lock != LockState.UNLOCKED) { }
 
     when {
+        // 1075: the face step handed over a check-in row: hold a plain background until the Checked In card shows (no lock flash).
+        initialCheckInRow != null && result == null -> Box(Modifier.fillMaxSize().background(KioskColors.bg))
         result != null -> ClockResultScreen(
             result = result, displayName = displayName, schoolName = schoolName, selfie = lastSelfie,
             checkInTime = ClockInLogic.time12h(state.attendance?.attendance?.let { it.checkInAt ?: it.timestamp })

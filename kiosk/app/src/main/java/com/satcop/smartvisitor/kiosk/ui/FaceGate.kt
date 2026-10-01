@@ -17,6 +17,13 @@ object FaceGatePolicy {
     fun needsFace(faceVerified: Boolean, faceRequired: Boolean): Boolean = faceRequired && !faceVerified
 }
 
+/** 1075: order of the guard path - credentials -> LOCK -> (button) camera -> clock-in -> Checked In -> Today. */
+object FaceLockOrder {
+    /** The lock screen shows for a half-open password session (signed in, not face-verified) whenever the camera is not up. */
+    fun showLock(sessionSignedIn: Boolean, faceVerified: Boolean, cameraDown: Boolean): Boolean =
+        sessionSignedIn && !faceVerified && cameraDown
+}
+
 object FaceGateMachine {
     val initial: GateStage = GateStage.SIGNED_OUT
 

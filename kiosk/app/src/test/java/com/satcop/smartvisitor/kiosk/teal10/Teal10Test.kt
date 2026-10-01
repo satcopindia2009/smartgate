@@ -95,7 +95,7 @@ class Teal10Test {
 
     @Test fun backDoesNothingOnLockAndFaceScreens() {
         assertTrue(src("ui/guardhome/ClockFlowScreens.kt").contains("BackHandler(enabled = panel == null && result == null && lock != LockState.UNLOCKED) { }"))
-        assertTrue(src("ui/KioskViewModel.kt").contains("s.gateStage == GateStage.FACE_PENDING) return true"))
+        assertTrue(src("ui/KioskViewModel.kt").contains("s.gateStage == GateStage.FACE_PENDING) {"))
     }
 
     @Test fun lowItemsInScreens() {
