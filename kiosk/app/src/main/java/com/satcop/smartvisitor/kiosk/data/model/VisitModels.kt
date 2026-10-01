@@ -29,6 +29,13 @@ data class LoginResponse(
     val shiftStartTime: String? = null,
     /** e.g. "Morning · starts 06:30 am" - shown verbatim. */
     val shiftStartDisplay: String? = null,
+    // 1077 duty (Backend frozen contract 2026-10-01): additive, null for other roles / until Backend ships it.
+    val dutyTypes: List<String>? = null,
+    val primaryHome: String? = null,
+    val homeOrder: List<String>? = null,
+    val hasDuty: Boolean? = null,
+    val dutyRevision: String? = null,
+    val dutyAssignments: List<DutyCompact>? = null,
     val shiftEndTime: String? = null,
     val shiftEndDisplay: String? = null,
     val meta: Meta? = null,

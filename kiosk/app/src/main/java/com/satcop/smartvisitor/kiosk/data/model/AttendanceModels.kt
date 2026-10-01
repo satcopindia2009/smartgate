@@ -65,6 +65,12 @@ data class AttendanceRow(
     val actionTimeDisplay: String? = null,
     val gateId: String? = null,
     val gateSource: String? = null,
+    // 1077 clock-in snapshot (Backend): the duty at check-in time, never rewritten.
+    val dutyTypes: List<String>? = null,
+    val dutyGateId: String? = null,
+    val dutyGateName: String? = null,
+    val dutyAssignmentIds: List<String>? = null,
+    val noDuty: Boolean? = null,
     val checkInSelfieUploaded: Boolean? = null,
     val currentStatus: CurrentStatus? = null,
     val missedClockOut: Boolean = false,
@@ -99,6 +105,13 @@ data class TodayAttendance(
     val dutyDate: String? = null,
     val canCheckIn: Boolean = false,
     val canClockOut: Boolean = false,
+    // 1077 duty (Backend frozen contract 2026-10-01): additive, null for other roles / until Backend ships it.
+    val dutyTypes: List<String>? = null,
+    val primaryHome: String? = null,
+    val homeOrder: List<String>? = null,
+    val hasDuty: Boolean? = null,
+    val dutyRevision: String? = null,
+    val dutyAssignments: List<DutyCompact>? = null,
     val schoolName: String? = null,
     val guardName: String? = null,
     val gateName: String? = null,
@@ -142,4 +155,7 @@ data class AttendanceRequest(
     /** 1072: true when the OS flags the reading as coming from a mock provider. Server only records/flags it. Omitted otherwise. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val isMock: Boolean? = null,
+    /** 1077: gate chosen from the duty gates (only sent when the guard has more than one gate duty). */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val gateId: String? = null,
 )

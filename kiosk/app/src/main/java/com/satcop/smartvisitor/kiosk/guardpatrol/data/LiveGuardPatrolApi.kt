@@ -40,6 +40,8 @@ class LiveGuardPatrolApi(
         .readTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .writeTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .callTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        // 1077: tell Backend this build understands duty (X-Duty-Aware) on EVERY call.
+        .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().header("X-Duty-Aware", "1").build()) }
         .build()
 
     val accessToken: String? get() = session.accessToken

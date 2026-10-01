@@ -76,6 +76,8 @@ class LiveVisitorApi(
         .readTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .writeTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .callTimeout(ApiConfig.CALL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        // 1077: tell Backend this build understands duty (X-Duty-Aware) on EVERY call.
+        .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().header("X-Duty-Aware", "1").build()) }
         .addInterceptor { chain ->
             var resp = chain.proceed(chain.request())
             // Cloudflare quick-tunnel blip: one quiet retry on 530/502–504 (no sleep — avoid jank).
@@ -468,6 +470,9 @@ class LiveVisitorApi(
     fun guardGeofence(): com.satcop.smartvisitor.kiosk.data.model.GeofenceInfo = get("/guards/me/geofence")
 
     /** Guard Today: patrol progress + incidents (guard face-verified or gate; FACE_REQUIRED otherwise). */
+    /** 1077: GET /duty/me (live duty). Needs the face-verified token. */
+    fun dutyMe(): com.satcop.smartvisitor.kiosk.data.model.DutyMe = get("/duty/me")
+
     fun guardTodaySummary(): com.satcop.smartvisitor.kiosk.data.model.GuardTodaySummary = get("/guards/me/today-summary")
 
     fun attendanceCheckIn(body: AttendanceRequest): AttendanceRow =
