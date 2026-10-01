@@ -193,7 +193,16 @@ fun KioskApp(
                     }
                 } else {
                     val role = state.homeRole()
-                    if (role == KioskRole.GUARD) {
+                    // 1076: gate / gate staff have no guard gate: the Checked In (or Verified) card shows here, then their home.
+                    val roleCard = if (role == KioskRole.GUARD) null else
+                        state.clockInRow?.let { com.satcop.smartvisitor.kiosk.ui.guardhome.ClockInLogic.resultFrom(com.satcop.smartvisitor.kiosk.ui.guardhome.AttendanceMode.CHECK_IN, it) }
+                            ?: state.verifiedCard
+                    if (roleCard != null) {
+                        com.satcop.smartvisitor.kiosk.ui.guardhome.ClockResultScreen(
+                            result = roleCard, displayName = state.meDisplayName, schoolName = state.schoolName, selfie = null,
+                            onDone = viewModel::consumeClockInRow,
+                        )
+                    } else if (role == KioskRole.GUARD) {
                         // 1064: the guard app stays locked until the SERVER says the guard is clocked in today.
                         val guardHome: com.satcop.smartvisitor.kiosk.ui.guardhome.GuardHomeViewModel =
                             viewModel(key = "guard-home-${state.sessionEpoch}")
@@ -204,6 +213,8 @@ fun KioskApp(
                             onLogout = viewModel::logout,
                             initialCheckInRow = state.clockInRow,
                             onInitialRowConsumed = viewModel::consumeClockInRow,
+                            initialVerifiedCard = state.verifiedCard,
+                            verifyOnlySession = state.verifyOnlySession,
                         ) { requestLogout ->
                     if (state.screen == KioskScreen.COURIER) {
                         CourierLogScreen(

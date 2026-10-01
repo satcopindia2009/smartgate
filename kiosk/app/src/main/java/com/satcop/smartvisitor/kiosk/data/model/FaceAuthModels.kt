@@ -66,6 +66,8 @@ data class FaceVerifyResponse(
     val faceVerified: Boolean = false,
     val username: String? = null,
     val message: String? = null,
+    /** 1076: server time of the face-verify (IST ISO); used by the verify-only card. */
+    val loginAt: String? = null,
     /** Server soft warning (e.g. outside campus in soft geo-fence mode). */
     val warn: String? = null,
     val meta: Meta? = null,

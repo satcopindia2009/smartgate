@@ -96,6 +96,9 @@ data class KioskUiState(
     val dataSource: DataSource = DataSource.OFFLINE,
     val meDisplayName: String = "",
     val meRole: String = "",
+    /** 1076: card of a role whose clock-in was refused by the server (face-verify only). */
+    val verifyOnlySession: Boolean = false,
+    val verifiedCard: com.satcop.smartvisitor.kiosk.ui.guardhome.ClockResult? = null,
     val meStaffId: String = "",
     val gates: List<Gate> = emptyList(),
     val hosts: List<Staff> = emptyList(),
@@ -2209,7 +2212,7 @@ class KioskViewModel(
     }
 
     fun consumeClockInRow() {
-        _state.update { it.copy(clockInRow = null) }
+        _state.update { it.copy(clockInRow = null, verifiedCard = null) }
     }
 
     fun cancelFaceCapture() {
@@ -2365,7 +2368,7 @@ class KioskViewModel(
             val live = liveResult.getOrNull()
             // The SERVER decides (face_verified token). No client-side template match gates success.
             if (live != null && live.faceVerified && !live.accessToken.isNullOrBlank() && live.user != null &&
-                com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.isGuardRole(live.user.role)
+                com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.requiresClockIn(live.user.role)
             ) {
                 // 1073: the face step IS the clock-in. Same photo + GPS + time; any failure keeps the guard OUT with a reason + Retry.
                 val req = com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.buildCheckIn(
@@ -2389,6 +2392,20 @@ class KioskViewModel(
                 }
                 val ci = runCatching { io { liveApi.attendanceCheckIn(req) } }
                 val ciErr = ci.exceptionOrNull()
+                if (ciErr != null && com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.verifyOnlyFallback(live.user.role, ciErr)) {
+                    // 1076: the server refuses attendance for this role: face-verify only, card says "Verified!".
+                    _state.update {
+                        it.copy(
+                            faceBusy = true, faceMessage = "Verified", faceError = false,
+                            verifyOnlySession = true,
+                            verifiedCard = com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.verifiedResult(live.loginAt, null),
+                            toast = null,
+                        )
+                    }
+                    loadAfterLogin(live.user)
+                    _state.update { it.copy(faceBusy = false, facePhase = FaceLoginPhase.HUB, faceMessage = null) }
+                    return@launch
+                }
                 if (ciErr != null && !com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.alreadyIn(ciErr)) {
                     val text = com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.checkInFailureMessage(ciErr, req.gpsMissing)
                     _state.update {

@@ -42,6 +42,8 @@ data class ClockResult(
     val mockNote: String? = null,
     /** Signed URL exactly as the server returned it (?t= intact); loaded via MediaUrl, never built from a key. */
     val guardPhotoUrl: String? = null,
+    /** 1076: a role whose clock-in the server refused: face-verify only. The card says "Verified!". */
+    val verifyOnly: Boolean = false,
 )
 
 /** Pure rules of the Guard clock-in / clock-out flow (Product final rulings 2026-09-30). Compose-free. */
@@ -111,7 +113,8 @@ object ClockInLogic {
             .firstOrNull { !it.isNullOrBlank() && it.trim() != "—" }?.trim() ?: "—"
 
     /** 1073: the result header always matches the action: a check-in says "Self Check In", a clock-out "Self Check Out". */
-    fun resultHeader(result: ClockResult) = headerTitle(result.mode)
+    fun resultHeader(result: ClockResult) = if (result.verifyOnly) "Face Verified" else headerTitle(result.mode)
+    fun resultTitleOf(result: ClockResult) = if (result.verifyOnly) "Verified!" else resultTitle(result.mode)
 
     /** Server geofence status of this action: nested block first, then the flat field. Lower-cased; null when absent. */
     fun geofenceStatusOf(row: AttendanceRow): String? =

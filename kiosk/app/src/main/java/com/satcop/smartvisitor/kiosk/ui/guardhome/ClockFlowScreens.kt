@@ -152,11 +152,17 @@ fun GuardClockInGate(
     /** 1074: the check-in response of the face step; shown once as the "Checked In!" card. */
     initialCheckInRow: com.satcop.smartvisitor.kiosk.data.model.AttendanceRow? = null,
     onInitialRowConsumed: () -> Unit = {},
+    /** 1076: a role whose clock-in the server refused: face-verify only. The card says "Verified!" and the lock is skipped. */
+    initialVerifiedCard: ClockResult? = null,
+    verifyOnlySession: Boolean = false,
     content: @Composable (requestLogout: () -> Unit) -> Unit,
 ) {
     val state by controller.state.collectAsState()
     LaunchedEffect(initialCheckInRow) {
         if (initialCheckInRow != null) controller.showCheckInResult(initialCheckInRow)
+    }
+    LaunchedEffect(initialVerifiedCard) {
+        if (initialVerifiedCard != null) controller.showVerifiedResult(initialVerifiedCard)
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     var confirmSignOut by remember { mutableStateOf(false) }
@@ -171,11 +177,12 @@ fun GuardClockInGate(
     // 1072 E: a row from an earlier IST day never unlocks the app.
     // 1074: the business day (IST minus the school cutoff). A row or a "Shift complete" from an earlier business day never counts.
     val businessDate = GuardGeoLogic.businessDate(java.time.Instant.now(), state.sessionCutoff)
-    val lock = ClockInLogic.lockState(state.attendance, state.attendanceLoaded, businessDate)
+    val lock = if (initialVerifiedCard != null || verifyOnlySession) LockState.UNLOCKED
+    else ClockInLogic.lockState(state.attendance, state.attendanceLoaded, businessDate)
     val lockGateLabel = state.attendance?.gateName?.takeIf { it.isNotBlank() } ?: ""
     val result = state.result
     // 1075: release the hand-over only once the card is up (no lock-screen frame in between).
-    LaunchedEffect(result) { if (result != null && initialCheckInRow != null) onInitialRowConsumed() }
+    LaunchedEffect(result) { if (result != null && (initialCheckInRow != null || initialVerifiedCard != null)) onInitialRowConsumed() }
     val panel = state.panel
     BackHandler(enabled = panel != null || result != null) {
         if (result != null) controller.clearResult() else controller.back()
@@ -185,7 +192,7 @@ fun GuardClockInGate(
 
     when {
         // 1075: the face step handed over a check-in row: hold a plain background until the Checked In card shows (no lock flash).
-        initialCheckInRow != null && result == null -> Box(Modifier.fillMaxSize().background(KioskColors.bg))
+        (initialCheckInRow != null || initialVerifiedCard != null) && result == null -> Box(Modifier.fillMaxSize().background(KioskColors.bg))
         result != null -> ClockResultScreen(
             result = result, displayName = displayName, schoolName = schoolName, selfie = lastSelfie,
             checkInTime = ClockInLogic.time12h(state.attendance?.attendance?.let { it.checkInAt ?: it.timestamp })
@@ -767,8 +774,8 @@ fun ClockResultScreen(
                 ) { Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp)) }
             }
             Spacer(Modifier.height(12.dp))
-            Text(ClockInLogic.resultTitle(result.mode), color = KioskColors.text, style = SgType.BigNumber)
-            Text(GuardCopy.resultBody(result.mode), color = KioskColors.textMuted, style = SgType.Body, textAlign = TextAlign.Center)
+            Text(ClockInLogic.resultTitleOf(result), color = KioskColors.text, style = SgType.BigNumber)
+            Text(if (result.verifyOnly) "Your face is verified. Welcome!" else GuardCopy.resultBody(result.mode), color = KioskColors.textMuted, style = SgType.Body, textAlign = TextAlign.Center)
             result.flaggedNote?.let {
                 Spacer(Modifier.height(12.dp))
                 GuardBanner(it, GuardBannerKind.WARNING)

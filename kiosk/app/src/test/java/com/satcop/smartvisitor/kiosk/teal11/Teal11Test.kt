@@ -48,6 +48,6 @@ class Teal11Test {
         assertTrue(ok.contains("clockInRow = ci.getOrNull()"))
         assertTrue(ok.contains("loadAfterLogin(live.user)"))
         val g = src("ui/guardhome/ClockFlowScreens.kt")
-        assertTrue(g.contains("initialCheckInRow != null && result == null"))
+        assertTrue(g.contains("initialCheckInRow != null || initialVerifiedCard != null) && result == null"))
     }
 }

@@ -6,10 +6,10 @@ enum class KioskRole {
         /** Roles that live on the web dashboard only (Product final rulings 4). */
         fun isWebOnly(role: String?): Boolean = role?.trim()?.lowercase() in setOf("admin", "security_head")
 
-        fun fromJwt(role: String?): KioskRole = when (role?.trim()?.lowercase()) {
-            "gate" -> GATE
+        fun fromJwt(role: String?): KioskRole = when (role?.trim()?.lowercase()?.replace('-', '_')) {
+            "gate", "gate_staff" -> GATE   // 1076: gate staff use the Gate home
             "host" -> HOST
-            "guard" -> GUARD
+            "guard", "security" -> GUARD   // 1076: security uses the Guard home (clock-in, patrol)
             else -> UNSUPPORTED
         }
     }

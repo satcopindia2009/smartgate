@@ -31,8 +31,8 @@ class Teal9Test {
     }
 
     @Test fun guardRoleAlwaysFaceChecked() {
-        assertTrue(FaceClockInLogic.isGuardRole("guard")); assertTrue(FaceClockInLogic.isGuardRole(" Guard "))
-        assertFalse(FaceClockInLogic.isGuardRole("gate")); assertFalse(FaceClockInLogic.isGuardRole(null))
+        assertTrue(FaceClockInLogic.requiresClockIn("guard")); assertTrue(FaceClockInLogic.isGuardRole(" Guard "))
+        assertFalse(FaceClockInLogic.requiresClockIn("host")); assertFalse(FaceClockInLogic.isGuardRole(null))
     }
 
     @Test fun alreadyInOpensTheApp() {

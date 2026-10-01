@@ -14,6 +14,35 @@ object FaceClockInLogic {
     /** Guard sign-in always goes through the face clock-in, whatever faceRequired says. */
     fun isGuardRole(role: String?): Boolean = role?.trim()?.equals("guard", ignoreCase = true) == true
 
+    /** 1076: roles that go lock screen -> face -> clock-in. Host and admin are NOT in it (no face, straight in). */
+    private val clockInRoles = setOf("guard", "gate", "gate_staff", "security", "security_head")
+
+    fun normalizeRole(role: String?): String = role?.trim()?.lowercase()?.replace('-', '_').orEmpty()
+
+    /** One shared rule for the client: needsFace = faceRequired OR requiresClockIn(role). */
+    fun requiresClockIn(role: String?): Boolean = normalizeRole(role) in clockInRoles
+
+    /**
+     * 1076: the server may refuse the guard attendance API for a non-guard role (role/route refusal, not a location or face
+     * refusal). Then the role falls back to face-verify only and the card says "Verified". Guards never fall back.
+     */
+    fun verifyOnlyFallback(role: String?, e: Throwable): Boolean {
+        if (normalizeRole(role) == "guard") return false
+        val api = e as? ApiException ?: return false
+        if (alreadyIn(api)) return false
+        if (api.details.containsKey("reasonCode")) return false
+        val code = api.code.uppercase()
+        return api.httpStatus in setOf(404, 405) ||
+            code in setOf("FORBIDDEN", "NOT_FOUND", "ROLE_NOT_ALLOWED", "ROLE_FORBIDDEN", "NOT_A_GUARD", "NOT_GUARD")
+    }
+
+    /** The card for a verify-only role. Time is the server login time of the face-verify. */
+    fun verifiedResult(loginAtIso: String?, gate: String?): ClockResult = ClockResult(
+        mode = AttendanceMode.CHECK_IN, action = "Face verify", time = ClockInLogic.time12h(loginAtIso),
+        gate = gate?.takeIf { it.isNotBlank() && it != "—" } ?: "—", selfieUploaded = false, recordId = "—",
+        flaggedNote = null, verifyOnly = true,
+    )
+
     /** The check-in request that reuses the face photo. GPS only as a real pair; gpsMissing otherwise. */
     fun buildCheckIn(photoBase64: String, stamp: CaptureStamp, now: Instant, attemptId: String): AttendanceRequest {
         val mock = if (stamp.isMock) true else null

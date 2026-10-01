@@ -20,7 +20,14 @@ class LiveDecodeSmokeTest {
         val loginRaw = post(base + "/auth/login", loginBody, null)
         val login = json.decodeFromString(LoginResponse.serializer(), loginRaw)
         assertTrue(login.accessToken.isNotBlank())
-        val token = login.accessToken
+        // 1076: gate roles must face-verify before any data call (server answers FACE_REQUIRED otherwise).
+        val jpeg = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="
+        val fvRaw = post(
+            base + "/auth/face-verify",
+            """{"imageBase64":"$jpeg","capturedAt":"2026-09-30T11:00:00Z","gpsMissing":true}""",
+            login.accessToken,
+        )
+        val token = json.decodeFromString(com.satcop.smartvisitor.kiosk.data.model.FaceVerifyResponse.serializer(), fvRaw).accessToken!!
         for (path in listOf("/gates", "/staff?active=true", "/visits/inside")) {
             val raw = get(base + path, token)
             when {

@@ -104,7 +104,8 @@ class LiveVisitorApi(
         val parsed = json.decodeFromString<LoginResponse>(text)
         // 1059b: follow the server. Only a role with faceRequired && !faceVerified (guard) must do the face step.
         // 1073: a GUARD is face-checked on every sign-in even if the server omits faceRequired (the face step IS the clock-in).
-        val isGuard = parsed.user?.role?.trim()?.equals("guard", ignoreCase = true) == true
+        // 1076: the same lock -> face -> clock-in flow for guard, gate, gate_staff, security, security_head (host/admin untouched).
+        val isGuard = com.satcop.smartvisitor.kiosk.ui.guardhome.FaceClockInLogic.requiresClockIn(parsed.user?.role)
         val needsFace = com.satcop.smartvisitor.kiosk.ui.FaceGatePolicy.needsFace(parsed.faceVerified, parsed.faceRequired || isGuard)
         session.accept(
             parsed.accessToken, parsed.user, faceVerified = !needsFace, faceRequired = parsed.faceRequired || isGuard,

@@ -223,6 +223,10 @@ class GuardHomeController(
     }
 
     /** 1074: show the "Checked In!" card for a check-in done by the face step (row = the check-in response). */
+    fun showVerifiedResult(r: ClockResult) {
+        _state.update { it.copy(result = r) }
+    }
+
     fun showCheckInResult(row: AttendanceRow) {
         _state.update { it.copy(result = ClockInLogic.resultFrom(AttendanceMode.CHECK_IN, row, fallbackGateName = it.attendance?.gateName)) }
     }
