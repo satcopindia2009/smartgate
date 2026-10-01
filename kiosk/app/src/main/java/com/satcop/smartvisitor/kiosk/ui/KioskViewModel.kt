@@ -220,6 +220,15 @@ class KioskViewModel(
     /** Emits every de-duplicated new pending visitor; the UI layer turns it into a system notification. */
     val newVisitorEvents: SharedFlow<HostFeedItem> get() = _newVisitorEvents
 
+    /**
+     * The per-second clock lives in its OWN flow, not in [KioskUiState]: a state copy every second recomposed the
+     * whole app (1065-1068 emulator ANR suspicion). Only the tiny ClockText composables collect this.
+     * MUST be declared before the init block: viewModelScope runs on Dispatchers.Main.immediate, so a coroutine
+     * launched from init starts right away and would see this field as null (1070 launch crash).
+     */
+    private val _clock = MutableStateFlow("")
+    val clock: StateFlow<String> = _clock.asStateFlow()
+
     init {
         // Cold start / new Activity = new session: never inherit a verified token from a warm process.
         AppAuth.session.clear()
@@ -993,13 +1002,6 @@ class KioskViewModel(
             }
         }
     }
-
-    /**
-     * The per-second clock lives in its OWN flow, not in [KioskUiState]: a state copy every second recomposed the
-     * whole app (1065-1068 emulator ANR suspicion). Only the tiny ClockText composables collect this.
-     */
-    private val _clock = MutableStateFlow("")
-    val clock: StateFlow<String> = _clock.asStateFlow()
 
     private suspend fun tickClock() {
         while (true) {

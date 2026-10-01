@@ -15,8 +15,8 @@ android {
         applicationId = "com.satcop.smartvisitor.kiosk"
         minSdk = 23
         targetSdk = 35
-        versionCode = 1070
-        versionName = "1.0.18-1role-PREVIEW-TEAL-6"
+        versionCode = 1071
+        versionName = "1.0.18b-1role-PREVIEW-TEAL-6b"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -102,6 +102,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }
 
 // ---------------------------------------------------------------------------------------------------------------
