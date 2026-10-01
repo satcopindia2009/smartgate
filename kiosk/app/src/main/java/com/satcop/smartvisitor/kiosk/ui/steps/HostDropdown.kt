@@ -51,13 +51,17 @@ fun HostDropdown(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
     label: String = HostPicker.LABEL,
+    /** N1 (vendor only): departments offered after the hosts; null = host-only dropdown. */
+    departments: List<String>? = null,
+    selectedDepartment: String? = null,
+    onSelectDepartment: (String) -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         FormLabel(label)
         when (HostPicker.viewState(hosts, loading)) {
             HostPicker.ViewState.LOADING -> HostMessage(HostPicker.LOADING, error != null)
             HostPicker.ViewState.EMPTY -> HostMessage(HostPicker.EMPTY, error != null)
-            HostPicker.ViewState.READY -> HostDropdownReady(hosts, selectedId, error != null, onSelect)
+            HostPicker.ViewState.READY -> HostDropdownReady(hosts, selectedId, error != null, onSelect, departments.orEmpty(), selectedDepartment, onSelectDepartment)
         }
         if (error != null) {
             Text(
@@ -95,13 +99,17 @@ private fun HostDropdownReady(
     selectedId: String?,
     hasError: Boolean,
     onSelect: (String) -> Unit,
+    departments: List<String>,
+    selectedDepartment: String?,
+    onSelectDepartment: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     // null = show the selected host's label; non-null = user is typing a search query.
     var query by remember { mutableStateOf<String?>(null) }
-    val selectedLabel = HostPicker.selectedLabel(hosts, selectedId)
+    val selectedLabel = HostPicker.selectedLabel(hosts, selectedId) ?: selectedDepartment?.takeIf { it.isNotBlank() }
     val text = query ?: selectedLabel.orEmpty()
     val matches = HostPicker.filter(hosts, query.orEmpty())
+    val deptMatches = HostPicker.filterDepartments(departments, query.orEmpty())
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -142,7 +150,7 @@ private fun HostDropdownReady(
             },
             modifier = Modifier.background(KioskColors.card),
         ) {
-            if (matches.isEmpty()) {
+            if (matches.isEmpty() && deptMatches.isEmpty()) {
                 DropdownMenuItem(
                     text = { Text(HostPicker.NO_MATCH, color = KioskColors.textMuted, fontFamily = KioskFont) },
                     onClick = {},
@@ -181,6 +189,39 @@ private fun HostDropdownReady(
                         .heightIn(min = FormTokens.MinTouch)
                         .background(if (selected) KioskColors.purpleDim else KioskColors.card)
                         .semantics { contentDescription = HostPicker.label(staff) },
+                )
+            }
+            if (deptMatches.isNotEmpty()) {
+                Text(
+                    text = HostPicker.DEPARTMENTS_HEADER,
+                    color = KioskColors.textMuted,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = KioskFont,
+                    modifier = Modifier.padding(horizontal = FormTokens.ControlHPad, vertical = 6.dp),
+                )
+            }
+            deptMatches.forEach { dept ->
+                val selected = dept.equals(selectedDepartment, ignoreCase = true)
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = dept,
+                            color = KioskColors.text,
+                            fontSize = 15.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                            fontFamily = KioskFont,
+                        )
+                    },
+                    onClick = {
+                        onSelectDepartment(dept)
+                        query = null
+                        expanded = false
+                    },
+                    modifier = Modifier
+                        .heightIn(min = FormTokens.MinTouch)
+                        .background(if (selected) KioskColors.purpleDim else KioskColors.card)
+                        .semantics { contentDescription = "Department " + dept },
                 )
             }
         }

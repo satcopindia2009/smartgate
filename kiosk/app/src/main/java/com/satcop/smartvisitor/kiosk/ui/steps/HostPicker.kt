@@ -26,6 +26,20 @@ object HostPicker {
         return if (role.isEmpty()) name else "$name · $role"
     }
 
+    /** N1: distinct, non-blank departments of the active hosts (the server sets department = roleTitle), A-Z. */
+    fun departments(hosts: List<Staff>): List<String> =
+        hosts.filter { it.active }.map { it.roleTitle.trim() }.filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+            .sortedBy { it.lowercase(Locale.ROOT) }
+
+    fun filterDepartments(departments: List<String>, query: String): List<String> {
+        val terms = query.trim().lowercase(Locale.ROOT).split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (terms.isEmpty()) return departments
+        return departments.filter { d -> terms.all { d.lowercase(Locale.ROOT).contains(it) } }
+    }
+
+    const val DEPARTMENTS_HEADER = "Departments"
+
     /** Label of the selected host, or null when nothing (or an unknown id) is selected. */
     fun selectedLabel(hosts: List<Staff>, selectedId: String?): String? {
         if (selectedId.isNullOrBlank()) return null

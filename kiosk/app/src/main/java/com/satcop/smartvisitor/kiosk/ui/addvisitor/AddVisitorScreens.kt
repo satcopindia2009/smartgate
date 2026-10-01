@@ -72,6 +72,7 @@ import com.satcop.smartvisitor.kiosk.ui.components.SgStatusChip
 import com.satcop.smartvisitor.kiosk.ui.components.SgStatusKind
 import com.satcop.smartvisitor.kiosk.ui.components.sgCardSurface
 import com.satcop.smartvisitor.kiosk.ui.steps.HostDropdown
+import com.satcop.smartvisitor.kiosk.ui.steps.HostPicker
 import com.satcop.smartvisitor.kiosk.ui.theme.ControlShape
 import com.satcop.smartvisitor.kiosk.ui.theme.FormTokens
 import com.satcop.smartvisitor.kiosk.ui.theme.KioskColors
@@ -380,6 +381,7 @@ fun AddVisitorFormStep(
     onCompany: (String) -> Unit,
     onPurpose: (String) -> Unit,
     onHost: (String) -> Unit,
+    onDepartment: (String) -> Unit = {},
     onIdType: (String) -> Unit,
     onIdNumber: (String) -> Unit,
     onIdTypeName: (String) -> Unit,
@@ -476,6 +478,8 @@ fun AddVisitorFormStep(
                 HostDropdown(
                     hosts = hosts, selectedId = draft.hostId, error = errors[FieldKeys.HOST_ID], loading = hostsLoading,
                     onSelect = onHost, label = AddVisitorLogic.hostLabel(kind) + " *", modifier = Modifier.weight(1f),
+                    departments = if (kind == ProfileKind.VENDOR) HostPicker.departments(hosts) else null,
+                    selectedDepartment = draft.department, onSelectDepartment = onDepartment,
                 )
             }
 

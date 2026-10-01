@@ -65,7 +65,12 @@ object RegistrationValidator {
         ) {
             errors[FieldKeys.COMPANY] = "Company is required"
         }
-        if (draft.hostId.isNullOrBlank()) {
+        if (draft.profileKind == com.satcop.smartvisitor.kiosk.data.addvisitor.ProfileKind.VENDOR) {
+            // N1: a vendor needs a host OR a department.
+            if (draft.hostId.isNullOrBlank() && draft.department.isNullOrBlank()) {
+                errors[FieldKeys.HOST_ID] = "Select a host or a department"
+            }
+        } else if (draft.hostId.isNullOrBlank()) {
             errors[FieldKeys.HOST_ID] = "Select a host to meet"
         }
         val count = draft.accompanyingCount.trim()

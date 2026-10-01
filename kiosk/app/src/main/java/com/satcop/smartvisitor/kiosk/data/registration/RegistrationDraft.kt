@@ -17,6 +17,8 @@ data class RegistrationDraft(
     val company: String = "",
     val purpose: String = "",
     val hostId: String? = null,
+    /** Vendor only: department chosen instead of a host (N1). Mutually exclusive with [hostId]. */
+    val department: String? = null,
     val gateId: String = DemoFixtures.GATE_MAIN_ID,
     val vehicleNumber: String = "",
     val accompanyingCount: String = "",

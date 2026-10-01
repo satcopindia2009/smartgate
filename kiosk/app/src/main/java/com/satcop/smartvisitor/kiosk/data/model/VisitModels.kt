@@ -24,6 +24,13 @@ data class LoginResponse(
     val guardName: String? = null,
     val schoolName: String? = null,
     val profilePhotoUrl: String? = null,
+    // Guard shift (Backend 2026-10-01, additive, null when no shift is assigned).
+    val shiftName: String? = null,
+    val shiftStartTime: String? = null,
+    /** e.g. "Morning · starts 06:30 am" - shown verbatim. */
+    val shiftStartDisplay: String? = null,
+    val shiftEndTime: String? = null,
+    val shiftEndDisplay: String? = null,
     val meta: Meta? = null,
 )
 
@@ -70,7 +77,12 @@ data class VisitCreate(
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val visitorType: String? = null,
     val purpose: String,
-    val hostId: String,
+    /** Omitted for a vendor who picked a department instead of a host (N1: the server routes it). */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val hostId: String? = null,
+    /** Vendor only, sent when no host is chosen (hostId omitted). */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val department: String? = null,
     val livePhotoKey: String,
     val idType: String,
     /** null = omitted = "use the saved ID". A masked value is never sent. */

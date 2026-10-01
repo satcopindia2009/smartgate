@@ -553,6 +553,7 @@ private fun KioskStep(
                 onCompany = viewModel::updateCompany,
                 onPurpose = viewModel::updatePurpose,
                 onHost = viewModel::selectHost,
+                onDepartment = viewModel::selectDepartment,
                 onUseSavedId = viewModel::avUseSavedId,
                 onBack = viewModel::back,
                 onSwitchKind = viewModel::avSwitchKind,

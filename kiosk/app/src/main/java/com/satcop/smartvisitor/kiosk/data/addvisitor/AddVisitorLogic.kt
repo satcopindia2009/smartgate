@@ -72,6 +72,10 @@ object AddVisitorLogic {
     /** Type selector is only for an unknown number; an existing vendor skips it (form D). */
     fun showsTypeSelector(returning: Boolean): Boolean = !returning
 
+    /** N1: department is sent only for a vendor with no host chosen; otherwise omitted (null). */
+    fun departmentToSend(kind: ProfileKind, hostId: String?, department: String?): String? =
+        if (kind == ProfileKind.VENDOR && hostId.isNullOrBlank()) department?.trim()?.takeIf { it.isNotEmpty() } else null
+
     fun hostLabel(kind: ProfileKind): String =
         if (kind == ProfileKind.VENDOR) "Host / Department" else "Person to meet (host)"
 

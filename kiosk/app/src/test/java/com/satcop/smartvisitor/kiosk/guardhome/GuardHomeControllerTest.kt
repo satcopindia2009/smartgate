@@ -36,6 +36,12 @@ private class FakeApi : GuardHomeApi {
     var searchResult: List<VisitOut> = emptyList()
     var searchError: Throwable? = null
 
+    var summary = com.satcop.smartvisitor.kiosk.data.model.GuardTodaySummary()
+    var summaryError: Throwable? = null
+    override fun todaySummary(): com.satcop.smartvisitor.kiosk.data.model.GuardTodaySummary {
+        summaryError?.let { throw it }
+        return summary
+    }
     override fun attendanceToday(): TodayAttendance { todayCalls++; return today }
     override fun checkIn(req: AttendanceRequest): AttendanceRow {
         checkIns += req

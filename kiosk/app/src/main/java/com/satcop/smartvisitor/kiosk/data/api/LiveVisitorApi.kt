@@ -461,6 +461,9 @@ class LiveVisitorApi(
 
     fun attendanceToday(): TodayAttendance = get("/attendance/me/today")
 
+    /** Guard Today: patrol progress + incidents (guard face-verified or gate; FACE_REQUIRED otherwise). */
+    fun guardTodaySummary(): com.satcop.smartvisitor.kiosk.data.model.GuardTodaySummary = get("/guards/me/today-summary")
+
     fun attendanceCheckIn(body: AttendanceRequest): AttendanceRow =
         post("/attendance/check-in", json.encodeToString(body))
 

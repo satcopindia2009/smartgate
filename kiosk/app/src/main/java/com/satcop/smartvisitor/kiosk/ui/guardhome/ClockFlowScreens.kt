@@ -190,10 +190,12 @@ fun GuardClockInGate(
         lock == LockState.UNKNOWN -> LockScreen(
             displayName = displayName, schoolName = schoolName, loading = true, error = null,
             onClockIn = {}, onSignOut = onLogout, gateLabel = lockGateLabel,
+            shiftText = GuardTodayLogic.shiftRow(state.attendance),
         )
         else -> LockScreen(
             displayName = displayName, schoolName = schoolName, loading = false, error = state.attendanceError,
             onClockIn = { controller.openPanel(AttendanceMode.CHECK_IN) }, onSignOut = onLogout, gateLabel = lockGateLabel,
+            shiftText = GuardTodayLogic.shiftRow(state.attendance),
         )
     }
 }
@@ -212,6 +214,8 @@ fun LockScreen(
     onSignOut: () -> Unit,
     now: LocalTime = LocalTime.now(),
     gateLabel: String = "",
+    /** Server shift text (shiftStartDisplay); null or blank hides the row, never hardcoded. */
+    shiftText: String? = null,
 ) {
     val context = LocalContext.current
     val locationOk = hasPerm(context, Manifest.permission.ACCESS_FINE_LOCATION) || hasPerm(context, Manifest.permission.ACCESS_COARSE_LOCATION)
@@ -231,9 +235,9 @@ fun LockScreen(
             GuardGap(SgSpacing.SectionGap)
             GuardCard {
                 GuardInfoRow(Icons.Outlined.LocationOn, "Location", if (locationOk) "Allowed" else "Needed to check in", trailingCheck = locationOk)
-                GuardInfoRow(Icons.Outlined.CameraAlt, "Camera", if (cameraOk) "Allowed" else "Needed to check in", trailingCheck = cameraOk, divider = false)
-                // Board 40 has a third "Shift" row. The app has no shift data (API gives no
-                // shift name or start time), so the row is hidden; nothing is invented.
+                GuardInfoRow(Icons.Outlined.CameraAlt, "Camera", if (cameraOk) "Allowed" else "Needed to check in", trailingCheck = cameraOk, divider = !shiftText.isNullOrBlank())
+                // Board 40 third row: server shiftStartDisplay only; hidden when the guard has no shift.
+                if (!shiftText.isNullOrBlank()) GuardInfoRow(Icons.Outlined.Schedule, "Shift", shiftText, divider = false)
             }
             Text(ClockInLogic.LOCK_TEXT, color = KioskColors.textMuted, style = SgType.Label, modifier = Modifier.padding(top = 12.dp, start = 4.dp))
             if (!error.isNullOrBlank()) {

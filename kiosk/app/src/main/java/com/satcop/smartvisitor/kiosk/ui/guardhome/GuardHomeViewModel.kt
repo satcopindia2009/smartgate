@@ -6,12 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.satcop.smartvisitor.kiosk.data.api.LiveVisitorApi
 import com.satcop.smartvisitor.kiosk.data.model.AttendanceRequest
 import com.satcop.smartvisitor.kiosk.data.model.AttendanceRow
+import com.satcop.smartvisitor.kiosk.data.model.GuardTodaySummary
 import com.satcop.smartvisitor.kiosk.data.model.TodayAttendance
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 
 /** Live adapter: LiveVisitorApi already refuses data calls before face verification. */
 class LiveGuardHomeApi(private val live: LiveVisitorApi = LiveVisitorApi()) : GuardHomeApi {
     override fun attendanceToday(): TodayAttendance = live.attendanceToday()
+    override fun todaySummary(): GuardTodaySummary = live.guardTodaySummary()
     override fun checkIn(req: AttendanceRequest): AttendanceRow = live.attendanceCheckIn(req)
     override fun clockOut(req: AttendanceRequest): AttendanceRow = live.attendanceClockOut(req)
     override fun visitsBetween(dateFrom: String, dateTo: String, q: String?): List<VisitOut> =

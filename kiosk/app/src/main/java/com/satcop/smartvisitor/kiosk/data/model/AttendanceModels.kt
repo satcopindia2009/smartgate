@@ -44,6 +44,13 @@ data class AttendanceRow(
     val selfieUploaded: Boolean? = null,
     val guardPhotoUrl: String? = null,
     val geofenceMode: String? = null,
+    // Guard shift (Backend 2026-10-01, additive, null when no shift is assigned).
+    val shiftName: String? = null,
+    val shiftStartTime: String? = null,
+    /** e.g. "Morning · starts 06:30 am" - shown verbatim. */
+    val shiftStartDisplay: String? = null,
+    val shiftEndTime: String? = null,
+    val shiftEndDisplay: String? = null,
     // Clock-in addendum 2026-09-30 (Backend, LIVE): result-screen + status fields, names exactly as the contract.
     val recordId: String? = null,
     val action: String? = null,
@@ -92,6 +99,13 @@ data class TodayAttendance(
     val guardPhotoUrl: String? = null,
     val selfieUploaded: Boolean? = null,
     val currentStatus: CurrentStatus? = null,
+    // Guard shift (Backend 2026-10-01, additive, null when no shift is assigned).
+    val shiftName: String? = null,
+    val shiftStartTime: String? = null,
+    /** e.g. "Morning · starts 06:30 am" - shown verbatim. */
+    val shiftStartDisplay: String? = null,
+    val shiftEndTime: String? = null,
+    val shiftEndDisplay: String? = null,
     val serverTime: String? = null,
 ) {
     val state: AttendanceState get() = AttendanceState.parse(attendanceStatus)

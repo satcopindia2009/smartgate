@@ -13,6 +13,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -131,7 +133,7 @@ private fun HomeBody(
             // Greeting row (picture 49)
             Column(Modifier.fillMaxWidth()) {
                 Text(ClockInLogic.greeting(displayName, LocalTime.now()), color = KioskColors.text, style = SgType.Greeting.copy(fontSize = 22.sp, lineHeight = 28.sp))
-                Text(subtitle.ifBlank { displayName.ifBlank { "Guard" } }, color = KioskColors.textMuted, style = SgType.Label.copy(fontWeight = FontWeight.Normal))
+                Text(GuardTodayLogic.headerSubtitle(subtitle.ifBlank { displayName.ifBlank { "Guard" } }, state.attendance), color = KioskColors.textMuted, style = SgType.Label.copy(fontWeight = FontWeight.Normal))
             }
 
             // Hero: Start patrol
@@ -155,20 +157,8 @@ private fun HomeBody(
 
             AttendanceCard(state = state, controller = controller)
 
-            // Visitors today: count tiles
-            Text("Visitors today", color = KioskColors.text, style = SgType.SectionTitle, modifier = Modifier.padding(top = 4.dp))
-            val sum = state.summary
-            Row(horizontalArrangement = Arrangement.spacedBy(SgSpacing.GapBetweenCards)) {
-                CountTile(VisitFilter.TODAYS.label, "${sum.todays}", KioskColors.primary, Modifier.weight(1f)) { controller.openList(VisitFilter.TODAYS) }
-                CountTile(VisitFilter.PENDING.label, "${sum.pending}", KioskColors.info, Modifier.weight(1f)) { controller.openList(VisitFilter.PENDING) }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(SgSpacing.GapBetweenCards)) {
-                CountTile(VisitFilter.REJECTED.label, "${sum.rejected}", KioskColors.danger, Modifier.weight(1f)) { controller.openList(VisitFilter.REJECTED) }
-                CountTile(VisitFilter.ALL.label, "${sum.all}", KioskColors.text, Modifier.weight(1f)) { controller.openList(VisitFilter.ALL) }
-            }
-            if (!state.visitsError.isNullOrBlank()) {
-                GuardBanner("${state.visitsError} Pull down to try again.", GuardBannerKind.WARNING)
-            }
+            // Board 49: Progress + Incidents side by side (server data only; honest empty states).
+            TodaySummaryRow(state)
 
             // Find visitor, Courier log, Lost & Found, Report incident
             GuardCard(Modifier.padding(top = 4.dp)) {
@@ -183,12 +173,52 @@ private fun HomeBody(
 }
 
 @Composable
-private fun CountTile(label: String, stat: String, statColor: androidx.compose.ui.graphics.Color, modifier: Modifier, onClick: () -> Unit) {
-    Column(
-        modifier.sgCardSurface().clickable(role = Role.Button, onClick = onClick).padding(SgSpacing.CardPadding),
-    ) {
-        Text(label, color = KioskColors.textMuted, style = SgType.Label)
-        Text(stat, color = statColor, style = SgType.BigNumber)
+private fun TodaySummaryRow(state: GuardHomeState) {
+    val sum = state.todaySummary
+    val err = state.summaryError
+    Row(horizontalArrangement = Arrangement.spacedBy(SgSpacing.GapBetweenCards)) {
+        Column(Modifier.weight(1f).sgCardSurface().padding(SgSpacing.CardPadding)) {
+            Text("Progress", color = KioskColors.textMuted, style = SgType.Label)
+            val big = GuardTodayLogic.checkpointsText(sum)
+            when {
+                big != null -> {
+                    Text(big, color = KioskColors.primary, style = SgType.BigNumber)
+                    LinearProgressIndicator(
+                        progress = { GuardTodayLogic.progressFraction(sum) },
+                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                        color = KioskColors.primary, trackColor = KioskColors.border,
+                    )
+                    val detail = listOfNotNull(GuardTodayLogic.percentText(sum), GuardTodayLogic.roundsText(sum), GuardTodayLogic.missedText(sum))
+                        .joinToString(" · ")
+                    Text(detail, color = KioskColors.textMuted, style = SgType.Caption, modifier = Modifier.padding(top = 6.dp))
+                    GuardTodayLogic.nextText(sum)?.let {
+                        Text(it, color = KioskColors.textMuted, style = SgType.Caption, modifier = Modifier.padding(top = 2.dp))
+                    }
+                }
+                sum != null -> Text(GuardTodayLogic.NO_ROUNDS, color = KioskColors.textMuted, style = SgType.Body, modifier = Modifier.padding(top = 4.dp))
+                err != null -> Text(err, color = KioskColors.textMuted, style = SgType.Caption, modifier = Modifier.padding(top = 4.dp))
+                else -> Text(GuardTodayLogic.PROGRESS_LOADING, color = KioskColors.textMuted, style = SgType.Caption, modifier = Modifier.padding(top = 4.dp))
+            }
+        }
+        Column(Modifier.weight(1f).sgCardSurface().padding(SgSpacing.CardPadding)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = KioskColors.warning, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Incidents", color = KioskColors.textMuted, style = SgType.Label)
+            }
+            val count = GuardTodayLogic.incidentCountText(sum)
+            when {
+                count != null -> {
+                    Text(count, color = KioskColors.warning, style = SgType.BigNumber)
+                    Text(
+                        if (GuardTodayLogic.incidentsEmpty(sum)) GuardTodayLogic.NO_INCIDENTS else GuardTodayLogic.incidentOpenText(sum).orEmpty(),
+                        color = KioskColors.textMuted, style = SgType.Caption,
+                    )
+                }
+                err != null -> Text(err, color = KioskColors.textMuted, style = SgType.Caption, modifier = Modifier.padding(top = 4.dp))
+                else -> Text(GuardTodayLogic.INCIDENTS_LOADING, color = KioskColors.textMuted, style = SgType.Caption, modifier = Modifier.padding(top = 4.dp))
+            }
+        }
     }
 }
 

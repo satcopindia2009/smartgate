@@ -48,6 +48,13 @@ data class MeResponse(
     val schoolName: String? = null,
     val profilePhotoUrl: String? = null,
     val otpNoticeVersion: String? = null,
+    // Guard shift (Backend 2026-10-01, additive, null when no shift is assigned).
+    val shiftName: String? = null,
+    val shiftStartTime: String? = null,
+    /** e.g. "Morning · starts 06:30 am" - shown verbatim. */
+    val shiftStartDisplay: String? = null,
+    val shiftEndTime: String? = null,
+    val shiftEndDisplay: String? = null,
     val meta: Meta? = null,
 )
 

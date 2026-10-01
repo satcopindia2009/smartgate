@@ -1021,7 +1021,17 @@ class KioskViewModel(
     fun selectHost(hostId: String) {
         _state.update {
             it.copy(
-                draft = it.draft.copy(hostId = hostId),
+                draft = it.draft.copy(hostId = hostId, department = null),
+                fieldErrors = it.fieldErrors - "hostId",
+            )
+        }
+    }
+
+    /** N1: a vendor picks a department instead of a host; the server routes it to a real host. */
+    fun selectDepartment(department: String) {
+        _state.update {
+            it.copy(
+                draft = it.draft.copy(hostId = null, department = department.trim().ifEmpty { null }),
                 fieldErrors = it.fieldErrors - "hostId",
             )
         }
@@ -1590,7 +1600,8 @@ class KioskViewModel(
                 mobile = mobileTen,
                 visitorType = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.visitorTypeToSend(kindNow, draft.profileId, draft.confirmKindSwitch),
                 purpose = draft.purpose.trim(),
-                hostId = draft.hostId.orEmpty(),
+                hostId = draft.hostId?.takeIf { it.isNotBlank() },
+                department = com.satcop.smartvisitor.kiosk.data.addvisitor.AddVisitorLogic.departmentToSend(kindNow, draft.hostId, draft.department),
                 livePhotoKey = photo.key,
                 idType = draft.idType,
                 idTypeName = if (draft.idType == "Other" && !(draft.useSavedId && draft.savedId != null)) draft.idTypeName.trim().ifEmpty { null } else null,

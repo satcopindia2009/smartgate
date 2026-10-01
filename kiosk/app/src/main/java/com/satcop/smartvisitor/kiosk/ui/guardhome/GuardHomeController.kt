@@ -5,6 +5,7 @@ import com.satcop.smartvisitor.kiosk.data.geo.GpsFix
 import com.satcop.smartvisitor.kiosk.data.model.ApiException
 import com.satcop.smartvisitor.kiosk.data.model.AttendanceRequest
 import com.satcop.smartvisitor.kiosk.data.model.AttendanceRow
+import com.satcop.smartvisitor.kiosk.data.model.GuardTodaySummary
 import com.satcop.smartvisitor.kiosk.data.model.TodayAttendance
 import com.satcop.smartvisitor.kiosk.data.model.VisitOut
 import java.time.Instant
@@ -26,6 +27,8 @@ interface GuardHomeApi {
     fun checkIn(req: AttendanceRequest): AttendanceRow
     fun clockOut(req: AttendanceRequest): AttendanceRow
     fun visitsBetween(dateFrom: String, dateTo: String, q: String?): List<VisitOut>
+    /** Guard Today patrol + incidents summary. Fails with FACE_REQUIRED for an unverified guard. */
+    fun todaySummary(): GuardTodaySummary
 }
 
 enum class HomeView { HOME, LIST, FIND }
@@ -64,6 +67,11 @@ data class GuardHomeState(
     /** Non-blocking notice on the selfie screen (e.g. location off in soft mode). */
     val notice: String? = null,
     val settingsHint: SettingsHint? = null,
+    // --- 1070 Guard Today summary (non-blocking; a failure leaves the rest of Today working) ---
+    val todaySummary: GuardTodaySummary? = null,
+    /** Plain sentence when the last summary call failed (e.g. FACE_REQUIRED -> verify face); null otherwise. */
+    val summaryError: String? = null,
+    val summaryLoaded: Boolean = false,
 ) {
     val summary: VisitSummary get() = GuardHomeLogic.summary(visits, today)
 }
@@ -96,6 +104,17 @@ class GuardHomeController(
         refreshInFlight = true
         val today = GuardHomeLogic.todayIst(nowInstant())
         _state.update { it.copy(loading = true, today = today) }
+        // Summary is its own coroutine + runCatching: it never delays or breaks attendance/visits.
+        scope.launch {
+            val sum = runCatching { withContext(io) { api.todaySummary() } }
+            _state.update {
+                it.copy(
+                    todaySummary = sum.getOrNull() ?: it.todaySummary,
+                    summaryError = sum.exceptionOrNull()?.let(ErrorCopy::forThrowable),
+                    summaryLoaded = true,
+                )
+            }
+        }
         scope.launch {
             val att = runCatching { withContext(io) { api.attendanceToday() } }
             val day = today.toString()
